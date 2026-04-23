@@ -823,6 +823,21 @@ function App() {
       "Screen Print Prints: " + screenPrintPrints + newLine + newLine +
       "Total Prints (All Departments): " + totalPrints;
     // go for API call
+    // Attempt to update Deal print count fields — silent fallback if fields don't exist yet
+    try {
+      await ZOHO.CRM.API.updateRecord({
+        Entity: entity,
+        APIData: {
+          id: entityId,
+          Vinyl_Department_Prints: vinylDeptPrints,
+          Embroidery_Department_Prints: embroideryPrints,
+          Screen_Print_Prints: screenPrintPrints,
+        }
+      });
+    } catch (err) {
+      console.log("Print count fields not yet on layout — skipping field update:", err);
+    }
+
     const response = await ZOHO.CRM.API.addNotes({
       Entity: entity,
       RecordID: entityId,
