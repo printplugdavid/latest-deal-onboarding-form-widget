@@ -171,26 +171,38 @@ const GarmentPrimaryBranchForm = ({
         />
       ))}
 
-      <Controller
+<Controller
         control={control}
-        name={`products.${index}.primaryBranches.${branchIndex}.isUsedInOtherAppTypes`}
+        name={`products.${index}.primaryBranches.${branchIndex}.garmentQuantity`}
         defaultValue=""
         render={({ field }) => (
-          <Autocomplete
+          <TextField
+            size="small"
+            variant="outlined"
+            fullWidth
+            label="Total Garment Quantity"
+            type="number"
             {...field}
-            options={["Yes", "No"]}
-            value={field.value || ""}
-            onChange={(e, newValue) => field.onChange(newValue)}
-            renderInput={(params) => (
-              <TextField
-                {...params}
-                label="Is This Garment Used With Other Application Types?"
-                variant="outlined"
-                size="small"
-                fullWidth
-                sx={{ mb: "1rem", mt: "5px" }}
-              />
-            )}
+            sx={{ mb: "1rem", mt: "5px" }}
+          />
+        )}
+      />
+
+      <Controller
+        control={control}
+        name={`products.${index}.primaryBranches.${branchIndex}.countColorSize`}
+        defaultValue=""
+        render={({ field }) => (
+          <TextField
+            multiline
+            rows={3}
+            size="small"
+            id="countColorSize"
+            variant="outlined"
+            fullWidth
+            label="Total Count, Colors & Sizes"
+            {...field}
+            sx={{ mb: "1rem", mt: "5px" }}
           />
         )}
       />
