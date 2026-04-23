@@ -782,7 +782,7 @@ function App() {
     let screenPrintPrints = 0;
 
     const embroideryDeptProducts = ["Embroidery", "Pressed Patches"];
-    const vinylColorProducts = ["Vinyl"];
+    const vinylColorProducts = ["Vinyl", "Heat-Transfer"];
     const screenPrintProducts = ["Screen Printing"];
 
     data?.products?.forEach((product) => {
