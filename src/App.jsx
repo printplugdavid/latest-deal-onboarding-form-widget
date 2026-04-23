@@ -330,12 +330,16 @@ function App() {
                           "---------------------------" +
                           newLine +
                           newLine +
-                          "Placement Location: " +
+                         "Placement Location: " +
                           subSubBranch?.placementLocation +
                           newLine +
                           newLine +
-                          "Size & Dimensions: " +
+                          "Sizes & Dimensions: " +
                           subSubBranch?.sizeAndDimensions +
+                          newLine +
+                          newLine +
+                          "Placement Size: " +
+                          subSubBranch?.placementSize +
                           newLine +
                           newLine;
                       },
