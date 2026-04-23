@@ -775,6 +775,53 @@ function App() {
       content +
       "Custmer Acknowledged 24-48 Hour Mock-Up?: " +
       data?.typicalMockup;
+
+    // PRINT COUNT CALCULATION
+    let vinylDeptPrints = 0;
+    let embroideryPrints = 0;
+    let screenPrintPrints = 0;
+
+    const embroideryDeptProducts = ["Embroidery", "Pressed Patches"];
+    const vinylColorProducts = ["Vinyl"];
+    const screenPrintProducts = ["Screen Printing"];
+
+    data?.products?.forEach((product) => {
+      if (product?.productType === "garment") {
+        const pName = product?.productName;
+        product?.primaryBranches?.forEach((branch) => {
+          const qty = parseInt(branch?.garmentQuantity) || 0;
+          branch?.secondaryBranches?.forEach((graphic) => {
+            const colors = parseInt(graphic?.numberOfColorsUsed) || 1;
+            const placements = parseInt(graphic?.numberOfPlacements) || 0;
+            const underbase = graphic?.underbase;
+            const underbaseValue = underbase === "Single-pass" ? 1 : underbase === "Full three-pass" ? 3 : 0;
+
+            if (screenPrintProducts.includes(pName)) {
+              screenPrintPrints += qty * (colors * placements + underbaseValue);
+            } else if (embroideryDeptProducts.includes(pName)) {
+              embroideryPrints += qty * placements;
+            } else if (vinylColorProducts.includes(pName)) {
+              vinylDeptPrints += qty * colors * placements;
+            } else {
+              // DTG, DTF, Heat-Transfer, etc.
+              vinylDeptPrints += qty * placements;
+            }
+          });
+        });
+      }
+    });
+
+    const totalPrints = vinylDeptPrints + embroideryPrints + screenPrintPrints;
+
+    content =
+      content +
+      newLine + newLine +
+      "PRINT COUNT SUMMARY" + newLine +
+      "---------------------------" + newLine + newLine +
+      "Vinyl Department Prints: " + vinylDeptPrints + newLine + newLine +
+      "Embroidery Department Prints: " + embroideryPrints + newLine + newLine +
+      "Screen Print Prints: " + screenPrintPrints + newLine + newLine +
+      "Total Prints (All Departments): " + totalPrints;
     // go for API call
     const response = await ZOHO.CRM.API.addNotes({
       Entity: entity,
