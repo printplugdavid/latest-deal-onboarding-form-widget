@@ -191,7 +191,7 @@ const GarmentSecondaryBranchForm = ({
         />
       </Box>
 
-      <Controller
+        <Controller
         control={control}
         name={`products.${index}.primaryBranches.${branchIndex}.secondaryBranches.${secBranchIndex}.numberOfColorsUsed`}
         defaultValue=""
@@ -202,12 +202,37 @@ const GarmentSecondaryBranchForm = ({
             variant="outlined"
             fullWidth
             label="Number Of Colors Used"
+            type="number"
             {...field}
             sx={{ mb: "1rem", mt: "5px" }}
           />
         )}
       />
 
+      <Controller
+        control={control}
+        name={`products.${index}.primaryBranches.${branchIndex}.secondaryBranches.${secBranchIndex}.underbase`}
+        defaultValue=""
+        render={({ field }) => (
+          <Autocomplete
+            {...field}
+            options={["None", "Single-pass", "Full three-pass"]}
+            value={field.value || ""}
+            onChange={(_, newValue) => field.onChange(newValue)}
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                label="Underbase Needed?"
+                variant="outlined"
+                size="small"
+                fullWidth
+                sx={{ mb: "1rem", mt: "5px" }}
+              />
+            )}
+          />
+        )}
+      />
+      
       <Controller
         control={control}
         name={`products.${index}.primaryBranches.${branchIndex}.secondaryBranches.${secBranchIndex}.colorsUsed`}
