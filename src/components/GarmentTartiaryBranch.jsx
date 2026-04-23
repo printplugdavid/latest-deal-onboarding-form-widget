@@ -61,6 +61,30 @@ const GarmentTartiaryBranch = ({
           />
         )}
       />
+
+      <Controller
+        control={control}
+        name={`products.${index}.primaryBranches.${branchIndex}.secondaryBranches.${secBranchIndex}.tartiaryBranches.${tarBranchIndex}.placementSize`}
+        defaultValue=""
+        render={({ field }) => (
+          <Autocomplete
+            {...field}
+            options={["Small", "Medium", "Large"]}
+            value={field.value || ""}
+            onChange={(_, newValue) => field.onChange(newValue)}
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                label="Placement Size"
+                variant="outlined"
+                size="small"
+                fullWidth
+                sx={{ mb: "1rem", mt: "5px" }}
+              />
+            )}
+          />
+        )}
+      />
     </Box>
   );
 };
