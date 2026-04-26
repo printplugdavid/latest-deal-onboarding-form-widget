@@ -784,14 +784,16 @@ function App() {
     let vinylDeptPrints = 0;
     let embroideryPrints = 0;
     let screenPrintPrints = 0;
-
-    const embroideryDeptProducts = ["Embroidery", "Pressed Patches"];
+    let outsourcedProducts = 0;
+    const screenPrintDept = ["Screen Printing"];
+    const embroideryDept = ["Embroidery"];
     const vinylColorProducts = ["Vinyl", "Heat-Transfer"];
-    const screenPrintProducts = ["Screen Printing"];
-
+    const vinylPlacementProducts = ["Direct-to-Garment", "Direct-to-Film", "Pressed Patches"];
+    const vinylNongarment = ["Patches", "Stickers", "Decals", "Magnets", "Banners"];
+    const outsourcedNongarment = ["Outsourced", "Business Cards", "Flyers", "Posters", "Keychains", "Tumblers", "Name Tag"];
     data?.products?.forEach((product) => {
+      const pName = product?.productName;
       if (product?.productType === "garment") {
-        const pName = product?.productName;
         product?.primaryBranches?.forEach((branch) => {
           const qty = parseInt(branch?.garmentQuantity) || 0;
           branch?.secondaryBranches?.forEach((graphic) => {
@@ -799,24 +801,27 @@ function App() {
             const placements = parseInt(graphic?.numberOfPlacements) || 0;
             const underbase = graphic?.underbase;
             const underbaseValue = underbase === "Single-pass" ? 1 : underbase === "Full three-pass" ? 3 : 0;
-
-            if (screenPrintProducts.includes(pName)) {
+            if (screenPrintDept.includes(pName)) {
               screenPrintPrints += qty * (colors * placements + underbaseValue);
-            } else if (embroideryDeptProducts.includes(pName)) {
+            } else if (embroideryDept.includes(pName)) {
               embroideryPrints += qty * placements;
             } else if (vinylColorProducts.includes(pName)) {
               vinylDeptPrints += qty * colors * placements;
-            } else {
-              // DTG, DTF, Heat-Transfer, etc.
+            } else if (vinylPlacementProducts.includes(pName)) {
               vinylDeptPrints += qty * placements;
             }
           });
         });
+      } else if (product?.productType === "nongarment") {
+        const qty = parseInt(product?.quantityOrdered) || 0;
+        if (vinylNongarment.includes(pName)) {
+          vinylDeptPrints += qty;
+        } else if (outsourcedNongarment.includes(pName)) {
+          outsourcedProducts += qty;
+        }
       }
     });
-
     const totalPrints = vinylDeptPrints + embroideryPrints + screenPrintPrints;
-
     content =
       content +
       newLine + newLine +
@@ -825,7 +830,9 @@ function App() {
       "Vinyl Department Prints: " + vinylDeptPrints + newLine + newLine +
       "Embroidery Department Prints: " + embroideryPrints + newLine + newLine +
       "Screen Print Prints: " + screenPrintPrints + newLine + newLine +
-      "Total Prints (All Departments): " + totalPrints;
+      "Total Prints (All Departments): " + totalPrints + newLine + newLine +
+      "Outsourced Products Ordered: " + outsourcedProducts;
+    
     // go for API call
     // Attempt to update Deal print count fields — silent fallback if fields don't exist yet
     try {
