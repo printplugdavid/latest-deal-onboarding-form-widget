@@ -300,7 +300,7 @@ const OnlineStorefrontForm = ({ index }) => {
         render={({ field }) => (
           <Autocomplete
             {...field}
-            options={["Yes", "No"]}
+            options={["Evergreen", "Temporary"]}
             value={field.value || ""}
             onChange={(_, newValue) => field.onChange(newValue)}
             renderInput={(params) => (
@@ -317,7 +317,7 @@ const OnlineStorefrontForm = ({ index }) => {
         )}
       />
 
-      {isStorefrontTemporaryOrEvergreen === "Yes" && (
+      {isStorefrontTemporaryOrEvergreen === "Temporary" && (
         <Box sx={{ mb: "1rem" }}>
           <FormLabel sx={{ mb: "10px", color: "black", display: "block" }}>
             Storefront End Date
