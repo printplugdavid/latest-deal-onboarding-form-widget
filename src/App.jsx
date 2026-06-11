@@ -546,7 +546,7 @@ function App() {
           newLine +
           newLine;
 
-        if (product?.isStorefrontTemporaryOrEvergreen === "Yes") {
+        if (product?.isStorefrontTemporaryOrEvergreen === "Temporary") {
           content =
             content +
             "Storefront End Date: " +
@@ -789,10 +789,12 @@ function App() {
     const embroideryDept = ["Embroidery"];
     const vinylColorProducts = ["Vinyl", "Heat-Transfer"];
     const vinylPlacementProducts = ["Direct-to-Garment", "Direct-to-Film", "Pressed Patches"];
+    const heatPressProducts = ["Direct-to-Garment", "Direct-to-Film", "Heat-Transfer"];
     const vinylNongarment = ["Patches", "Stickers", "Decals", "Magnets", "Banners"];
     const outsourcedNongarment = ["Outsourced", "Business Cards", "Flyers", "Posters", "Keychains", "Tumblers", "Name Tag"];
     data?.products?.forEach((product) => {
       const pName = product?.productName;
+      const heatPressMultiplier = heatPressProducts.includes(pName) ? 2 : 1;
       if (product?.productType === "garment") {
         product?.primaryBranches?.forEach((branch) => {
           const qty = parseInt(branch?.garmentQuantity) || 0;
@@ -806,9 +808,9 @@ function App() {
             } else if (embroideryDept.includes(pName)) {
               embroideryPrints += qty * placements;
             } else if (vinylColorProducts.includes(pName)) {
-              vinylDeptPrints += qty * colors * placements;
+              vinylDeptPrints += qty * colors * placements * heatPressMultiplier;
             } else if (vinylPlacementProducts.includes(pName)) {
-              vinylDeptPrints += qty * placements;
+              vinylDeptPrints += qty * placements * heatPressMultiplier;
             }
           });
         });
