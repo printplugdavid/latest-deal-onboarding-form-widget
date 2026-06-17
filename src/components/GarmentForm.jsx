@@ -93,6 +93,32 @@ const GarmentForm = ({ index, options, productName }) => {
         />
       ))}
 
+      {productName === "Screen Printing" && (
+        <Controller
+          control={control}
+          name={`products.${index}.premiumIronPass`}
+          defaultValue={"No"}
+          render={({ field }) => (
+            <Autocomplete
+              {...field}
+              options={["Yes", "No"]}
+              value={field.value || ""}
+              onChange={(_, newValue) => field.onChange(newValue)}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  label="Premium Iron Pass?"
+                  variant="outlined"
+                  size="small"
+                  fullWidth
+                  sx={{ mb: "1rem", mt: "5px" }}
+                />
+              )}
+            />
+          )}
+        />
+      )}
+
       <Controller
         control={control}
         name={`products.${index}.otherInformation`}
