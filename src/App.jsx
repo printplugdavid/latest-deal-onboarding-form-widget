@@ -212,6 +212,15 @@ function App() {
           newLine +
           newLine;
 
+        if (product?.premiumIronPass) {
+          content =
+            content +
+            "Premium Iron Pass?: " +
+            product?.premiumIronPass +
+            newLine +
+            newLine;
+        }
+
         if (Number(product?.numberOfGarmentTypes) > 0) {
           product?.primaryBranches?.forEach((branch, branchIndex) => {
             content =
@@ -795,6 +804,7 @@ function App() {
     data?.products?.forEach((product) => {
       const pName = product?.productName;
       const heatPressMultiplier = heatPressProducts.includes(pName) ? 2 : 1;
+      const ironValue = product?.premiumIronPass === "Yes" ? 1 : 0;
       if (product?.productType === "garment") {
         product?.primaryBranches?.forEach((branch) => {
           const qty = parseInt(branch?.garmentQuantity) || 0;
@@ -802,9 +812,9 @@ function App() {
             const colors = parseInt(graphic?.numberOfColorsUsed) || 1;
             const placements = parseInt(graphic?.numberOfPlacements) || 0;
             const underbase = graphic?.underbase;
-            const underbaseValue = underbase === "Single-pass" ? 1 : underbase === "Full three-pass" ? 3 : 0;
+            const underbaseValue = underbase === "Single-pass" ? 1 : underbase === "Two-pass" ? 2 : underbase === "Full three-pass" ? 3 : 0;
             if (screenPrintDept.includes(pName)) {
-              screenPrintPrints += qty * (colors * placements + underbaseValue);
+              screenPrintPrints += qty * (colors * placements + underbaseValue + ironValue);
             } else if (embroideryDept.includes(pName)) {
               embroideryPrints += qty * placements;
             } else if (vinylColorProducts.includes(pName)) {
