@@ -216,7 +216,7 @@ const GarmentSecondaryBranchForm = ({
         render={({ field }) => (
           <Autocomplete
             {...field}
-            options={["None", "Single-pass", "Full three-pass"]}
+            options={["None", "Single-pass", "Two-pass", "Full three-pass"]}
             value={field.value || ""}
             onChange={(_, newValue) => field.onChange(newValue)}
             renderInput={(params) => (
