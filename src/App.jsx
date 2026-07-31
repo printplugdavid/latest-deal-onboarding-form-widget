@@ -143,6 +143,75 @@ function App() {
   const onSubmit = async (data) => {
     setLoading(true);
     console.log("Collected Form Data:", data);
+
+    // PRINT COUNT CALCULATION (runs first so counts are available while the note is assembled)
+    let vinylDeptPrints = 0;
+    let embroideryPrints = 0;
+    let screenPrintPrints = 0;
+    let outsourcedProducts = 0;
+    let vinylActualPrints = 0;
+    let vinylProjectedPrints = 0;
+    let embroideryActualPrints = 0;
+    let embroideryProjectedPrints = 0;
+    let screenActualPrints = 0;
+    let screenProjectedPrints = 0;
+    const screenPrintDept = ["Screen Printing"];
+    const embroideryDept = ["Embroidery"];
+    const vinylColorProducts = ["Vinyl", "Heat-Transfer"];
+    const vinylPlacementProducts = ["Direct-to-Garment", "Direct-to-Film", "Pressed Patches"];
+    const heatPressProducts = ["Direct-to-Garment", "Direct-to-Film", "Heat-Transfer"];
+    const vinylNongarment = ["Patches", "Stickers", "Decals", "Magnets", "Banners"];
+    const outsourcedNongarment = ["Outsourced", "Business Cards", "Flyers", "Posters", "Keychains", "Tumblers", "Name Tag"];
+    data?.products?.forEach((product) => {
+      const pName = product?.productName;
+      const heatPressMultiplier = heatPressProducts.includes(pName) ? 2 : 1;
+      const ironValue = product?.premiumIronPass === "Yes" ? 1 : 0;
+      if (product?.productType === "garment") {
+        product?.primaryBranches?.forEach((branch) => {
+          const qty = parseInt(branch?.garmentQuantity) || 0;
+          branch?.secondaryBranches?.forEach((graphic) => {
+            const colors = parseInt(graphic?.numberOfColorsUsed) || 1;
+            const placements = parseInt(graphic?.numberOfPlacements) || 0;
+            const underbase = graphic?.underbase;
+            const underbaseValue = underbase === "Single-pass" ? 1 : underbase === "Double-pass" ? 2 : underbase === "Triple-pass" ? 3 : 0;
+            if (screenPrintDept.includes(pName)) {
+              const actual = qty * colors * placements;
+              const projected = qty * (underbaseValue + ironValue);
+              screenActualPrints += actual;
+              screenProjectedPrints += projected;
+              screenPrintPrints += actual + projected;
+            } else if (embroideryDept.includes(pName)) {
+              const actual = qty * placements;
+              embroideryActualPrints += actual;
+              embroideryPrints += actual;
+            } else if (vinylColorProducts.includes(pName)) {
+              const actual = qty * colors * placements;
+              const total = actual * heatPressMultiplier;
+              vinylActualPrints += actual;
+              vinylProjectedPrints += total - actual;
+              vinylDeptPrints += total;
+            } else if (vinylPlacementProducts.includes(pName)) {
+              const actual = qty * placements;
+              const total = actual * heatPressMultiplier;
+              vinylActualPrints += actual;
+              vinylProjectedPrints += total - actual;
+              vinylDeptPrints += total;
+            }
+          });
+        });
+      } else if (product?.productType === "nongarment") {
+        const qty = parseInt(product?.quantityOrdered) || 0;
+        if (vinylNongarment.includes(pName)) {
+          vinylActualPrints += qty;
+          vinylDeptPrints += qty;
+        } else if (outsourcedNongarment.includes(pName)) {
+          outsourcedProducts += qty;
+        }
+      }
+    });
+    const totalPrints = vinylDeptPrints + embroideryPrints + screenPrintPrints;
+    const totalActualPrints = vinylActualPrints + embroideryActualPrints + screenActualPrints;
+    const totalProjectedPrints = vinylProjectedPrints + embroideryProjectedPrints + screenProjectedPrints;
     // start mapping and extracting fields
     let content =
       "CONTACT INFO" +
@@ -701,6 +770,10 @@ function App() {
       data?.suppliesMaterialsNeeded +
       newLine +
       newLine +
+      "Outsourced Products Ordered: " +
+      outsourcedProducts +
+      newLine +
+      newLine +
       "Special Instructions: " +
       data?.specialInstructions +
       newLine +
@@ -793,61 +866,21 @@ function App() {
       "Custmer Acknowledged 24-48 Hour Mock-Up?: " +
       data?.typicalMockup;
 
-    // PRINT COUNT CALCULATION
-    let vinylDeptPrints = 0;
-    let embroideryPrints = 0;
-    let screenPrintPrints = 0;
-    let outsourcedProducts = 0;
-    const screenPrintDept = ["Screen Printing"];
-    const embroideryDept = ["Embroidery"];
-    const vinylColorProducts = ["Vinyl", "Heat-Transfer"];
-    const vinylPlacementProducts = ["Direct-to-Garment", "Direct-to-Film", "Pressed Patches"];
-    const heatPressProducts = ["Direct-to-Garment", "Direct-to-Film", "Heat-Transfer"];
-    const vinylNongarment = ["Patches", "Stickers", "Decals", "Magnets", "Banners"];
-    const outsourcedNongarment = ["Outsourced", "Business Cards", "Flyers", "Posters", "Keychains", "Tumblers", "Name Tag"];
-    data?.products?.forEach((product) => {
-      const pName = product?.productName;
-      const heatPressMultiplier = heatPressProducts.includes(pName) ? 2 : 1;
-      const ironValue = product?.premiumIronPass === "Yes" ? 1 : 0;
-      if (product?.productType === "garment") {
-        product?.primaryBranches?.forEach((branch) => {
-          const qty = parseInt(branch?.garmentQuantity) || 0;
-          branch?.secondaryBranches?.forEach((graphic) => {
-            const colors = parseInt(graphic?.numberOfColorsUsed) || 1;
-            const placements = parseInt(graphic?.numberOfPlacements) || 0;
-            const underbase = graphic?.underbase;
-            const underbaseValue = underbase === "Single-pass" ? 1 : underbase === "Double-pass" ? 2 : underbase === "Triple-pass" ? 3 : 0;
-            if (screenPrintDept.includes(pName)) {
-              screenPrintPrints += qty * (colors * placements + underbaseValue + ironValue);
-            } else if (embroideryDept.includes(pName)) {
-              embroideryPrints += qty * placements;
-            } else if (vinylColorProducts.includes(pName)) {
-              vinylDeptPrints += qty * colors * placements * heatPressMultiplier;
-            } else if (vinylPlacementProducts.includes(pName)) {
-              vinylDeptPrints += qty * placements * heatPressMultiplier;
-            }
-          });
-        });
-      } else if (product?.productType === "nongarment") {
-        const qty = parseInt(product?.quantityOrdered) || 0;
-        if (vinylNongarment.includes(pName)) {
-          vinylDeptPrints += qty;
-        } else if (outsourcedNongarment.includes(pName)) {
-          outsourcedProducts += qty;
-        }
-      }
-    });
-    const totalPrints = vinylDeptPrints + embroideryPrints + screenPrintPrints;
     content =
       content +
       newLine + newLine +
       "PRINT COUNT SUMMARY" + newLine +
       "---------------------------" + newLine + newLine +
-      "Vinyl Department Prints: " + vinylDeptPrints + newLine + newLine +
-      "Embroidery Department Prints: " + embroideryPrints + newLine + newLine +
-      "Screen Print Prints: " + screenPrintPrints + newLine + newLine +
-      "Total Prints (All Departments): " + totalPrints + newLine + newLine +
-      "Outsourced Products Ordered: " + outsourcedProducts;
+      "Actual = base design prints. Projected = extra prints from process steps (underbase, premium iron, heat press). Total = Actual + Projected." + newLine + newLine +
+      "Screen Print" + newLine +
+      "   Actual: " + screenActualPrints + "  |  Projected: " + screenProjectedPrints + "  |  Total: " + screenPrintPrints + newLine + newLine +
+      "Vinyl" + newLine +
+      "   Actual: " + vinylActualPrints + "  |  Projected: " + vinylProjectedPrints + "  |  Total: " + vinylDeptPrints + newLine + newLine +
+      "Embroidery" + newLine +
+      "   Actual: " + embroideryActualPrints + "  |  Projected: " + embroideryProjectedPrints + "  |  Total: " + embroideryPrints + newLine + newLine +
+      "---------------------------" + newLine + newLine +
+      "ALL DEPARTMENTS" + newLine +
+      "   Actual: " + totalActualPrints + "  |  Projected: " + totalProjectedPrints + "  |  Total: " + totalPrints;
     
     // go for API call
     // Attempt to update Deal print count fields — silent fallback if fields don't exist yet
