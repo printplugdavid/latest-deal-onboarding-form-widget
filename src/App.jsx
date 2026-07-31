@@ -298,6 +298,10 @@ function App() {
                     subBranch?.numberOfColorsUsed +
                     newLine +
                     newLine +
+                    "Underbase Needed?: " +
+                    subBranch?.underbase +
+                    newLine +
+                    newLine +
                     "Colors Used (Threads / PANTONES): " +
                     subBranch?.colorsUsed +
                     newLine +
@@ -812,7 +816,7 @@ function App() {
             const colors = parseInt(graphic?.numberOfColorsUsed) || 1;
             const placements = parseInt(graphic?.numberOfPlacements) || 0;
             const underbase = graphic?.underbase;
-            const underbaseValue = underbase === "Single-pass" ? 1 : underbase === "Two-pass" ? 2 : underbase === "Full three-pass" ? 3 : 0;
+            const underbaseValue = underbase === "Single-pass" ? 1 : underbase === "Double-pass" ? 2 : underbase === "Triple-pass" ? 3 : 0;
             if (screenPrintDept.includes(pName)) {
               screenPrintPrints += qty * (colors * placements + underbaseValue + ironValue);
             } else if (embroideryDept.includes(pName)) {
