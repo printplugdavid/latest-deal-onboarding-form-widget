@@ -145,6 +145,7 @@ function App() {
     console.log("Collected Form Data:", data);
 
     // PRINT COUNT CALCULATION (runs first so counts are available while the note is assembled)
+    // Department roll-ups (feed the note's actual/projected summary)
     let vinylDeptPrints = 0;
     let embroideryPrints = 0;
     let screenPrintPrints = 0;
@@ -155,13 +156,20 @@ function App() {
     let embroideryProjectedPrints = 0;
     let screenActualPrints = 0;
     let screenProjectedPrints = 0;
+    // Per-job totals (written to dedicated Deal fields; feed the per-category Produce Order tasks)
+    let dtgPrints = 0;
+    let dtfPrints = 0;
+    let htvPrints = 0;
+    let vinylPrints = 0;
+    let stickersPrints = 0;
+    let decalsPrints = 0;
+    let bannersPrints = 0;
+    let postersPrints = 0;
+    let magnetsPrints = 0;
+    let patchesPrints = 0;
     const screenPrintDept = ["Screen Printing"];
     const embroideryDept = ["Embroidery"];
-    const vinylColorProducts = ["Vinyl", "Heat-Transfer"];
-    const vinylPlacementProducts = ["Direct-to-Garment", "Direct-to-Film", "Pressed Patches"];
     const heatPressProducts = ["Direct-to-Garment", "Direct-to-Film", "Heat-Transfer"];
-    const vinylNongarment = ["Patches", "Stickers", "Decals", "Magnets", "Banners"];
-    const outsourcedNongarment = ["Outsourced", "Business Cards", "Flyers", "Posters", "Keychains", "Tumblers", "Name Tag"];
     data?.products?.forEach((product) => {
       const pName = product?.productName;
       const heatPressMultiplier = heatPressProducts.includes(pName) ? 2 : 1;
@@ -184,31 +192,64 @@ function App() {
               const actual = qty * placements;
               embroideryActualPrints += actual;
               embroideryPrints += actual;
-            } else if (vinylColorProducts.includes(pName)) {
-              const actual = qty * colors * placements;
-              const total = actual * heatPressMultiplier;
-              vinylActualPrints += actual;
-              vinylProjectedPrints += total - actual;
-              vinylDeptPrints += total;
-            } else if (vinylPlacementProducts.includes(pName)) {
+            } else if (pName === "Direct-to-Garment") {
               const actual = qty * placements;
               const total = actual * heatPressMultiplier;
               vinylActualPrints += actual;
               vinylProjectedPrints += total - actual;
-              vinylDeptPrints += total;
+              dtgPrints += total;
+            } else if (pName === "Direct-to-Film") {
+              const actual = qty * placements;
+              const total = actual * heatPressMultiplier;
+              vinylActualPrints += actual;
+              vinylProjectedPrints += total - actual;
+              dtfPrints += total;
+            } else if (pName === "Heat-Transfer") {
+              const actual = qty * colors * placements;
+              const total = actual * heatPressMultiplier;
+              vinylActualPrints += actual;
+              vinylProjectedPrints += total - actual;
+              htvPrints += total;
+            } else if (pName === "Vinyl") {
+              const actual = qty * colors * placements;
+              vinylActualPrints += actual;
+              vinylPrints += actual;
+            } else if (pName === "Pressed Patches") {
+              const actual = qty * placements;
+              vinylActualPrints += actual;
+              patchesPrints += actual;
             }
           });
         });
       } else if (product?.productType === "nongarment") {
         const qty = parseInt(product?.quantityOrdered) || 0;
-        if (vinylNongarment.includes(pName)) {
+        if (pName === "Patches") {
           vinylActualPrints += qty;
-          vinylDeptPrints += qty;
-        } else if (outsourcedNongarment.includes(pName)) {
+          patchesPrints += qty;
+        } else if (pName === "Stickers") {
+          vinylActualPrints += qty;
+          stickersPrints += qty;
+        } else if (pName === "Decals") {
+          vinylActualPrints += qty;
+          decalsPrints += qty;
+        } else if (pName === "Banners") {
+          vinylActualPrints += qty;
+          bannersPrints += qty;
+        } else if (pName === "Posters") {
+          vinylActualPrints += qty;
+          postersPrints += qty;
+        } else if (pName === "Magnets" || pName === "Fridge Magnets") {
+          vinylActualPrints += qty;
+          magnetsPrints += qty;
+        } else {
+          // catch-all: Outsourced, Business Cards, Flyers, Keychains, Tumblers,
+          // Name Tag, Marketing Materials, Pocket Schedules, and any new nongarment product
           outsourcedProducts += qty;
         }
       }
     });
+    // Vinyl Department = sum of every vinyl-family job (the department roll-up)
+    vinylDeptPrints = dtgPrints + dtfPrints + htvPrints + vinylPrints + stickersPrints + decalsPrints + bannersPrints + postersPrints + magnetsPrints + patchesPrints;
     const totalPrints = vinylDeptPrints + embroideryPrints + screenPrintPrints;
     const totalActualPrints = vinylActualPrints + embroideryActualPrints + screenActualPrints;
     const totalProjectedPrints = vinylProjectedPrints + embroideryProjectedPrints + screenProjectedPrints;
@@ -892,6 +933,17 @@ function App() {
           Vinyl_Department_Prints: vinylDeptPrints,
           Embroidery_Department_Prints: embroideryPrints,
           Screen_Print_Prints: screenPrintPrints,
+          Vinyl_Prints: vinylPrints,
+          DTG_Prints: dtgPrints,
+          DTF_Prints: dtfPrints,
+          HTV_Prints: htvPrints,
+          Stickers_Prints: stickersPrints,
+          Decals_Prints: decalsPrints,
+          Banners_Prints: bannersPrints,
+          Posters_Prints: postersPrints,
+          Magnets_Prints: magnetsPrints,
+          Patches_Prints: patchesPrints,
+          Outsourced_Prints: outsourcedProducts,
         }
       });
     } catch (err) {
