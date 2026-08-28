@@ -1038,7 +1038,33 @@ function App() {
         },
       });
     } catch (err) {
-      console.log("Onboarding JSON attach failed — skipping:", err);
+        console.log("Onboarding JSON attach failed — skipping:", err);
+    }
+
+    // Generate per-department production cards and attach each to the Deal (create-only,
+    // human-readable job sheets). Own try/catch so a failure never blocks the note or counts.
+    try {
+      const cardCounts = {
+        screenPrintPrints, embroideryPrints, vinylDeptPrints,
+        dtgPrints, dtfPrints, htvPrints, vinylPrints, stickersPrints,
+        decalsPrints, bannersPrints, postersPrints, magnetsPrints,
+        patchesPrints, outsourcedProducts,
+      };
+      const productionCards = buildProductionCards(data, cardCounts);
+      for (let c = 0; c < productionCards.length; c++) {
+        try {
+          const cardBlob = new Blob([productionCards[c].html], { type: "text/html" });
+          await ZOHO.CRM.API.attachFile({
+            Entity: entity,
+            RecordID: entityId,
+            File: { Name: productionCards[c].name, Content: cardBlob },
+          });
+        } catch (e) {
+          console.log("Production card attach failed:", productionCards[c].name, e);
+        }
+      }
+    } catch (err) {
+      console.log("Production card generation failed — skipping:", err);
     }
 
     const response = await ZOHO.CRM.API.addNotes({
