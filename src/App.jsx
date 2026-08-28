@@ -947,10 +947,29 @@ function App() {
         }
       });
     } catch (err) {
-      console.log("Print count fields not yet on layout — skipping field update:", err);
+          console.log("Print count fields not yet on layout — skipping field update:", err);
+    }
+
+    // Attach the full form submission as a minified JSON file on the Deal (create-only;
+    // machine-readable handoff for downstream production tooling). Own try/catch so a
+    // failure here never blocks the note, the counts, or the form closing.
+    try {
+      const onboardingJson = JSON.stringify(data);
+      const jsonBlob = new Blob([onboardingJson], { type: "application/json" });
+      await ZOHO.CRM.API.attachFile({
+        Entity: entity,
+        RecordID: entityId,
+        File: {
+          Name: "onboarding-form.json",
+          Content: jsonBlob,
+        },
+      });
+    } catch (err) {
+      console.log("Onboarding JSON attach failed — skipping:", err);
     }
 
     const response = await ZOHO.CRM.API.addNotes({
+      
       Entity: entity,
       RecordID: entityId,
       Title: "DEAL ONBOARDING FORM",
