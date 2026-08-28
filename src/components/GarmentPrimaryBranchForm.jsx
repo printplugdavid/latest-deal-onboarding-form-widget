@@ -207,6 +207,30 @@ const GarmentPrimaryBranchForm = ({
         )}
       />
 
+            <Controller
+        control={control}
+        name={`products.${index}.primaryBranches.${branchIndex}.isUsedInOtherAppTypes`}
+        defaultValue={"No"}
+        render={({ field }) => (
+          <Autocomplete
+            {...field}
+            options={["Yes", "No"]}
+            value={field.value || ""}
+            onChange={(e, newValue) => field.onChange(newValue)}
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                label="Is This Garment Used With Other Application Types?"
+                variant="outlined"
+                size="small"
+                fullWidth
+                sx={{ mb: "1rem", mt: "5px" }}
+              />
+            )}
+          />
+        )}
+      />
+
       {isUsedInOtherAppTypes === "Yes" && (
         <Controller
           control={control}
