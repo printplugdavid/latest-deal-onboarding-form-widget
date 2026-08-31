@@ -15,59 +15,45 @@ import { readPayload, normalizeProducts } from "./payload";
 
 const ZOHO = window.ZOHO;
 
-/*
- * Zoho picklists carry a display label AND a stored value, and several of these
- * have diverged because the option was renamed -- Zoho keeps the original value
- * underneath. The API writes the VALUE. Verified against field metadata
- * 31 Aug 2026. If someone renames an option in CRM, the label here changes; if
- * someone adds one, both change. Never send a label.
- */
 const DEPARTMENTS = [
-  { label: "Screen Printing", value: "Screen Printing" },
-  { label: "Embroidery", value: "Embroidery" },
-  { label: "Vinyl Department", value: "Vinyl & Digital Print" }, // renamed in CRM
-  { label: "Outsourced", value: "Outsourced" },
-  { label: "Graphic Design", value: "Graphic Design" },
-  { label: "Ordering", value: "Ordering" },
+  "Screen Printing",
+  "Embroidery",
+  "Vinyl Department",
+  "Outsourced",
+  "Graphic Design",
+  "Ordering",
 ];
 
 const REVISION_CATEGORIES = [
-  { label: "Misprint (Placement)", value: "Misprint (Placement)" },
-  { label: "Misprint (Wrong Graphic)", value: "Misprint (Wrong Graphic)" },
-  { label: "Misprint (Wrong Colors)", value: "Misprint (Wrong Colors)" },
-  { label: "Misprint (Malfunction)", value: "Misprint (Malfunction)" },
-  { label: "Misprint (Wrong Size or Product)", value: "Misprint (Wrong Size or Product)" },
-  { label: "Misprint (Other)", value: "Misprint (Other)" },
-  { label: "Wrong Product Size (Misorder)", value: "Wrong Product Size (Misorder)" },
-  { label: "Wrong Product Type (Misorder)", value: "Wrong Product Type (Misorder)" },
-  { label: "Missing Product", value: "Missing Product" },
-  { label: "Damaged Product (Shipped Damaged)", value: "Damaged Product (Shipped Damaged)" },
-  { label: "Damaged Product (During Production)", value: "Damaged Product (During Production)" },
-  { label: "Client Unhappy", value: "Client Unhappy" },
-  {
-    label: "Other (Please Detail in Revision Reason Notes)",
-    value: "Other (Please Detail in Notes)", // renamed in CRM
-  },
+  "Misprint (Placement)",
+  "Misprint (Wrong Graphic)",
+  "Misprint (Wrong Colors)",
+  "Misprint (Malfunction)",
+  "Misprint (Wrong Size or Product)",
+  "Misprint (Other)",
+  "Wrong Product Size (Misorder)",
+  "Wrong Product Type (Misorder)",
+  "Missing Product",
+  "Damaged Product (Shipped Damaged)",
+  "Damaged Product (During Production)",
+  "Client Unhappy",
+  "Other (Please Detail in Revision Reason Notes)",
 ];
 
 // Correction_Category is SINGLE-select and has no "Misprint (Placement)".
-// Its first two options were repurposed from "Salvaged Garment" / "Inventory".
 const CORRECTION_CATEGORIES = [
-  { label: "Misprint (Wrong Graphic)", value: "Salvaged Garment" }, // renamed in CRM
-  { label: "Misprint (Wrong Colors)", value: "Inventory" }, // renamed in CRM
-  { label: "Misprint (Malfunction)", value: "Misprint (Malfunction)" },
-  { label: "Misprint (Wrong Size or Product)", value: "Misprint (Wrong Size or Product)" },
-  { label: "Misprint (Other)", value: "Misprint (Other)" },
-  { label: "Wrong Product Size (Misorder)", value: "Wrong Product Size (Misorder)" },
-  { label: "Wrong Product Type (Misorder)", value: "Wrong Product Type (Misorder)" },
-  { label: "Missing Product", value: "Missing Product" },
-  { label: "Damaged Product (Shipped Damaged)", value: "Damaged Product (Shipped Damaged)" },
-  { label: "Damaged Product (During Production)", value: "Damaged Product (During Production)" },
-  { label: "Client Unhappy", value: "Client Unhappy" },
-  {
-    label: "Other (Please Detail in Correction Reason Notes)",
-    value: "Other (Please Detail in Correction Reason Notes)",
-  },
+  "Misprint (Wrong Graphic)",
+  "Misprint (Wrong Colors)",
+  "Misprint (Malfunction)",
+  "Misprint (Wrong Size or Product)",
+  "Misprint (Other)",
+  "Wrong Product Size (Misorder)",
+  "Wrong Product Type (Misorder)",
+  "Missing Product",
+  "Damaged Product (Shipped Damaged)",
+  "Damaged Product (During Production)",
+  "Client Unhappy",
+  "Other (Please Detail in Correction Reason Notes)",
 ];
 
 const MAX_SLOTS = { Revision: 3, Correction: 2 };
@@ -94,8 +80,6 @@ function zohoNow() {
 
 const int = (v) => parseInt(v, 10) || 0;
 
-// Values are what we store; labels are what the agent reads.
-const labelOf = (list, value) => (list.find((o) => o.value === value) || {}).label || value;
 
 function garmentLabel(branch, i) {
   const bits = [];
@@ -301,8 +285,8 @@ export default function App() {
     L.push("Event number: " + slot + " of " + MAX_SLOTS[formType]);
     L.push("Logged: " + zohoNow());
     L.push("");
-    L.push("Department(s): " + departments.map((d) => labelOf(DEPARTMENTS, d)).join(", "));
-    L.push("Category: " + categories.map((c) => labelOf(categoryList, c)).join(", "));
+    L.push("Department(s): " + departments.join(", "));
+    L.push("Category: " + categories.join(", "));
     L.push("Reason:");
     L.push(reason.trim());
     L.push("");
@@ -344,66 +328,39 @@ export default function App() {
     return L.join("\n");
   }
 
-  /*
-   * Zoho picklists have a display label and a stored value, and several of
-   * these have diverged (an option's API value cannot be edited once created,
-   * so renaming leaves the original underneath). Rather than gamble on which
-   * one a write accepts, send the stored values first and fall back to the
-   * labels if Zoho rejects them. The banner reports which path worked, so the
-   * first real submit tells us the answer for good.
-   */
-  function buildApiData(useLabels) {
-    const now = zohoNow();
-    const prefix = formType === "Revision" ? "Revision" : "Correction";
-    const dept = useLabels ? departments.map((d) => labelOf(DEPARTMENTS, d)) : departments;
-    const cats = useLabels ? categories.map((c) => labelOf(categoryList, c)) : categories;
-
-    const api = { id: ctx.recordId };
-    api[prefix + "_Prints_SD_" + slot] = totals.sum.SD;
-    api[prefix + "_Prints_ED_" + slot] = totals.sum.ED;
-    api[prefix + "_Prints_VD_" + slot] = totals.sum.VD;
-    api[prefix + "_Count"] = slot;
-    api[prefix + "_Department"] = dept;
-    api[prefix + "_Reason"] = reason.trim();
-    api.Failed_Quality_Check_Date_Time = now;
-
-    if (formType === "Revision") {
-      api.Revision_Category = cats;
-      api.Order_Needs_Revision_Date_Time = now;
-    } else {
-      api.Correction_Category = cats[0];
-      api.Order_Needs_Corrections_DATE_TIME = now;
-    }
-    return api;
-  }
-
   async function submit() {
     setSubmitting(true);
     setResult(null);
     try {
-      let usedLabels = false;
-      let upd = await ZOHO.CRM.API.updateRecord({
-        Entity: ctx.entity,
-        APIData: buildApiData(false),
-      });
+      const now = zohoNow();
+      const prefix = formType === "Revision" ? "Revision" : "Correction";
+      const api = { id: ctx.recordId };
 
-      if (upd?.data?.[0]?.code !== "SUCCESS") {
-        // Retry once with display labels in case this org's picklists accept those.
-        usedLabels = true;
-        upd = await ZOHO.CRM.API.updateRecord({
-          Entity: ctx.entity,
-          APIData: buildApiData(true),
-        });
+      api[prefix + "_Prints_SD_" + slot] = totals.sum.SD;
+      api[prefix + "_Prints_ED_" + slot] = totals.sum.ED;
+      api[prefix + "_Prints_VD_" + slot] = totals.sum.VD;
+      api[prefix + "_Count"] = slot;
+      api[prefix + "_Department"] = departments;
+      api[prefix + "_Reason"] = reason.trim();
+      api.Failed_Quality_Check_Date_Time = now;
+
+      if (formType === "Revision") {
+        api.Revision_Category = categories; // multi-select
+        api.Order_Needs_Revision_Date_Time = now;
+      } else {
+        api.Correction_Category = categories[0]; // single-select
+        api.Order_Needs_Corrections_DATE_TIME = now;
       }
 
-      if (upd?.data?.[0]?.code !== "SUCCESS") {
-        const d = upd?.data?.[0];
+      const upd = await ZOHO.CRM.API.updateRecord({ Entity: ctx.entity, APIData: api });
+      const row = upd?.data?.[0];
+      if (row?.code !== "SUCCESS") {
         setResult({
           ok: false,
           message:
-            "Nothing was saved. Zoho rejected both the stored values and the display labels. " +
-            (d?.message || "") +
-            (d?.details ? " " + JSON.stringify(d.details) : ""),
+            "Nothing was saved. " +
+            (row?.message || "") +
+            (row?.details ? " " + JSON.stringify(row.details) : ""),
         });
         setSubmitting(false);
         return;
@@ -416,14 +373,7 @@ export default function App() {
         Content: buildNote(),
       });
 
-      setResult({
-        ok: true,
-        message:
-          "Saved to slot " + slot + "." +
-          (usedLabels
-            ? " (Picklists accepted the display labels, not the stored values — tell Claude, the code should be simplified.)"
-            : ""),
-      });
+      setResult({ ok: true, message: "Saved to slot " + slot + "." });
       setSubmitting(false);
       setTimeout(() => {
         try {
@@ -431,7 +381,7 @@ export default function App() {
         } catch (e) {
           /* ignore */
         }
-      }, usedLabels ? 4000 : 900);
+      }, 900);
     } catch (err) {
       setResult({ ok: false, message: (err && err.message) || String(err) });
       setSubmitting(false);
@@ -506,27 +456,22 @@ export default function App() {
       </Section>
 
       <Section n="2" title="What went wrong">
-        <Label>Department</Label>
+        <Label>{formType} Department</Label>
         <div style={S.wrap}>
           {DEPARTMENTS.map((d) => (
             <button
-              key={d.value}
+              key={d}
               type="button"
               onClick={() => {
                 setTouchedDepartments(true);
-                toggle(departments, setDepartments, d.value);
+                toggle(departments, setDepartments, d);
               }}
-              style={departments.includes(d.value) ? S.chipOn : S.chip}
+              style={departments.includes(d) ? S.chipOn : S.chip}
             >
-              {d.label}
+              {d}
             </button>
           ))}
         </div>
-        <p style={S.hint}>
-          Who is getting the {formType.toLowerCase()} task. The department that runs the reprint is
-          filled in from the garments below — add any others that will do work on it. This often
-          lines up with who caused the problem, but it is not a fault field.
-        </p>
 
         <Label>Category {formType === "Correction" ? "(pick one)" : "(pick one or more)"}</Label>
 
@@ -538,8 +483,8 @@ export default function App() {
           >
             <option value="">— select —</option>
             {categoryList.map((c) => (
-              <option key={c.value} value={c.value}>
-                {c.label}
+              <option key={c} value={c}>
+                {c}
               </option>
             ))}
           </select>
@@ -557,10 +502,10 @@ export default function App() {
                 {categories.length ? "+ add another category…" : "— select —"}
               </option>
               {categoryList
-                .filter((c) => !categories.includes(c.value))
+                .filter((c) => !categories.includes(c))
                 .map((c) => (
-                  <option key={c.value} value={c.value}>
-                    {c.label}
+                  <option key={c} value={c}>
+                    {c}
                   </option>
                 ))}
             </select>
@@ -569,13 +514,13 @@ export default function App() {
               <div style={S.tags}>
                 {categories.map((c) => (
                   <span key={c} style={S.tag}>
-                    {labelOf(categoryList, c)}
+                    {c}
                     <button
                       type="button"
                       onClick={() => setCategories(categories.filter((x) => x !== c))}
                       style={S.tagX}
-                      aria-label={"Remove " + labelOf(categoryList, c)}
-                      title={"Remove " + labelOf(categoryList, c)}
+                      aria-label={"Remove " + c}
+                      title={"Remove " + c}
                     >
                       ×
                     </button>
