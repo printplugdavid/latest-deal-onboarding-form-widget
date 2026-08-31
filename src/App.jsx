@@ -34,6 +34,60 @@ function preview(value, max = 2500) {
   }
 }
 
+
+// JSON.stringify() renders Blob / ArrayBuffer / Response / File as "{}", which
+// hides the very thing we are looking for. Report the real shape instead.
+function describe(v) {
+  if (v === null || v === undefined) return String(v);
+  const tag = Object.prototype.toString.call(v);
+  const ctor = v && v.constructor && v.constructor.name;
+  const info = { typeof: typeof v, tag: tag, constructor: ctor || "(none)" };
+  try {
+    info.ownKeys = Object.getOwnPropertyNames(v).slice(0, 40);
+  } catch (e) {
+    info.ownKeys = "(unreadable)";
+  }
+  if (typeof v === "object") {
+    if (typeof v.size === "number") info.size = v.size;
+    if (typeof v.type === "string") info.mime = v.type;
+    if (typeof v.byteLength === "number") info.byteLength = v.byteLength;
+    if (typeof v.status === "number") info.httpStatus = v.status;
+    if (typeof v.text === "function") info.hasTextMethod = true;
+    if (typeof v.arrayBuffer === "function") info.hasArrayBufferMethod = true;
+  }
+  return info;
+}
+
+async function extractText(v) {
+  if (v === null || v === undefined) return null;
+  if (typeof v === "string") return v;
+  if (typeof v.text === "function") {
+    try {
+      return await v.text();
+    } catch (e) {
+      /* fall through */
+    }
+  }
+  if (typeof v.arrayBuffer === "function") {
+    try {
+      return new TextDecoder().decode(await v.arrayBuffer());
+    } catch (e) {
+      /* fall through */
+    }
+  }
+  if (v instanceof ArrayBuffer) return new TextDecoder().decode(v);
+  if (v && v.buffer instanceof ArrayBuffer) return new TextDecoder().decode(v.buffer);
+  const fields = ["data", "details", "body", "content", "fileContent", "response"];
+  for (let i = 0; i < fields.length; i++) {
+    const val = v[fields[i]];
+    if (typeof val === "string") return val;
+    if (val && (typeof val.text === "function" || val instanceof ArrayBuffer)) {
+      return await extractText(val);
+    }
+  }
+  return null;
+}
+
 export default function App() {
   const [entries, setEntries] = useState([]);
   const [done, setDone] = useState(false);
@@ -207,23 +261,38 @@ export default function App() {
         const attempt = attempts[i];
         try {
           const result = await withTimeout(attempt.run(), 12000);
-          add(attempt.label + " -> returned", result, "ok");
+          add(attempt.label + " -> SHAPE", describe(result), "info");
 
-          let asText = null;
-          if (typeof result === "string") asText = result;
-          else if (result && typeof result.details === "string") asText = result.details;
-          else if (result && typeof result.data === "string") asText = result.data;
+          let text = null;
+          try {
+            text = await withTimeout(extractText(result), 10000);
+          } catch (e) {
+            add(attempt.label + " -> extractText failed", (e && e.message) || e, "bad");
+          }
 
-          if (asText) {
+          if (text === null) {
+            add(attempt.label + " -> no text extractable", "Nothing string-like found on this value.", "bad");
+          } else {
+            add(attempt.label + " -> TEXT (" + text.length + " chars)", text.slice(0, 800), "ok");
             try {
-              const parsed = JSON.parse(asText);
+              const parsed = JSON.parse(text);
               add(
                 attempt.label + " -> PARSED OK",
-                { topLevelKeys: Object.keys(parsed), products: parsed.products ? parsed.products.length : null },
+                {
+                  topLevelKeys: Object.keys(parsed),
+                  products: parsed.products ? parsed.products.length : null,
+                  firstGarmentQty:
+                    parsed.products &&
+                    parsed.products[0] &&
+                    parsed.products[0].primaryBranches &&
+                    parsed.products[0].primaryBranches[0]
+                      ? parsed.products[0].primaryBranches[0].garmentQuantity
+                      : null,
+                },
                 "ok"
               );
             } catch (e) {
-              add(attempt.label + " -> not parseable as JSON", asText.slice(0, 400));
+              add(attempt.label + " -> not JSON", (e && e.message) || e, "bad");
             }
           }
         } catch (err) {
