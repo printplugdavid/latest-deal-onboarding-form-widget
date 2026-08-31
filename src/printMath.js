@@ -170,15 +170,21 @@ export function computePrints(products) {
  * Which department owns the reprint, derived from productName. Same buckets the
  * calculation above uses, so the pre-filled department can never disagree with
  * the numbers.
+ *
+ * Returns the value Zoho STORES, not the label it displays. The Vinyl option
+ * displays as "Vinyl Department" but is stored as "Vinyl & Digital Print" --
+ * the option was renamed and Zoho keeps the original value underneath.
  */
+export const VINYL_DEPT = "Vinyl & Digital Print"; // stored value; CRM displays "Vinyl Department"
+
 export function departmentFor(productName, productType) {
   const p = String(productName || "").trim();
   if (p === "Screen Printing") return "Screen Printing";
   if (p === "Embroidery") return "Embroidery";
   if (p === "Graphic Design") return "Graphic Design";
-  if (productType === "garment") return "Vinyl Department";
+  if (productType === "garment") return VINYL_DEPT;
   if (["Patches", "Stickers", "Decals", "Banners", "Posters", "Magnets", "Fridge Magnets"].includes(p)) {
-    return "Vinyl Department";
+    return VINYL_DEPT;
   }
   return "Outsourced";
 }

@@ -15,44 +15,59 @@ import { readPayload, normalizeProducts } from "./payload";
 
 const ZOHO = window.ZOHO;
 
+/*
+ * Zoho picklists carry a display label AND a stored value, and several of these
+ * have diverged because the option was renamed -- Zoho keeps the original value
+ * underneath. The API writes the VALUE. Verified against field metadata
+ * 31 Aug 2026. If someone renames an option in CRM, the label here changes; if
+ * someone adds one, both change. Never send a label.
+ */
 const DEPARTMENTS = [
-  "Screen Printing",
-  "Embroidery",
-  "Vinyl Department",
-  "Outsourced",
-  "Graphic Design",
-  "Ordering",
+  { label: "Screen Printing", value: "Screen Printing" },
+  { label: "Embroidery", value: "Embroidery" },
+  { label: "Vinyl Department", value: "Vinyl & Digital Print" }, // renamed in CRM
+  { label: "Outsourced", value: "Outsourced" },
+  { label: "Graphic Design", value: "Graphic Design" },
+  { label: "Ordering", value: "Ordering" },
 ];
 
-// Exact strings from the CRM picklists. The "Other" option is worded per branch.
 const REVISION_CATEGORIES = [
-  "Misprint (Placement)",
-  "Misprint (Wrong Graphic)",
-  "Misprint (Wrong Colors)",
-  "Misprint (Malfunction)",
-  "Misprint (Wrong Size or Product)",
-  "Misprint (Other)",
-  "Wrong Product Size (Misorder)",
-  "Wrong Product Type (Misorder)",
-  "Missing Product",
-  "Damaged Product (Shipped Damaged)",
-  "Damaged Product (During Production)",
-  "Other (Please Detail in Revision Reason Notes)",
+  { label: "Misprint (Placement)", value: "Misprint (Placement)" },
+  { label: "Misprint (Wrong Graphic)", value: "Misprint (Wrong Graphic)" },
+  { label: "Misprint (Wrong Colors)", value: "Misprint (Wrong Colors)" },
+  { label: "Misprint (Malfunction)", value: "Misprint (Malfunction)" },
+  { label: "Misprint (Wrong Size or Product)", value: "Misprint (Wrong Size or Product)" },
+  { label: "Misprint (Other)", value: "Misprint (Other)" },
+  { label: "Wrong Product Size (Misorder)", value: "Wrong Product Size (Misorder)" },
+  { label: "Wrong Product Type (Misorder)", value: "Wrong Product Type (Misorder)" },
+  { label: "Missing Product", value: "Missing Product" },
+  { label: "Damaged Product (Shipped Damaged)", value: "Damaged Product (Shipped Damaged)" },
+  { label: "Damaged Product (During Production)", value: "Damaged Product (During Production)" },
+  { label: "Client Unhappy", value: "Client Unhappy" },
+  {
+    label: "Other (Please Detail in Revision Reason Notes)",
+    value: "Other (Please Detail in Notes)", // renamed in CRM
+  },
 ];
 
 // Correction_Category is SINGLE-select and has no "Misprint (Placement)".
+// Its first two options were repurposed from "Salvaged Garment" / "Inventory".
 const CORRECTION_CATEGORIES = [
-  "Misprint (Wrong Graphic)",
-  "Misprint (Wrong Colors)",
-  "Misprint (Malfunction)",
-  "Misprint (Wrong Size or Product)",
-  "Misprint (Other)",
-  "Wrong Product Size (Misorder)",
-  "Wrong Product Type (Misorder)",
-  "Missing Product",
-  "Damaged Product (Shipped Damaged)",
-  "Damaged Product (During Production)",
-  "Other (Please Detail in Correction Reason Notes)",
+  { label: "Misprint (Wrong Graphic)", value: "Salvaged Garment" }, // renamed in CRM
+  { label: "Misprint (Wrong Colors)", value: "Inventory" }, // renamed in CRM
+  { label: "Misprint (Malfunction)", value: "Misprint (Malfunction)" },
+  { label: "Misprint (Wrong Size or Product)", value: "Misprint (Wrong Size or Product)" },
+  { label: "Misprint (Other)", value: "Misprint (Other)" },
+  { label: "Wrong Product Size (Misorder)", value: "Wrong Product Size (Misorder)" },
+  { label: "Wrong Product Type (Misorder)", value: "Wrong Product Type (Misorder)" },
+  { label: "Missing Product", value: "Missing Product" },
+  { label: "Damaged Product (Shipped Damaged)", value: "Damaged Product (Shipped Damaged)" },
+  { label: "Damaged Product (During Production)", value: "Damaged Product (During Production)" },
+  { label: "Client Unhappy", value: "Client Unhappy" },
+  {
+    label: "Other (Please Detail in Correction Reason Notes)",
+    value: "Other (Please Detail in Correction Reason Notes)",
+  },
 ];
 
 const MAX_SLOTS = { Revision: 3, Correction: 2 };
@@ -78,6 +93,9 @@ function zohoNow() {
 }
 
 const int = (v) => parseInt(v, 10) || 0;
+
+// Values are what we store; labels are what the agent reads.
+const labelOf = (list, value) => (list.find((o) => o.value === value) || {}).label || value;
 
 function garmentLabel(branch, i) {
   const bits = [];
@@ -283,8 +301,8 @@ export default function App() {
     L.push("Event number: " + slot + " of " + MAX_SLOTS[formType]);
     L.push("Logged: " + zohoNow());
     L.push("");
-    L.push("Department(s): " + departments.join(", "));
-    L.push("Category: " + categories.join(", "));
+    L.push("Department(s): " + departments.map((d) => labelOf(DEPARTMENTS, d)).join(", "));
+    L.push("Category: " + categories.map((c) => labelOf(categoryList, c)).join(", "));
     L.push("Reason:");
     L.push(reason.trim());
     L.push("");
@@ -448,26 +466,26 @@ export default function App() {
       </Section>
 
       <Section n="2" title="What went wrong">
-        <Label>Department(s) responsible</Label>
+        <Label>Department</Label>
         <div style={S.wrap}>
           {DEPARTMENTS.map((d) => (
             <button
-              key={d}
+              key={d.value}
               type="button"
               onClick={() => {
                 setTouchedDepartments(true);
-                toggle(departments, setDepartments, d);
+                toggle(departments, setDepartments, d.value);
               }}
-              style={departments.includes(d) ? S.chipOn : S.chip}
+              style={departments.includes(d.value) ? S.chipOn : S.chip}
             >
-              {d}
+              {d.label}
             </button>
           ))}
         </div>
         <p style={S.hint}>
-          The producing department is filled in from the garments you pick below. Add whoever else
-          was responsible — an ordering mistake is usually <em>Ordering</em> plus the department
-          that ran it.
+          Who is getting the {formType.toLowerCase()} task. The department that runs the reprint is
+          filled in from the garments below — add any others that will do work on it. This often
+          lines up with who caused the problem, but it is not a fault field.
         </p>
 
         <Label>Category {formType === "Correction" ? "(pick one)" : "(pick one or more)"}</Label>
@@ -480,8 +498,8 @@ export default function App() {
           >
             <option value="">— select —</option>
             {categoryList.map((c) => (
-              <option key={c} value={c}>
-                {c}
+              <option key={c.value} value={c.value}>
+                {c.label}
               </option>
             ))}
           </select>
@@ -499,10 +517,10 @@ export default function App() {
                 {categories.length ? "+ add another category…" : "— select —"}
               </option>
               {categoryList
-                .filter((c) => !categories.includes(c))
+                .filter((c) => !categories.includes(c.value))
                 .map((c) => (
-                  <option key={c} value={c}>
-                    {c}
+                  <option key={c.value} value={c.value}>
+                    {c.label}
                   </option>
                 ))}
             </select>
@@ -511,13 +529,13 @@ export default function App() {
               <div style={S.tags}>
                 {categories.map((c) => (
                   <span key={c} style={S.tag}>
-                    {c}
+                    {labelOf(categoryList, c)}
                     <button
                       type="button"
                       onClick={() => setCategories(categories.filter((x) => x !== c))}
                       style={S.tagX}
-                      aria-label={"Remove " + c}
-                      title={"Remove " + c}
+                      aria-label={"Remove " + labelOf(categoryList, c)}
+                      title={"Remove " + labelOf(categoryList, c)}
                     >
                       ×
                     </button>

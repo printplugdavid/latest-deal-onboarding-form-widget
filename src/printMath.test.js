@@ -99,13 +99,13 @@ describe("departmentFor", () => {
   test("maps applications to the department that owns the reprint", () => {
     expect(departmentFor("Screen Printing", "garment")).toBe("Screen Printing");
     expect(departmentFor("Embroidery", "garment")).toBe("Embroidery");
-    expect(departmentFor("Direct-to-Film", "garment")).toBe("Vinyl Department");
-    expect(departmentFor("Stickers", "nongarment")).toBe("Vinyl Department");
+    expect(departmentFor("Direct-to-Film", "garment")).toBe("Vinyl & Digital Print");
+    expect(departmentFor("Stickers", "nongarment")).toBe("Vinyl & Digital Print");
     expect(departmentFor("Business Cards", "nongarment")).toBe("Outsourced");
     expect(departmentFor("Graphic Design", "graphic")).toBe("Graphic Design");
   });
 
   test("tolerates the legacy leading space on historical Vinyl payloads", () => {
-    expect(departmentFor(" Vinyl", "garment")).toBe("Vinyl Department");
+    expect(departmentFor(" Vinyl", "garment")).toBe("Vinyl & Digital Print");
   });
 });
