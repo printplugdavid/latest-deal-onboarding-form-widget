@@ -470,23 +470,63 @@ export default function App() {
           that ran it.
         </p>
 
-        <Label>Category {formType === "Correction" ? "(pick one)" : "(pick all that apply)"}</Label>
-        <div style={S.wrap}>
-          {categoryList.map((c) => (
-            <button
-              key={c}
-              type="button"
-              onClick={() =>
-                formType === "Correction"
-                  ? setCategories(categories[0] === c ? [] : [c])
-                  : toggle(categories, setCategories, c)
-              }
-              style={categories.includes(c) ? S.chipOn : S.chip}
+        <Label>Category {formType === "Correction" ? "(pick one)" : "(pick one or more)"}</Label>
+
+        {formType === "Correction" ? (
+          <select
+            value={categories[0] || ""}
+            onChange={(e) => setCategories(e.target.value ? [e.target.value] : [])}
+            style={S.select}
+          >
+            <option value="">— select —</option>
+            {categoryList.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </select>
+        ) : (
+          <>
+            <select
+              value=""
+              onChange={(e) => {
+                const v = e.target.value;
+                if (v && !categories.includes(v)) setCategories(categories.concat(v));
+              }}
+              style={S.select}
             >
-              {c}
-            </button>
-          ))}
-        </div>
+              <option value="">
+                {categories.length ? "+ add another category…" : "— select —"}
+              </option>
+              {categoryList
+                .filter((c) => !categories.includes(c))
+                .map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+            </select>
+
+            {categories.length > 0 && (
+              <div style={S.tags}>
+                {categories.map((c) => (
+                  <span key={c} style={S.tag}>
+                    {c}
+                    <button
+                      type="button"
+                      onClick={() => setCategories(categories.filter((x) => x !== c))}
+                      style={S.tagX}
+                      aria-label={"Remove " + c}
+                      title={"Remove " + c}
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+          </>
+        )}
 
         <Label>What happened?</Label>
         <textarea
@@ -779,6 +819,9 @@ const S = {
   pillOn: { font: "600 13px " + sans, padding: "8px 16px", border: "1px solid #2743c7", background: "#2743c7", color: "#fff", borderRadius: 2, cursor: "pointer" },
   chip: { font: "13px " + sans, padding: "6px 10px", border: "1px solid #d3d6db", background: "#fff", borderRadius: 2, cursor: "pointer", textAlign: "left" },
   chipOn: { font: "13px " + sans, padding: "6px 10px", border: "1px solid #2743c7", background: "#e4e7f8", color: "#2743c7", borderRadius: 2, cursor: "pointer", textAlign: "left" },
+  tags: { display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 },
+  tag: { display: "inline-flex", alignItems: "center", gap: 6, font: "12.5px " + sans, background: "#e4e7f8", color: "#2743c7", border: "1px solid #c9d0f4", borderRadius: 2, padding: "4px 6px 4px 9px" },
+  tagX: { font: "15px/1 " + sans, color: "#2743c7", background: "none", border: "none", cursor: "pointer", padding: "0 2px" },
   textarea: { width: "100%", font: "14px/1.5 " + sans, padding: "9px 11px", border: "1px solid #d3d6db", borderRadius: 2, resize: "vertical", boxSizing: "border-box" },
   select: { width: "100%", font: "13.5px " + sans, padding: "8px 10px", border: "1px solid #d3d6db", borderRadius: 2, background: "#fff", boxSizing: "border-box" },
   input: { width: 130, font: "14px " + sans, padding: "8px 10px", border: "1px solid #d3d6db", borderRadius: 2, boxSizing: "border-box" },
