@@ -17,7 +17,7 @@ import { useEffect, useState } from "react";
 
 const ZOHO = window.ZOHO;
 
-function preview(value, max = 1200) {
+function preview(value, max = 2500) {
   if (value === undefined) return "undefined";
   if (value === null) return "null";
   if (typeof value === "string") {
@@ -125,28 +125,56 @@ export default function App() {
       }
 
       const target = jsonFiles[0];
-      add("Target attachment", target, "ok");
+      add(
+        "Target attachment",
+        {
+          id: target.id,
+          File_Name: target.File_Name,
+          Size: target.Size,
+          $file_id: target["$file_id"],
+          $download_url: target["$download_url"],
+        },
+        "ok"
+      );
 
       // ---- 3. Can we get the bytes? ---------------------------------------
-      // Only attempt methods that actually exist on this SDK build.
+      // READ-ONLY allowlist. Do NOT sweep in uploadFile / attachFile /
+      // addNotesAttachment -- those are write operations and must never be
+      // called speculatively against a live record.
       const api = (ZOHO && ZOHO.CRM && ZOHO.CRM.API) || {};
       const conn = (ZOHO && ZOHO.CRM && ZOHO.CRM.CONNECTION) || {};
       const attempts = [];
 
-      Object.keys(api).forEach(function (name) {
-        if (/file|attach|download/i.test(name) && typeof api[name] === "function") {
+      // getFile signature is unknown -- try the attachment record id and the
+      // internal $file_id, which is the likelier of the two.
+      if (typeof api.getFile === "function") {
+        if (target["$file_id"]) {
           attempts.push({
-            label: "ZOHO.CRM.API." + name,
+            label: 'getFile({ id: $file_id })',
             run: function () {
-              return api[name]({ Entity: entity, RecordID: recordId, id: target.id });
+              return api.getFile({ id: target["$file_id"] });
             },
           });
         }
-      });
+        attempts.push({
+          label: "getFile({ id: attachment record id })",
+          run: function () {
+            return api.getFile({ id: target.id });
+          },
+        });
+        attempts.push({
+          label: "getFile({ Entity, RecordID, id })",
+          run: function () {
+            return api.getFile({ Entity: entity, RecordID: recordId, id: target.id });
+          },
+        });
+      } else {
+        add("getFile absent", "ZOHO.CRM.API.getFile is not a function on this SDK build.", "bad");
+      }
 
       if (typeof conn.invoke === "function") {
         attempts.push({
-          label: 'ZOHO.CRM.CONNECTION.invoke("crm", …/Attachments/{id})',
+          label: 'CONNECTION.invoke("crm", .../Attachments/{id})',
           run: function () {
             return conn.invoke("crm", {
               url:
@@ -163,37 +191,43 @@ export default function App() {
         });
       }
 
-      if (!attempts.length) {
-        add(
-          "No candidate methods",
-          "Nothing on ZOHO.CRM.API matched /file|attach|download/ and CONNECTION.invoke is absent. " +
-            "The SDK surface listed above is the full set available — the read path will need a " +
-            "server-side Deluge function instead.",
-          "bad"
-        );
+      // A hung promise must not freeze the whole run.
+      function withTimeout(promise, ms) {
+        return Promise.race([
+          Promise.resolve(promise),
+          new Promise(function (_, reject) {
+            setTimeout(function () {
+              reject(new Error("timed out after " + ms + "ms (no response)"));
+            }, ms);
+          }),
+        ]);
       }
 
       for (let i = 0; i < attempts.length; i++) {
         const attempt = attempts[i];
         try {
-          const result = await attempt.run();
-          add(attempt.label + " → returned", result, "ok");
+          const result = await withTimeout(attempt.run(), 12000);
+          add(attempt.label + " -> returned", result, "ok");
 
-          // If it looks like JSON text, try parsing so we know it is usable.
           let asText = null;
           if (typeof result === "string") asText = result;
           else if (result && typeof result.details === "string") asText = result.details;
+          else if (result && typeof result.data === "string") asText = result.data;
 
           if (asText) {
             try {
               const parsed = JSON.parse(asText);
-              add(attempt.label + " → PARSED OK", Object.keys(parsed), "ok");
+              add(
+                attempt.label + " -> PARSED OK",
+                { topLevelKeys: Object.keys(parsed), products: parsed.products ? parsed.products.length : null },
+                "ok"
+              );
             } catch (e) {
-              add(attempt.label + " → not parseable as JSON", asText.slice(0, 300));
+              add(attempt.label + " -> not parseable as JSON", asText.slice(0, 400));
             }
           }
         } catch (err) {
-          add(attempt.label + " → threw", (err && err.message) || err, "bad");
+          add(attempt.label + " -> threw", (err && err.message) || err, "bad");
         }
       }
 
