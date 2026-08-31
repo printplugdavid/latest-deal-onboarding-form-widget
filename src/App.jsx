@@ -344,34 +344,67 @@ export default function App() {
     return L.join("\n");
   }
 
+  /*
+   * Zoho picklists have a display label and a stored value, and several of
+   * these have diverged (an option's API value cannot be edited once created,
+   * so renaming leaves the original underneath). Rather than gamble on which
+   * one a write accepts, send the stored values first and fall back to the
+   * labels if Zoho rejects them. The banner reports which path worked, so the
+   * first real submit tells us the answer for good.
+   */
+  function buildApiData(useLabels) {
+    const now = zohoNow();
+    const prefix = formType === "Revision" ? "Revision" : "Correction";
+    const dept = useLabels ? departments.map((d) => labelOf(DEPARTMENTS, d)) : departments;
+    const cats = useLabels ? categories.map((c) => labelOf(categoryList, c)) : categories;
+
+    const api = { id: ctx.recordId };
+    api[prefix + "_Prints_SD_" + slot] = totals.sum.SD;
+    api[prefix + "_Prints_ED_" + slot] = totals.sum.ED;
+    api[prefix + "_Prints_VD_" + slot] = totals.sum.VD;
+    api[prefix + "_Count"] = slot;
+    api[prefix + "_Department"] = dept;
+    api[prefix + "_Reason"] = reason.trim();
+    api.Failed_Quality_Check_Date_Time = now;
+
+    if (formType === "Revision") {
+      api.Revision_Category = cats;
+      api.Order_Needs_Revision_Date_Time = now;
+    } else {
+      api.Correction_Category = cats[0];
+      api.Order_Needs_Corrections_DATE_TIME = now;
+    }
+    return api;
+  }
+
   async function submit() {
     setSubmitting(true);
     setResult(null);
     try {
-      const now = zohoNow();
-      const prefix = formType === "Revision" ? "Revision" : "Correction";
-      const api = { id: ctx.recordId };
+      let usedLabels = false;
+      let upd = await ZOHO.CRM.API.updateRecord({
+        Entity: ctx.entity,
+        APIData: buildApiData(false),
+      });
 
-      api[prefix + "_Prints_SD_" + slot] = totals.sum.SD;
-      api[prefix + "_Prints_ED_" + slot] = totals.sum.ED;
-      api[prefix + "_Prints_VD_" + slot] = totals.sum.VD;
-      api[prefix + "_Count"] = slot;
-      api[prefix + "_Department"] = departments;
-      api[prefix + "_Reason"] = reason.trim();
-      api.Failed_Quality_Check_Date_Time = now;
-
-      if (formType === "Revision") {
-        api.Revision_Category = categories; // multi-select
-        api.Order_Needs_Revision_Date_Time = now;
-      } else {
-        api.Correction_Category = categories[0]; // single-select
-        api.Order_Needs_Corrections_DATE_TIME = now;
+      if (upd?.data?.[0]?.code !== "SUCCESS") {
+        // Retry once with display labels in case this org's picklists accept those.
+        usedLabels = true;
+        upd = await ZOHO.CRM.API.updateRecord({
+          Entity: ctx.entity,
+          APIData: buildApiData(true),
+        });
       }
 
-      const upd = await ZOHO.CRM.API.updateRecord({ Entity: ctx.entity, APIData: api });
-      const code = upd?.data?.[0]?.code;
-      if (code !== "SUCCESS") {
-        setResult({ ok: false, message: "Field update failed — nothing was saved. " + JSON.stringify(upd?.data?.[0]?.message || upd) });
+      if (upd?.data?.[0]?.code !== "SUCCESS") {
+        const d = upd?.data?.[0];
+        setResult({
+          ok: false,
+          message:
+            "Nothing was saved. Zoho rejected both the stored values and the display labels. " +
+            (d?.message || "") +
+            (d?.details ? " " + JSON.stringify(d.details) : ""),
+        });
         setSubmitting(false);
         return;
       }
@@ -383,7 +416,14 @@ export default function App() {
         Content: buildNote(),
       });
 
-      setResult({ ok: true, message: "Saved to slot " + slot + "." });
+      setResult({
+        ok: true,
+        message:
+          "Saved to slot " + slot + "." +
+          (usedLabels
+            ? " (Picklists accepted the display labels, not the stored values — tell Claude, the code should be simplified.)"
+            : ""),
+      });
       setSubmitting(false);
       setTimeout(() => {
         try {
@@ -391,7 +431,7 @@ export default function App() {
         } catch (e) {
           /* ignore */
         }
-      }, 900);
+      }, usedLabels ? 4000 : 900);
     } catch (err) {
       setResult({ ok: false, message: (err && err.message) || String(err) });
       setSubmitting(false);
