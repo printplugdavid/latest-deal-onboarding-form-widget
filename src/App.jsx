@@ -11,7 +11,7 @@
  */
 import { useEffect, useMemo, useState } from "react";
 import { computePrints, departmentFor } from "./printMath";
-import { readPayload, normalizeProducts } from "./payload";
+import { readPayload } from "./payload";
 
 const ZOHO = window.ZOHO;
 
@@ -190,7 +190,7 @@ export default function App() {
 
         const p = await readPayload(entity, recordId);
         setPayloadInfo(p);
-        if (p.ok) setProducts(normalizeProducts(p.data));
+        if (p.ok) setProducts(p.products);
         setStatus("ready");
       } catch (err) {
         setFatal("Could not load the deal: " + ((err && err.message) || String(err)));
@@ -415,10 +415,19 @@ export default function App() {
       </div>
 
       {payloadInfo && !payloadInfo.ok && (
-        <Banner kind="warn">
+        <Banner kind="bad">
           {payloadInfo.reason === "no-payload"
-            ? "This deal has no onboarding payload attached — it predates the JSON change. The garment picker will be empty."
-            : "Payload could not be read (" + payloadInfo.reason + ")."}
+            ? "No onboarding record found on this deal — no JSON payload and no DEAL ONBOARDING FORM note. Online orders bypass onboarding, so this is normal for those. Nothing to pick from."
+            : "Could not read the onboarding record (" + payloadInfo.reason + ")."}
+        </Banner>
+      )}
+
+      {payloadInfo?.ok && payloadInfo.source === "note" && (
+        <Banner kind="warn">
+          Read from the <b>DEAL ONBOARDING FORM note</b> — this deal predates the JSON payload.
+          Colors, underbase and placements all came through, so the print count is calculated the
+          same way. The note does not record the original order quantity, so garments below show
+          their size breakdown instead.
         </Banner>
       )}
 
