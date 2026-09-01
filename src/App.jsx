@@ -83,7 +83,12 @@ function buildProductionCards(data, counts) {
     let body, gsum = "";
     if (cardKey === "outsourced") { body = `<div class="job"><div class="jhead"><span>Items to order / stock</span></div>${items.map(pcOverview).join("")}</div>`; }
     else if (cardKey === "storefront") { const p = items[0]; body = `<div class="job"><div class="jhead"><span>Storefront setup</span></div><div class="garment">${pcRow("Online Suffix", "", p?.preferredOnlineSuffix, { crit: true })}${pcRow("Contact Email", "", p?.contactEmailForStorefront)}${pcRow("Temporary/Evergreen", "", p?.isStorefrontTemporaryOrEvergreen)}${pcRow("End Date", "", p?.isStorefrontTemporaryOrEvergreen === "Temporary" ? pcDate(p?.storefrontEndDate) : "")}${pcRow("Fulfillment", "", (p?.howToFulfillOrders || []).join(", "))}</div></div>`; }
-    else { gsum = pcGarmentSummary(items, bi); const jobs = {}; byCard[cardKey].forEach(({ p, r }) => { (jobs[r.job] = jobs[r.job] || { key: r.key, items: [] }).items.push(p); }); body = Object.entries(jobs).map(([job, info]) => { const cnt = info.key && counts && pcHas(counts[info.key]) ? `<span class="jcount">${counts[info.key]} prints</span>` : ""; const entries = info.items.map((p) => p.productType === "garment" ? (p.primaryBranches || []).map((g) => pcGarmentBlock(g, bi, p.premiumIronPass)).join("") : pcOverview(p)).join(""); return `<div class="job"><div class="jhead"><span>${pcEsc(job)}</span>${cnt}</div>${entries}</div>`; }).join(""); }
+    else { gsum = pcGarmentSummary(items, bi);
+      if (cardKey === "embroidery" && counts) {
+        const sz = [["Small", counts.embroiderySmallPrints], ["Medium", counts.embroideryMediumPrints], ["Large", counts.embroideryLargePrints]]
+          .filter(([, v]) => v > 0).map(([k, v]) => `${k}: ${v}`).join("  •  ");
+        if (sz) gsum += `<div class="gsummary"><b>Placement sizes:</b> ${pcEsc(sz)}</div>`;
+      } const jobs = {}; byCard[cardKey].forEach(({ p, r }) => { (jobs[r.job] = jobs[r.job] || { key: r.key, items: [] }).items.push(p); }); body = Object.entries(jobs).map(([job, info]) => { const cnt = info.key && counts && pcHas(counts[info.key]) ? `<span class="jcount">${counts[info.key]} prints</span>` : ""; const entries = info.items.map((p) => p.productType === "garment" ? (p.primaryBranches || []).map((g) => pcGarmentBlock(g, bi, p.premiumIronPass)).join("") : pcOverview(p)).join(""); return `<div class="job"><div class="jhead"><span>${pcEsc(job)}</span>${cnt}</div>${entries}</div>`; }).join(""); }
     const deptTotal = cm.countKey && counts && pcHas(counts[cm.countKey]) ? counts[cm.countKey] : null;
     files.push({ name: cm.file, html: pcDoc(cm, strip(cm, deptTotal, gsum) + `<div class="cbody">${body}</div>` + footer(cm.dept)) });
   }
@@ -226,6 +231,30 @@ function App() {
       .filter((v) => v != null && String(v).trim() !== "")
       .join(", ");
 
+  // react-hook-form refuses to run onSubmit when validation fails, and this form renders no
+  // error summary anywhere - so a required field would look like a dead Submit button. This
+  // surfaces the reason. It also covers the pre-existing required "Date Needed By" on Graphic
+  // Design, which has silently blocked submission until now.
+  const onInvalid = (formErrors) => {
+    setLoading(false);
+    const names = [];
+    const walk = (node) => {
+      if (!node || typeof node !== "object") return;
+      if (node.type && node.ref) { names.push(node.ref.name || ""); return; }
+      Object.values(node).forEach(walk);
+    };
+    walk(formErrors);
+    const label = (nm) =>
+      nm.endsWith(".placementSize") ? "Placement Size (required on Embroidery placements)"
+        : nm.endsWith(".dateNeededBy") ? "Date Needed By"
+        : nm;
+    const list = [...new Set(names.filter(Boolean).map(label))];
+    window.alert(
+      "This form can't be submitted yet — please fill in:" +
+        (list.length ? "\n\n• " + list.join("\n• ") : "\n\nthe highlighted field(s).")
+    );
+  };
+
   const onSubmit = async (data) => {
     setLoading(true);
     console.log("Collected Form Data:", data);
@@ -240,6 +269,13 @@ function App() {
     let vinylProjectedPrints = 0;
     let embroideryActualPrints = 0;
     let embroideryProjectedPrints = 0;
+    // Embroidery split by the per-placement "Placement Size" selector. Deliberately built by
+    // iterating the placement ROWS, not numberOfPlacements: a placement with no size chosen is
+    // counted in the department total but in NO bucket, so the split never invents a size.
+    // The shortfall is reported as "Unsized" in the note rather than hidden.
+    let embroiderySmallPrints = 0;
+    let embroideryMediumPrints = 0;
+    let embroideryLargePrints = 0;
     let screenActualPrints = 0;
     let screenProjectedPrints = 0;
     // Per-job totals (written to dedicated Deal fields; feed the per-category Produce Order tasks)
@@ -278,6 +314,12 @@ function App() {
               const actual = qty * placements;
               embroideryActualPrints += actual;
               embroideryPrints += actual;
+              (graphic?.tartiaryBranches || []).forEach((placement) => {
+                const size = placement?.placementSize;
+                if (size === "Small") embroiderySmallPrints += qty;
+                else if (size === "Medium") embroideryMediumPrints += qty;
+                else if (size === "Large") embroideryLargePrints += qty;
+              });
             } else if (pName === "Direct-to-Garment") {
               const actual = qty * placements;
               const total = actual * heatPressMultiplier;
@@ -1008,7 +1050,11 @@ function App() {
       "Vinyl" + newLine +
       "   Actual: " + vinylActualPrints + "  |  Projected: " + vinylProjectedPrints + "  |  Total: " + vinylDeptPrints + newLine + newLine +
       "Embroidery" + newLine +
-      "   Actual: " + embroideryActualPrints + "  |  Projected: " + embroideryProjectedPrints + "  |  Total: " + embroideryPrints + newLine + newLine +
+      "   Actual: " + embroideryActualPrints + "  |  Projected: " + embroideryProjectedPrints + "  |  Total: " + embroideryPrints + newLine +
+      "   Placement sizes — Small: " + embroiderySmallPrints + "  |  Medium: " + embroideryMediumPrints + "  |  Large: " + embroideryLargePrints +
+      (embroideryPrints - (embroiderySmallPrints + embroideryMediumPrints + embroideryLargePrints) > 0
+        ? "  |  Unsized: " + (embroideryPrints - (embroiderySmallPrints + embroideryMediumPrints + embroideryLargePrints))
+        : "") + newLine + newLine +
       "---------------------------" + newLine + newLine +
       "ALL DEPARTMENTS" + newLine +
       "   Actual: " + totalActualPrints + "  |  Projected: " + totalProjectedPrints + "  |  Total: " + totalPrints;
@@ -1022,6 +1068,9 @@ function App() {
           id: entityId,
           Vinyl_Department_Prints: vinylDeptPrints,
           Embroidery_Department_Prints: embroideryPrints,
+          Embroidery_Small_Prints: embroiderySmallPrints,
+          Embroidery_Medium_Prints: embroideryMediumPrints,
+          Embroidery_Large_Prints: embroideryLargePrints,
           Screen_Print_Prints: screenPrintPrints,
           Vinyl_Prints: vinylPrints,
           DTG_Prints: dtgPrints,
@@ -1063,6 +1112,7 @@ function App() {
     try {
       const cardCounts = {
         screenPrintPrints, embroideryPrints, vinylDeptPrints,
+        embroiderySmallPrints, embroideryMediumPrints, embroideryLargePrints,
         dtgPrints, dtfPrints, htvPrints, vinylPrints, stickersPrints,
         decalsPrints, bannersPrints, postersPrints, magnetsPrints,
         patchesPrints, outsourcedProducts,
@@ -1146,7 +1196,7 @@ function App() {
               mb: 2,
             }}
             component="form"
-            onSubmit={handleSubmit(onSubmit)}
+            onSubmit={handleSubmit(onSubmit, onInvalid)}
           >
             <Typography
               sx={{
