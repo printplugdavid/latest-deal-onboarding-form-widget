@@ -9,13 +9,15 @@
  * Behaviour is deliberately identical to the Deluge, including its quirks:
  *   - "Shipped Damaged" alone means no agent at all
  *   - "Misorder" additionally pulls in whoever ordered the garments
+ *   - the Ordering department does the same (David's ruling; the Deluge had no
+ *     branch for it and skipped it)
  *   - the first matching completed task wins (the Deluge breaks on first hit)
  *   - Outsourced always also adds Korie Byrd; Graphic Design always also adds
  *     Rivelino Seva, whether or not a task owner was found
  *
- * One deliberate improvement: unmapped departments are RETURNED rather than
- * silently skipped, so the form can tell the agent that "Ordering" produced
- * nobody instead of quietly assigning no one.
+ * One deliberate improvement: an unrecognised department is RETURNED rather
+ * than silently skipped, so the form can say it identified nobody instead of
+ * quietly assigning no one.
  */
 
 // dept -> the keyword that appears in that department's task subjects
@@ -26,7 +28,15 @@ export const DEPARTMENT_TASK_KEYWORD = {
   "Vinyl & Digital Print": { keyword: "VINYL DEPARTMENT" }, // pre-rename records
   Outsourced: { keyword: "OUTSOURCED", alsoAdd: "Korie Byrd" },
   "Graphic Design": { keyword: "GRAPHIC DESIGN", alsoAdd: "Rivelino Seva" },
-  // "Ordering" is intentionally absent -- the Deluge has no branch for it.
+  /*
+   * The Deluge had no branch for Ordering and skipped it silently. David's
+   * ruling: an ordering fault attributes to whoever ordered the garments AND
+   * whoever produced it. There is no "Ordering" production task to trace, so
+   * this pulls the Order Garments owner -- the same lookup a Misorder uses.
+   * The producing half comes from the production department alongside it,
+   * which the form pre-fills from the garment selection.
+   */
+  Ordering: { orderGarmentsOwner: true },
 };
 
 function ownerNameOf(task, userNameById) {
@@ -69,6 +79,7 @@ export function deriveAgents({
 
   const agents = [];
   const unmappedDepartments = [];
+  let wantsOrderGarmentsOwner = false;
   const misses = [];
   const add = (name) => {
     if (name && agents.indexOf(name) < 0) agents.push(name);
@@ -81,6 +92,12 @@ export function deriveAgents({
       if (!map) {
         unmappedDepartments.push(dept);
         return; // the Deluge does `continue`
+      }
+
+      // No production task of its own -- resolved by the Order Garments lookup.
+      if (map.orderGarmentsOwner) {
+        wantsOrderGarmentsOwner = true;
+        return;
       }
 
       let found = false;
@@ -109,7 +126,7 @@ export function deriveAgents({
 
   // ---- Step 5: whoever ordered the garments, for Misorder -----------------
   let orderOwnerMissing = false;
-  if (needsOrderProductsOwner) {
+  if (needsOrderProductsOwner || wantsOrderGarmentsOwner) {
     let found = false;
     for (let i = 0; i < completedTasks.length; i++) {
       const subject = String(completedTasks[i]?.Subject || "");

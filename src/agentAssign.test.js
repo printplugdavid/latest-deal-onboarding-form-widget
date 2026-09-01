@@ -92,9 +92,20 @@ describe("deriveAgents — matches the Deluge", () => {
 });
 
 describe("deriveAgents — what the Deluge swallowed", () => {
-  test("Ordering has no branch, and is reported instead of silently skipped", () => {
-    const r = run(["Wrong Product Type (Misorder)"], ["Ordering"]);
-    expect(r.unmappedDepartments).toEqual(["Ordering"]);
+  test("Ordering attributes to whoever ordered the garments", () => {
+    const r = run(["Missing Product"], ["Ordering"]);
+    expect(r.agents).toEqual(["Ray Castaneda"]);
+    expect(r.unmappedDepartments).toEqual([]);
+  });
+
+  test("Ordering plus the producing department gives both people", () => {
+    const r = run(["Missing Product"], ["Screen Printing", "Ordering"]);
+    expect(r.agents).toEqual(["Yefri Rivera", "Ray Castaneda"]);
+  });
+
+  test("a genuinely unknown department is still reported", () => {
+    const r = run(["Misprint (Other)"], ["Something New"]);
+    expect(r.unmappedDepartments).toEqual(["Something New"]);
   });
 
   test("a department with no matching completed task is reported", () => {
