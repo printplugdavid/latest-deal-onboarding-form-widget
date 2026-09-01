@@ -63,6 +63,38 @@ const GarmentPrimaryBranchForm = ({
     }
   }, [numberOfGraphics]);
 
+  const numberOfSkus = useWatch({
+    control,
+    name: `products.${index}.primaryBranches.${branchIndex}.numberOfSkus`,
+  });
+
+  const {
+    fields: garmentSkus,
+    append: appendSku,
+    remove: removeSku,
+  } = useFieldArray({
+    control,
+    name: `products.${index}.primaryBranches.${branchIndex}.garmentSkus`,
+  });
+
+  // Auto adjust SKU rows based on numberOfSkus value
+  useEffect(() => {
+    const num = parseInt(numberOfSkus);
+    if (!isNaN(num) && num >= 0) {
+      const currentLength = garmentSkus.length;
+
+      if (num > currentLength) {
+        for (let i = currentLength; i < num; i++) {
+          appendSku({ sku: "" });
+        }
+      } else if (num < currentLength) {
+        for (let i = currentLength - 1; i >= num; i--) {
+          removeSku(i);
+        }
+      }
+    }
+  }, [numberOfSkus]);
+
   return (
     <Box
       sx={{
@@ -105,22 +137,48 @@ const GarmentPrimaryBranchForm = ({
 
       <Controller
         control={control}
-        name={`products.${index}.primaryBranches.${branchIndex}.countColorSize`}
+        name={`products.${index}.primaryBranches.${branchIndex}.numberOfSkus`}
         defaultValue=""
-        render={({ field }) => (
+        rules={{
+          validate: (value) => {
+            if (value === "") return true;
+            return parseInt(value) >= 0 || "Must be 0 or more";
+          },
+        }}
+        render={({ field, fieldState }) => (
           <TextField
-            multiline
-            rows={3}
-            size="small"
-            id="countColorSize"
-            variant="outlined"
-            fullWidth
-            label="Total Count, Colors & Sizes"
             {...field}
+            id="numberOfSkus"
+            variant="outlined"
+            size="small"
+            fullWidth
+            label="Number of SKUs"
+            type="number"
+            error={!!fieldState.error}
+            helperText={fieldState.error?.message}
             sx={{ mb: "1rem", mt: "5px" }}
           />
         )}
       />
+
+      {garmentSkus?.map((_, skuIndex) => (
+        <Controller
+          key={`${index}-${branchIndex}-sku-${skuIndex}`}
+          control={control}
+          name={`products.${index}.primaryBranches.${branchIndex}.garmentSkus.${skuIndex}.sku`}
+          defaultValue=""
+          render={({ field }) => (
+            <TextField
+              size="small"
+              variant="outlined"
+              fullWidth
+              label={`SKU ${skuIndex + 1}`}
+              {...field}
+              sx={{ mb: "1rem", mt: "5px" }}
+            />
+          )}
+        />
+      ))}
 
       <Typography
         variant="p"

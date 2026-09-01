@@ -27,6 +27,7 @@ const ZOHO = window.ZOHO;
 // ===== Production card generator (attached to the Deal as per-department HTML job sheets) =====
 const pcEsc = (s) => String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 const pcHas = (v) => v !== undefined && v !== null && String(v).trim() !== "" && v !== false && v !== "false";
+const pcSkus = (g) => (g?.garmentSkus || []).map((r) => r?.sku).filter((v) => pcHas(v)).join(", ");
 const pcDate = (d) => { if (!pcHas(d)) return ""; const o = new Date(d); return isNaN(o) ? String(d) : `${o.getFullYear()}-${String(o.getMonth() + 1).padStart(2, "0")}-${String(o.getDate()).padStart(2, "0")}`; };
 const PC_ROUTE = {
   "Screen Printing": { card: "screenprint", job: "Screen Printing", key: "screenPrintPrints" },
@@ -54,13 +55,13 @@ const PC_META = {
 };
 const pcRoute = (p) => PC_ROUTE[p?.productName] || (p?.productType === "nongarment" ? { card: "outsourced", job: "Outsourced", key: "outsourcedProducts" } : (p?.productType === "onlinestorefront" ? { card: "storefront", job: "Online Storefront", key: null } : null));
 function pcRow(en, es, v, opts) { opts = opts || {}; if (!pcHas(v)) return ""; const label = opts.bi && es ? `${en} / ${es}` : en; return `<div class="row${opts.crit ? " crit" : ""}"><span class="lbl">${pcEsc(label)}</span><span class="val">${pcEsc(v)}</span></div>`; }
-function pcGarmentBlock(g, bi) {
+function pcGarmentBlock(g, bi, ironPass) {
   const graphics = (g?.secondaryBranches || []).map((gr, i) => {
     const pl = (gr?.tartiaryBranches || []).map((p) => { if (!pcHas(p?.placementLocation) && !pcHas(p?.placementSize) && !pcHas(p?.sizeAndDimensions)) return ""; const bits = [pcHas(p?.placementSize) ? pcEsc(p.placementSize) : "", pcHas(p?.sizeAndDimensions) ? pcEsc(p.sizeAndDimensions) : ""].filter(Boolean).join(" · "); return `<div class="prow"><span class="ploc">${pcEsc(p?.placementLocation || "Placement")}</span>${bits ? " · " + bits : ""}</div>`; }).join("");
-    return `<div class="graphic"><div class="grtitle">${bi ? "Graphic / Gráfico" : "Graphic"} ${i + 1}${pcHas(gr?.graphicDescription) ? ": " + pcEsc(gr.graphicDescription) : ""}</div>${pcRow("Colors", "Colores", gr?.numberOfColorsUsed, { crit: true, bi })}${pcRow("Colors Used", "Colores", gr?.colorsUsed, { bi })}${pcRow("Underbase", "Base", gr?.underbase, { bi })}${pcHas(gr?.premiumIronPass) ? pcRow("Premium Iron Pass", "Planchado", gr?.premiumIronPass, { bi }) : ""}${pl ? `<div class="plc">${pl}</div>` : ""}</div>`;
+    return `<div class="graphic"><div class="grtitle">${bi ? "Graphic / Gráfico" : "Graphic"} ${i + 1}${pcHas(gr?.graphicDescription) ? ": " + pcEsc(gr.graphicDescription) : ""}</div>${pcRow("Colors", "Colores", gr?.numberOfColorsUsed, { crit: true, bi })}${pcRow("Colors Used", "Colores", gr?.colorsUsed, { bi })}${pcRow("Underbase", "Base", gr?.underbase, { bi })}${pcHas(ironPass) ? pcRow("Premium Iron Pass", "Planchado", ironPass, { bi }) : ""}${pl ? `<div class="plc">${pl}</div>` : ""}</div>`;
   }).join("");
   const also = (g?.isUsedInOtherAppTypes === "Yes" && pcHas(g?.chooseApplicationType)) ? `<div class="alsonote">${bi ? "Also used with / También con" : "Also used with"}: <b>${pcEsc(g.chooseApplicationType)}</b></div>` : "";
-  return `<div class="garment"><div class="ghead"><span class="gname">${pcEsc(g?.garmentType || "Garment")}</span>${pcHas(g?.garmentQuantity) ? `<span class="gqty">${bi ? "Qty / Cant" : "Qty"}: ${pcEsc(g.garmentQuantity)}</span>` : ""}</div>${pcRow("Count / Colors / Sizes", "Cant / Colores / Tallas", g?.countColorSize, { bi })}${graphics}${also}${pcRow("Vendors", "Proveedores", g?.vendorsUsed, { bi })}${pcRow("Special Instructions", "Instrucciones", g?.specialInstructions, { bi })}</div>`;
+  return `<div class="garment"><div class="ghead"><span class="gname">${pcEsc(g?.garmentType || "Garment")}</span>${pcHas(g?.garmentQuantity) ? `<span class="gqty">${bi ? "Qty / Cant" : "Qty"}: ${pcEsc(g.garmentQuantity)}</span>` : ""}</div>${pcRow("SKU(s)", "SKU(s)", pcSkus(g), { bi })}${pcRow("Count / Colors / Sizes", "Cant / Colores / Tallas", g?.countColorSize, { bi })}${graphics}${also}${pcRow("Vendors", "Proveedores", g?.vendorsUsed, { bi })}${pcRow("Special Instructions", "Instrucciones", g?.specialInstructions, { bi })}</div>`;
 }
 function pcGarmentSummary(items, bi) {
   const gs = []; items.forEach((p) => { if (p.productType === "garment") (p.primaryBranches || []).forEach((g) => { if (pcHas(g?.garmentType) || pcHas(g?.garmentQuantity)) gs.push(`${pcHas(g?.garmentQuantity) ? pcEsc(g.garmentQuantity) + "× " : ""}${pcEsc(g?.garmentType || "Garment")}`); }); });
@@ -82,7 +83,7 @@ function buildProductionCards(data, counts) {
     let body, gsum = "";
     if (cardKey === "outsourced") { body = `<div class="job"><div class="jhead"><span>Items to order / stock</span></div>${items.map(pcOverview).join("")}</div>`; }
     else if (cardKey === "storefront") { const p = items[0]; body = `<div class="job"><div class="jhead"><span>Storefront setup</span></div><div class="garment">${pcRow("Online Suffix", "", p?.preferredOnlineSuffix, { crit: true })}${pcRow("Contact Email", "", p?.contactEmailForStorefront)}${pcRow("Temporary/Evergreen", "", p?.isStorefrontTemporaryOrEvergreen)}${pcRow("End Date", "", p?.isStorefrontTemporaryOrEvergreen === "Temporary" ? pcDate(p?.storefrontEndDate) : "")}${pcRow("Fulfillment", "", (p?.howToFulfillOrders || []).join(", "))}</div></div>`; }
-    else { gsum = pcGarmentSummary(items, bi); const jobs = {}; byCard[cardKey].forEach(({ p, r }) => { (jobs[r.job] = jobs[r.job] || { key: r.key, items: [] }).items.push(p); }); body = Object.entries(jobs).map(([job, info]) => { const cnt = info.key && counts && pcHas(counts[info.key]) ? `<span class="jcount">${counts[info.key]} prints</span>` : ""; const entries = info.items.map((p) => p.productType === "garment" ? (p.primaryBranches || []).map((g) => pcGarmentBlock(g, bi)).join("") : pcOverview(p)).join(""); return `<div class="job"><div class="jhead"><span>${pcEsc(job)}</span>${cnt}</div>${entries}</div>`; }).join(""); }
+    else { gsum = pcGarmentSummary(items, bi); const jobs = {}; byCard[cardKey].forEach(({ p, r }) => { (jobs[r.job] = jobs[r.job] || { key: r.key, items: [] }).items.push(p); }); body = Object.entries(jobs).map(([job, info]) => { const cnt = info.key && counts && pcHas(counts[info.key]) ? `<span class="jcount">${counts[info.key]} prints</span>` : ""; const entries = info.items.map((p) => p.productType === "garment" ? (p.primaryBranches || []).map((g) => pcGarmentBlock(g, bi, p.premiumIronPass)).join("") : pcOverview(p)).join(""); return `<div class="job"><div class="jhead"><span>${pcEsc(job)}</span>${cnt}</div>${entries}</div>`; }).join(""); }
     const deptTotal = cm.countKey && counts && pcHas(counts[cm.countKey]) ? counts[cm.countKey] : null;
     files.push({ name: cm.file, html: pcDoc(cm, strip(cm, deptTotal, gsum) + `<div class="cbody">${body}</div>` + footer(cm.dept)) });
   }
@@ -199,7 +200,7 @@ function App() {
     let year = dateObj.getFullYear();
     let month = dateObj.getMonth();
     let day = dateObj.getDate();
-    return `${year}-${month + 1}-${day < 10 ? `0${day}` : day}`;
+    return `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
   };
 
   function hexToText(hex) {
@@ -212,6 +213,18 @@ function App() {
 
   // Example usage
   var newLine = hexToText("0A");
+
+  // Checkbox fields are stored as booleans. The note reads better as Yes/No.
+  // NOTE FORMATTING ONLY - the JSON payload keeps the raw boolean on purpose,
+  // because the revision form parses it. Do not normalise the stored values.
+  const yn = (v) => (v === true ? "Yes" : v === false ? "No" : v ?? "");
+
+  // Repeatable SKU rows render as a single comma-separated line in the note.
+  const skuList = (rows) =>
+    (rows || [])
+      .map((r) => r?.sku)
+      .filter((v) => v != null && String(v).trim() !== "")
+      .join(", ");
 
   const onSubmit = async (data) => {
     setLoading(true);
@@ -419,6 +432,10 @@ function App() {
               branch?.garmentType +
               newLine +
               newLine +
+              "SKU(s): " +
+              skuList(branch?.garmentSkus) +
+              newLine +
+              newLine +
               "Total Count, Colors & Sizes: " +
               branch?.countColorSize +
               newLine +
@@ -450,7 +467,7 @@ function App() {
                     newLine +
                     newLine +
                     "Is Graphic Print Ready?: " +
-                    subBranch?.isGraphicPrintReady +
+                    yn(subBranch?.isGraphicPrintReady) +
                     newLine +
                     newLine +
                     "Current Graphic Format: " +
@@ -466,7 +483,7 @@ function App() {
                     content =
                       content +
                       "Depending on current inventory, embroidery jobs with fine detail incur an upcharge for specialty thread: " +
-                      subBranch?.specialtyThread +
+                      yn(subBranch?.specialtyThread) +
                       newLine +
                       newLine;
                   }
@@ -474,7 +491,7 @@ function App() {
                   content =
                     content +
                     "Upcharge Acknowledged?: " +
-                    subBranch?.upchargeAcknowledged +
+                    yn(subBranch?.upchargeAcknowledged) +
                     newLine +
                     newLine +
                     "Number Of Colors Used: " +
@@ -610,7 +627,7 @@ function App() {
               newLine +
               newLine +
               "Is Graphic Print Ready?: " +
-              branch?.isGraphicPrintReady +
+              yn(branch?.isGraphicPrintReady) +
               newLine +
               newLine +
               "Number of Colors Used: " +
@@ -626,7 +643,7 @@ function App() {
               newLine +
               newLine +
               "Upcharge Acknowledged?: " +
-              branch?.upchargedAcknowledged +
+              yn(branch?.upchargedAcknowledged) +
               newLine +
               newLine +
               "Fonts Used: " +
@@ -661,7 +678,7 @@ function App() {
           newLine +
           newLine +
           "Is Outsourced?: " +
-          product?.isOutsourced +
+          yn(product?.isOutsourced) +
           newLine +
           newLine +
           "Vendors Used: " +
@@ -714,7 +731,7 @@ function App() {
           content =
             content +
             "Upcharge for Graphic Design?: " +
-            product?.upchargeForGraphicDesign +
+            yn(product?.upchargeForGraphicDesign) +
             newLine +
             newLine;
         }
@@ -822,11 +839,11 @@ function App() {
           newLine +
           newLine +
           "Design Service Needed?: " +
-          product?.designServiceNeeded +
+          yn(product?.designServiceNeeded) +
           newLine +
           newLine +
           "Design Assets Provided?: " +
-          product?.designAssetsProvided +
+          yn(product?.designAssetsProvided) +
           newLine +
           newLine +
           "Desired Graphic Application: " +
@@ -842,7 +859,7 @@ function App() {
           newLine +
           newLine +
           "Service Cost Acknowledged?: " +
-          product?.serviceCostAcknowledged +
+          yn(product?.serviceCostAcknowledged) +
           newLine +
           newLine +
           "Date Needed By: " +
@@ -943,7 +960,7 @@ function App() {
         newLine +
         newLine +
         "Upcharged For Rush Turnaround Time?: " +
-        data?.upchargedForRushTurnaround +
+        yn(data?.upchargedForRushTurnaround) +
         newLine +
         newLine;
     }
@@ -960,7 +977,7 @@ function App() {
         content =
           content +
           "Add 1 Week To Production Time?: " +
-          data?.addOneWeekToProductionTime +
+          yn(data?.addOneWeekToProductionTime) +
           newLine +
           newLine;
       }
@@ -969,7 +986,7 @@ function App() {
         content =
           content +
           "10-14 Business Day Turnaround?: " +
-          data?.tenFourteenBusinessDayTurnaround +
+          yn(data?.tenFourteenBusinessDayTurnaround) +
           newLine +
           newLine;
       }
@@ -1789,7 +1806,7 @@ function App() {
                   render={({ field }) => (
                     <FormGroup>
                       <FormControlLabel
-                        control={<Checkbox {...field} />}
+                        control={<Checkbox {...field} checked={!!field.value} />}
                         label="Upcharged For Rush Turnaround Time?"
                       />
                     </FormGroup>
@@ -1832,7 +1849,7 @@ function App() {
                     render={({ field }) => (
                       <FormGroup>
                         <FormControlLabel
-                          control={<Checkbox {...field} />}
+                          control={<Checkbox {...field} checked={!!field.value} />}
                           label="Add 1 Week To Production Time"
                         />
                       </FormGroup>
@@ -1848,7 +1865,7 @@ function App() {
                     render={({ field }) => (
                       <FormGroup>
                         <FormControlLabel
-                          control={<Checkbox {...field} />}
+                          control={<Checkbox {...field} checked={!!field.value} />}
                           label="10-14 Business Day Turnaround"
                         />
                       </FormGroup>
