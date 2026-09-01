@@ -66,7 +66,13 @@ const GarmentTartiaryBranch = ({
         control={control}
         name={`products.${index}.primaryBranches.${branchIndex}.secondaryBranches.${secBranchIndex}.tartiaryBranches.${tarBranchIndex}.placementSize`}
         defaultValue=""
-        render={({ field }) => (
+        rules={{
+          // Required on Embroidery only: the size drives the Small/Medium/Large Deal fields,
+          // and a blank one is counted in the department total but in no size bucket.
+          validate: (value) =>
+            productName !== "Embroidery" || !!value || "Required for embroidery placements",
+        }}
+        render={({ field, fieldState }) => (
           <Autocomplete
             {...field}
             options={["Small", "Medium", "Large"]}
@@ -75,10 +81,16 @@ const GarmentTartiaryBranch = ({
             renderInput={(params) => (
               <TextField
                 {...params}
-                label="Placement Size"
+                label={
+                  productName === "Embroidery"
+                    ? "Placement Size *"
+                    : "Placement Size"
+                }
                 variant="outlined"
                 size="small"
                 fullWidth
+                error={!!fieldState.error}
+                helperText={fieldState.error?.message}
                 sx={{ mb: "1rem", mt: "5px" }}
               />
             )}
