@@ -12,6 +12,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { computePrints, departmentFor } from "./printMath";
 import { readPayload } from "./payload";
+import { deriveAgents } from "./agentAssign";
 
 const ZOHO = window.ZOHO;
 
@@ -54,6 +55,19 @@ const CORRECTION_CATEGORIES = [
   "Damaged Product (During Production)",
   "Client Unhappy",
   "Other (Please Detail in Correction Reason Notes)",
+];
+
+// Revision_Agent / Correction_Agent picklist -- CRM user full names.
+const AGENTS = [
+  "Drew Byrd",
+  "David Byrd",
+  "Korie Byrd",
+  "Ray Castaneda",
+  "Desi Mastin",
+  "Yefri Rivera",
+  "David Rodriguez",
+  "Rivelino Seva",
+  "Angela Zervudakis",
 ];
 
 const MAX_SLOTS = { Revision: 3, Correction: 2 };
@@ -151,6 +165,9 @@ export default function App() {
   const [reason, setReason] = useState("");
   const [items, setItems] = useState([]);
   const [touchedDepartments, setTouchedDepartments] = useState(false);
+  const [completedTasks, setCompletedTasks] = useState([]);
+  const [agents, setAgents] = useState([]);
+  const [touchedAgents, setTouchedAgents] = useState(false);
 
   const [updateClosing, setUpdateClosing] = useState(false);
   const [newClosingDate, setNewClosingDate] = useState("");
@@ -195,6 +212,28 @@ export default function App() {
         const p = await readPayload(entity, recordId);
         setPayloadInfo(p);
         if (p.ok) setProducts(p.products);
+
+        // Completed tasks are how the responsible agent is identified.
+        const grab = async (relatedList) => {
+          try {
+            const r = await ZOHO.CRM.API.getRelatedRecords({
+              Entity: entity,
+              RecordID: recordId,
+              RelatedList: relatedList,
+              page: 1,
+              per_page: 200,
+            });
+            return r?.data || [];
+          } catch (e) {
+            return [];
+          }
+        };
+        const closed = await grab("Tasks_History");
+        const open = await grab("Tasks");
+        setCompletedTasks(
+          closed.concat(open).filter((t) => String(t?.Status || "") === "Completed")
+        );
+
         setStatus("ready");
       } catch (err) {
         setFatal("Could not load the deal: " + ((err && err.message) || String(err)));
@@ -231,6 +270,22 @@ export default function App() {
     });
     return { sum, detail };
   }, [items, products, formType]);
+
+  const derived = useMemo(
+    () =>
+      deriveAgents({
+        categories,
+        departments,
+        completedTasks,
+        allowedNames: AGENTS,
+      }),
+    [categories, departments, completedTasks]
+  );
+
+  useEffect(() => {
+    if (touchedAgents) return;
+    setAgents(derived.agents);
+  }, [derived, touchedAgents]);
 
   // Pre-fill the producing department from the selection, so it can't be omitted.
   useEffect(() => {
@@ -292,6 +347,7 @@ export default function App() {
     L.push("");
     L.push("Department(s): " + departments.join(", "));
     L.push("Category: " + categories.join(", "));
+    L.push("Agent(s): " + (agents.length ? agents.join(", ") : "(none identified)"));
     L.push("Reason:");
     L.push(reason.trim());
     if (updateClosing && newClosingDate && closingConfirmed) {
@@ -358,6 +414,8 @@ export default function App() {
       if (updateClosing && newClosingDate && closingConfirmed) {
         api.Closing_Date = newClosingDate; // Zoho date format is YYYY-MM-DD
       }
+
+      if (agents.length) api[prefix + "_Agent"] = agents;
 
       if (formType === "Revision") {
         api.Revision_Category = categories; // multi-select
@@ -563,6 +621,40 @@ export default function App() {
           style={S.textarea}
           placeholder="Plain description for whoever picks this up later."
         />
+
+        <Label>{formType} Agent</Label>
+        <div style={S.wrap}>
+          {AGENTS.map((a) => (
+            <button
+              key={a}
+              type="button"
+              onClick={() => {
+                setTouchedAgents(true);
+                toggle(agents, setAgents, a);
+              }}
+              style={agents.includes(a) ? S.chipOn : S.chip}
+            >
+              {a}
+            </button>
+          ))}
+        </div>
+        <p style={S.hint}>
+          {agents.length
+            ? "Identified from the completed production tasks on this deal. Override if it is wrong."
+            : "Nobody identified yet — pick the department and category above, or select manually."}
+          {derived.misses.length
+            ? " No completed Produce Order task found for: " + derived.misses.join(", ") + "."
+            : ""}
+          {derived.unmappedDepartments.length
+            ? " " +
+              derived.unmappedDepartments.join(", ") +
+              " has no production task to trace, so it identifies nobody on its own."
+            : ""}
+          {derived.orderOwnerMissing ? " No Order Garments task found for the misorder." : ""}
+          {derived.rejected.length
+            ? " Skipped (not on the agent list): " + derived.rejected.join(", ") + "."
+            : ""}
+        </p>
       </Section>
 
       <Section n="3" title="Which garments">
