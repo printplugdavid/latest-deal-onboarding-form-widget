@@ -13,6 +13,14 @@ import { useEffect, useMemo, useState } from "react";
 import { computePrints, departmentFor } from "./printMath";
 import { readPayload } from "./payload";
 import { deriveAgents } from "./agentAssign";
+import {
+  makeT,
+  loadLang,
+  saveLang,
+  labelDepartment,
+  labelCategory,
+  labelApplication,
+} from "./i18n";
 
 const ZOHO = window.ZOHO;
 
@@ -152,8 +160,11 @@ function syntheticProducts(products, item, formType) {
 // ---------------------------------------------------------------- component
 
 export default function App() {
+  const [lang, setLang] = useState(loadLang);
+  const t = useMemo(() => makeT(lang), [lang]);
+
   const [status, setStatus] = useState("loading");
-  const [fatal, setFatal] = useState("");
+  const [fatal, setFatal] = useState(null);
   const [ctx, setCtx] = useState({ entity: null, recordId: null });
   const [deal, setDeal] = useState(null);
   const [products, setProducts] = useState([]);
@@ -179,7 +190,7 @@ export default function App() {
   // ---- load -------------------------------------------------------------
   useEffect(() => {
     if (!ZOHO || !ZOHO.embeddedApp) {
-      setFatal("Not running inside a Zoho widget. Open this from a Deal record.");
+      setFatal({ key: "b.notWidget" });
       setStatus("error");
       return;
     }
@@ -196,7 +207,7 @@ export default function App() {
       setCtx({ entity, recordId });
 
       if (!entity || !recordId) {
-        setFatal("No record context. Open this widget from a Deal.");
+        setFatal({ key: "b.noContext" });
         setStatus("error");
         return;
       }
@@ -236,7 +247,7 @@ export default function App() {
 
         setStatus("ready");
       } catch (err) {
-        setFatal("Could not load the deal: " + ((err && err.message) || String(err)));
+        setFatal({ key: "b.loadFail", vars: { msg: (err && err.message) || String(err) } });
         setStatus("error");
       }
     });
@@ -431,7 +442,7 @@ export default function App() {
         setResult({
           ok: false,
           message:
-            "Nothing was saved. " +
+            t("err.nothing") +
             (row?.message || "") +
             (row?.details ? " " + JSON.stringify(row.details) : ""),
         });
@@ -446,7 +457,7 @@ export default function App() {
         Content: buildNote(),
       });
 
-      setResult({ ok: true, message: "Saved to slot " + slot + "." });
+      setResult({ ok: true, message: t("ok.saved", { n: slot }) });
       setSubmitting(false);
       setTimeout(() => {
         try {
@@ -465,13 +476,13 @@ export default function App() {
   if (status === "loading")
     return (
       <Shell>
-        <p style={S.muted}>Loading the order…</p>
+        <p style={S.muted}>{t("app.loading")}</p>
       </Shell>
     );
   if (status === "error")
     return (
       <Shell>
-        <Banner kind="bad">{fatal}</Banner>
+        <Banner kind="bad">{fatal ? t(fatal.key, fatal.vars) : ""}</Banner>
       </Shell>
     );
 
@@ -479,66 +490,77 @@ export default function App() {
     <Shell>
       <div style={S.head}>
         <div>
-          <div style={S.h1}>Order {formType}</div>
+          <div style={S.h1}>{t("app." + formType)}</div>
           <div style={S.sub}>{deal?.Deal_Name || ctx.recordId}</div>
         </div>
-        <div style={S.slotBadge}>
-          {overCap ? "at limit" : "event " + slot + " of " + MAX_SLOTS[formType]}
+        <div style={S.headRight}>
+          <div style={S.langWrap} role="group" aria-label="Language / Idioma">
+            {["en", "es"].map((L) => (
+              <button
+                key={L}
+                type="button"
+                onClick={() => {
+                  setLang(L);
+                  saveLang(L);
+                }}
+                style={lang === L ? S.langOn : S.langOff}
+                title={L === "es" ? "Español" : "English"}
+              >
+                {L.toUpperCase()}
+              </button>
+            ))}
+          </div>
+          <div style={S.slotBadge}>
+            {overCap
+              ? t("app.atLimit")
+              : t("app.eventOf", { n: slot, max: MAX_SLOTS[formType] })}
+          </div>
         </div>
       </div>
 
       {payloadInfo && !payloadInfo.ok && (
         <Banner kind="bad">
           {payloadInfo.reason === "no-payload"
-            ? "No onboarding record found on this deal — no JSON payload and no DEAL ONBOARDING FORM note. Online orders bypass onboarding, so this is normal for those. Nothing to pick from."
-            : "Could not read the onboarding record (" + payloadInfo.reason + ")."}
+            ? t("b.noRecord")
+            : t("b.readFail", { reason: payloadInfo.reason })}
         </Banner>
       )}
 
       {payloadInfo?.ok && payloadInfo.source === "note" && (
         <Banner kind="warn">
-          Read from the <b>DEAL ONBOARDING FORM note</b> — this deal predates the JSON payload.
-          Colors, underbase and placements all came through, so the print count is calculated the
-          same way. The note does not record the original order quantity, so garments below show
-          their size breakdown instead.
+          {t("b.fromNote")}
         </Banner>
       )}
 
       {overCap && (
         <Banner kind="bad">
-          This deal has already had {counts[formType]} {formType.toLowerCase()}
-          {counts[formType] === 1 ? "" : "s"}, which is the limit.
-          {formType === "Correction"
-            ? " A garment will not take a third reprint — log this as a Revision instead."
-            : " Escalate rather than logging a fourth."}
+          {t("b.atLimit" + formType, { n: counts[formType] })}
         </Banner>
       )}
 
-      <Section n="1" title="Type">
+      <Section n="1" title={t("sec.type")}>
         <div style={S.row}>
-          {["Revision", "Correction"].map((t) => (
+          {["Revision", "Correction"].map((ty) => (
             <button
-              key={t}
+              key={ty}
               type="button"
               onClick={() => {
-                setFormType(t);
+                setFormType(ty);
                 setCategories([]);
               }}
-              style={formType === t ? S.pillOn : S.pill}
+              style={formType === ty ? S.pillOn : S.pill}
             >
-              Order {t}
+              {t("app." + ty)}
             </button>
           ))}
         </div>
         <p style={S.hint}>
-          {formType === "Revision"
-            ? "The blank is reordered and every graphic on the garment is reprinted."
-            : "The garment is salvaged in-house and one placement is redone."}
+          {formType === "Revision" ? t("type.revisionHint") : t("type.correctionHint")}
         </p>
       </Section>
 
-      <Section n="2" title="What went wrong">
-        <Label>{formType} Department</Label>
+      <Section n="2" title={t("sec.wrong")}>
+        <Label>{t("lbl.department", { type: t("app." + formType) })}</Label>
         <div style={S.wrap}>
           {DEPARTMENTS.map((d) => (
             <button
@@ -550,12 +572,12 @@ export default function App() {
               }}
               style={departments.includes(d) ? S.chipOn : S.chip}
             >
-              {d}
+              {labelDepartment(d, lang)}
             </button>
           ))}
         </div>
 
-        <Label>Category {formType === "Correction" ? "(pick one)" : "(pick one or more)"}</Label>
+        <Label>{formType === "Correction" ? t("lbl.categoryOne") : t("lbl.categoryMany")}</Label>
 
         {formType === "Correction" ? (
           <select
@@ -563,10 +585,10 @@ export default function App() {
             onChange={(e) => setCategories(e.target.value ? [e.target.value] : [])}
             style={S.select}
           >
-            <option value="">— select —</option>
+            <option value="">{t("g.select")}</option>
             {categoryList.map((c) => (
               <option key={c} value={c}>
-                {c}
+                {labelCategory(c, lang)}
               </option>
             ))}
           </select>
@@ -581,13 +603,13 @@ export default function App() {
               style={S.select}
             >
               <option value="">
-                {categories.length ? "+ add another category…" : "— select —"}
+                {categories.length ? (lang === "es" ? "+ agregar otra categoría…" : "+ add another category…") : t("g.select")}
               </option>
               {categoryList
                 .filter((c) => !categories.includes(c))
                 .map((c) => (
                   <option key={c} value={c}>
-                    {c}
+                    {labelCategory(c, lang)}
                   </option>
                 ))}
             </select>
@@ -596,13 +618,13 @@ export default function App() {
               <div style={S.tags}>
                 {categories.map((c) => (
                   <span key={c} style={S.tag}>
-                    {c}
+                    {labelCategory(c, lang)}
                     <button
                       type="button"
                       onClick={() => setCategories(categories.filter((x) => x !== c))}
                       style={S.tagX}
-                      aria-label={"Remove " + c}
-                      title={"Remove " + c}
+                      aria-label={t("g.remove") + " " + labelCategory(c, lang)}
+                      title={t("g.remove") + " " + labelCategory(c, lang)}
                     >
                       ×
                     </button>
@@ -613,16 +635,16 @@ export default function App() {
           </>
         )}
 
-        <Label>What happened?</Label>
+        <Label>{t("lbl.reason")}</Label>
         <textarea
           rows={4}
           value={reason}
           onChange={(e) => setReason(e.target.value)}
           style={S.textarea}
-          placeholder="Plain description for whoever picks this up later."
+          placeholder={t("ph.reason")}
         />
 
-        <Label>{formType} Agent</Label>
+        <Label>{t("lbl.agent", { type: t("app." + formType) })}</Label>
         <div style={S.wrap}>
           {AGENTS.map((a) => (
             <button
@@ -639,26 +661,22 @@ export default function App() {
           ))}
         </div>
         <p style={S.hint}>
-          {agents.length
-            ? "Identified from the completed production tasks on this deal. Override if it is wrong."
-            : "Nobody identified yet — pick the department and category above, or select manually."}
+          {agents.length ? t("agent.identified") : t("agent.none")}
           {derived.misses.length
-            ? " No completed Produce Order task found for: " + derived.misses.join(", ") + "."
+            ? t("agent.miss", { list: derived.misses.map((d) => labelDepartment(d, lang)).join(", ") })
             : ""}
           {derived.unmappedDepartments.length
-            ? " " +
-              derived.unmappedDepartments.join(", ") +
-              " has no production task to trace, so it identifies nobody on its own."
+            ? t("agent.unmapped", {
+                list: derived.unmappedDepartments.map((d) => labelDepartment(d, lang)).join(", "),
+              })
             : ""}
-          {derived.orderOwnerMissing ? " No Order Garments task found for the misorder." : ""}
-          {derived.rejected.length
-            ? " Skipped (not on the agent list): " + derived.rejected.join(", ") + "."
-            : ""}
+          {derived.orderOwnerMissing ? t("agent.noOrder") : ""}
+          {derived.rejected.length ? t("agent.rejected", { list: derived.rejected.join(", ") }) : ""}
         </p>
       </Section>
 
-      <Section n="3" title="Which garments">
-        {!items.length && <p style={S.muted}>No items yet.</p>}
+      <Section n="3" title={t("sec.garments")}>
+        {!items.length && <p style={S.muted}>{t("g.none")}</p>}
 
         {items.map((item, i) => {
           const prod = products[item.productIndex];
@@ -673,13 +691,13 @@ export default function App() {
           return (
             <div key={i} style={S.item}>
               <div style={S.itemHead}>
-                <strong>Item {i + 1}</strong>
+                <strong>{t("g.item", { n: i + 1 })}</strong>
                 <button type="button" onClick={() => removeItem(i)} style={S.remove}>
-                  Remove
+                  {t("g.remove")}
                 </button>
               </div>
 
-              <Label>Application</Label>
+              <Label>{t("g.application")}</Label>
               <select
                 value={item.productIndex}
                 onChange={(e) =>
@@ -692,17 +710,17 @@ export default function App() {
                 }
                 style={S.select}
               >
-                <option value="">— select —</option>
+                <option value="">{t("g.select")}</option>
                 {garmentProducts.map((x) => (
                   <option key={x.index} value={x.index}>
-                    {x.product.productName}
+                    {labelApplication(x.product.productName, lang)}
                   </option>
                 ))}
               </select>
 
               {item.productIndex !== "" && (
                 <>
-                  <Label>Garment</Label>
+                  <Label>{t("g.garment")}</Label>
                   <select
                     value={item.garmentIndex}
                     onChange={(e) =>
@@ -714,7 +732,7 @@ export default function App() {
                     }
                     style={S.select}
                   >
-                    <option value="">— select —</option>
+                    <option value="">{t("g.select")}</option>
                     {branches.map((b, bi) => (
                       <option key={bi} value={bi}>
                         {garmentLabel(b, bi)}
@@ -726,7 +744,7 @@ export default function App() {
 
               {formType === "Correction" && item.garmentIndex !== "" && (
                 <>
-                  <Label>Graphic</Label>
+                  <Label>{t("g.graphic")}</Label>
                   <select
                     value={item.graphicIndex}
                     onChange={(e) =>
@@ -737,7 +755,7 @@ export default function App() {
                     }
                     style={S.select}
                   >
-                    <option value="">— select —</option>
+                    <option value="">{t("g.select")}</option>
                     {graphics.map((g, gi) => (
                       <option key={gi} value={gi}>
                         {graphicLabel(g, gi)}
@@ -749,7 +767,7 @@ export default function App() {
 
               {formType === "Correction" && item.graphicIndex !== "" && placements.length > 0 && (
                 <>
-                  <Label>Placement redone</Label>
+                  <Label>{t("g.placement")}</Label>
                   <select
                     value={item.placementIndex}
                     onChange={(e) =>
@@ -759,7 +777,7 @@ export default function App() {
                     }
                     style={S.select}
                   >
-                    <option value="">— select —</option>
+                    <option value="">{t("g.select")}</option>
                     {placements.map((pl, pi) => (
                       <option key={pi} value={pi}>
                         {placementLabel(pl, pi)}
@@ -770,15 +788,12 @@ export default function App() {
               )}
 
               {formType === "Revision" && item.garmentIndex !== "" && (
-                <p style={S.hint}>
-                  All {graphics.length} graphic{graphics.length === 1 ? "" : "s"} on this garment
-                  will be reprinted.
-                </p>
+                <p style={S.hint}>{t("g.allGraphics", { n: graphics.length })}</p>
               )}
 
               {item.garmentIndex !== "" && (
                 <>
-                  <Label>Garments affected</Label>
+                  <Label>{t("g.affected")}</Label>
                   <input
                     type="number"
                     min="1"
@@ -787,15 +802,15 @@ export default function App() {
                     style={S.input}
                   />
                   {branch?.garmentQuantity && (
-                    <p style={S.hint}>Original order was {branch.garmentQuantity}.</p>
+                    <p style={S.hint}>{t("g.originalQty", { n: branch.garmentQuantity })}</p>
                   )}
                 </>
               )}
 
               {r && (
                 <div style={S.itemTotals}>
-                  Screen Print <b>{r.SD}</b> &nbsp;·&nbsp; Embroidery <b>{r.ED}</b> &nbsp;·&nbsp;
-                  Vinyl <b>{r.VD}</b>
+                  {t("r.screenPrint")} <b>{r.SD}</b> &nbsp;·&nbsp; {t("r.embroidery")}{" "}
+                  <b>{r.ED}</b> &nbsp;·&nbsp; {t("r.vinyl")} <b>{r.VD}</b>
                 </div>
               )}
             </div>
@@ -803,17 +818,17 @@ export default function App() {
         })}
 
         <button type="button" onClick={addItem} style={S.add} disabled={!garmentProducts.length}>
-          + Add {items.length ? "another" : "an"} affected garment
+          {items.length ? t("g.addMore") : t("g.add")}
         </button>
         {!garmentProducts.length && (
-          <p style={S.hint}>No garment products found in this deal&rsquo;s payload.</p>
+          <p style={S.hint}>{t("g.noGarments")}</p>
         )}
       </Section>
 
-      <Section n="4" title="Closing date">
+      <Section n="4" title={t("sec.closing")}>
         <div style={S.closingNow}>
-          <span style={S.label2}>Current closing date</span>
-          <b style={S.closingVal}>{deal?.Closing_Date || "not set"}</b>
+          <span style={S.label2}>{t("cd.current")}</span>
+          <b style={S.closingVal}>{deal?.Closing_Date || t("cd.notSet")}</b>
         </div>
 
         <label style={S.check}>
@@ -828,12 +843,12 @@ export default function App() {
               }
             }}
           />
-          <span>Update closing date?</span>
+          <span>{t("cd.update")}</span>
         </label>
 
         {updateClosing && (
           <div style={S.closingBox}>
-            <Label>New closing date</Label>
+            <Label>{t("cd.new")}</Label>
             <input
               type="date"
               value={newClosingDate}
@@ -848,33 +863,30 @@ export default function App() {
                 onChange={(e) => setClosingConfirmed(e.target.checked)}
                 style={{ marginTop: 3 }}
               />
-              <span style={S.disclaimer}>
-                Please ensure that the client has been contacted and has approved the new closing
-                date.
-              </span>
+              <span style={S.disclaimer}>{t("cd.disclaimer")}</span>
             </label>
           </div>
         )}
       </Section>
 
-      <Section n="5" title="Review">
+      <Section n="5" title={t("sec.review")}>
         <div style={S.totalBox}>
           <div style={S.totalRow}>
-            <span>Screen Print</span>
+            <span>{t("r.screenPrint")}</span>
             <b style={S.num}>{totals.sum.SD}</b>
             <code style={S.field}>
               {formType}_Prints_SD_{slot}
             </code>
           </div>
           <div style={S.totalRow}>
-            <span>Embroidery</span>
+            <span>{t("r.embroidery")}</span>
             <b style={S.num}>{totals.sum.ED}</b>
             <code style={S.field}>
               {formType}_Prints_ED_{slot}
             </code>
           </div>
           <div style={S.totalRow}>
-            <span>Vinyl</span>
+            <span>{t("r.vinyl")}</span>
             <b style={S.num}>{totals.sum.VD}</b>
             <code style={S.field}>
               {formType}_Prints_VD_{slot}
@@ -882,9 +894,11 @@ export default function App() {
           </div>
         </div>
         <p style={S.hint}>
-          Also stamps {formType === "Revision" ? "Order Needs Revision" : "Order Needs Corrections"}{" "}
-          and Failed Quality Check, sets {formType}_Count to {slot}, and posts a note with the
-          per-garment breakdown.
+          {t("r.alsoStamps", {
+            stamp: formType === "Revision" ? t("r.stampRevision") : t("r.stampCorrection"),
+            type: formType,
+            n: slot,
+          })}
         </p>
 
         {result && <Banner kind={result.ok ? "ok" : "bad"}>{result.message}</Banner>}
@@ -901,7 +915,7 @@ export default function App() {
               }
             }}
           >
-            Cancel
+            {t("btn.cancel")}
           </button>
           <button
             type="button"
@@ -909,14 +923,14 @@ export default function App() {
             disabled={!canSubmit}
             onClick={submit}
           >
-            {submitting ? "Saving…" : "Submit " + formType}
+            {submitting ? t("btn.saving") : t("btn.submit", { type: t("app." + formType) })}
           </button>
         </div>
         {!canSubmit && !submitting && !overCap && (
           <p style={S.hint}>
             {updateClosing && (newClosingDate === "" || !closingConfirmed)
-              ? "Pick a new closing date and confirm the client has approved it."
-              : "Needs a department, a category, a reason, and at least one garment with a count."}
+              ? t("need.closing")
+              : t("need.all")}
           </p>
         )}
       </Section>
@@ -974,6 +988,10 @@ const S = {
   head: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16, borderBottom: "2px solid #15171b", paddingBottom: 12, marginBottom: 18 },
   h1: { font: "700 20px/1.2 " + sans, letterSpacing: "-0.01em" },
   sub: { color: "#5b6270", fontSize: 13, marginTop: 3 },
+  headRight: { display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 8 },
+  langWrap: { display: "flex", border: "1px solid #d3d6db", borderRadius: 2, overflow: "hidden" },
+  langOff: { font: "600 11px " + mono, letterSpacing: ".06em", padding: "5px 9px", border: "none", background: "#fff", color: "#5b6270", cursor: "pointer" },
+  langOn: { font: "600 11px " + mono, letterSpacing: ".06em", padding: "5px 9px", border: "none", background: "#15171b", color: "#fff", cursor: "pointer" },
   slotBadge: { font: "600 11px/1 " + mono, letterSpacing: ".08em", textTransform: "uppercase", background: "#e4e7f8", color: "#2743c7", padding: "6px 9px", borderRadius: 2, whiteSpace: "nowrap" },
   section: { marginBottom: 26 },
   sectionHead: { font: "600 15px/1.2 " + sans, marginBottom: 10, display: "flex", alignItems: "center", gap: 9 },
