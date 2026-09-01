@@ -44,7 +44,7 @@ const GraphicForm = ({ index }) => {
           render={({ field }) => (
             <FormGroup>
               <FormControlLabel
-                control={<Checkbox {...field} />}
+                control={<Checkbox {...field} checked={!!field.value} />}
                 label="Design Service Needed?"
               />
             </FormGroup>
@@ -60,7 +60,7 @@ const GraphicForm = ({ index }) => {
           render={({ field }) => (
             <FormGroup>
               <FormControlLabel
-                control={<Checkbox {...field} />}
+                control={<Checkbox {...field} checked={!!field.value} />}
                 label="Design Assets Provided?"
               />
             </FormGroup>
@@ -131,7 +131,7 @@ const GraphicForm = ({ index }) => {
           render={({ field }) => (
             <FormGroup>
               <FormControlLabel
-                control={<Checkbox {...field} />}
+                control={<Checkbox {...field} checked={!!field.value} />}
                 label="Service Cost Acknowledged?"
               />
             </FormGroup>

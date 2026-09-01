@@ -224,7 +224,7 @@ const OnlineStorefrontForm = ({ index }) => {
           render={({ field }) => (
             <FormGroup>
               <FormControlLabel
-                control={<Checkbox {...field} />}
+                control={<Checkbox {...field} checked={!!field.value} />}
                 label="Upcharge for Graphic Design?"
               />
             </FormGroup>

@@ -131,7 +131,7 @@ const NonGarmentForm = ({ index }) => {
               render={({ field }) => (
                 <FormGroup>
                   <FormControlLabel
-                    control={<Checkbox {...field} />}
+                    control={<Checkbox {...field} checked={!!field.value} />}
                     label="Is Graphic Print Ready?"
                   />
                 </FormGroup>
@@ -200,7 +200,7 @@ const NonGarmentForm = ({ index }) => {
               render={({ field }) => (
                 <FormGroup>
                   <FormControlLabel
-                    control={<Checkbox {...field} />}
+                    control={<Checkbox {...field} checked={!!field.value} />}
                     label="Upcharge Acknowledged?"
                   />
                 </FormGroup>
@@ -331,7 +331,7 @@ const NonGarmentForm = ({ index }) => {
           render={({ field }) => (
             <FormGroup>
               <FormControlLabel
-                control={<Checkbox {...field} />}
+                control={<Checkbox {...field} checked={!!field.value} />}
                 label="Is Outsourced?"
               />
             </FormGroup>

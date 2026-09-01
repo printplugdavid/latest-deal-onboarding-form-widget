@@ -107,7 +107,7 @@ const GarmentSecondaryBranchForm = ({
           render={({ field }) => (
             <FormGroup>
               <FormControlLabel
-                control={<Checkbox {...field} />}
+                control={<Checkbox {...field} checked={!!field.value} />}
                 label="Is Graphic Print Ready?"
               />
             </FormGroup>
@@ -166,7 +166,7 @@ const GarmentSecondaryBranchForm = ({
             render={({ field }) => (
               <FormGroup>
                 <FormControlLabel
-                  control={<Checkbox {...field} />}
+                  control={<Checkbox {...field} checked={!!field.value} />}
                   label="Depending on current inventory, embroidery jobs with fine detail incur an upcharge for specialty thread"
                 />
               </FormGroup>
@@ -183,7 +183,7 @@ const GarmentSecondaryBranchForm = ({
           render={({ field }) => (
             <FormGroup>
               <FormControlLabel
-                control={<Checkbox {...field} />}
+                control={<Checkbox {...field} checked={!!field.value} />}
                 label="Upcharge Acknowledged?"
               />
             </FormGroup>
