@@ -152,6 +152,10 @@ export default function App() {
   const [items, setItems] = useState([]);
   const [touchedDepartments, setTouchedDepartments] = useState(false);
 
+  const [updateClosing, setUpdateClosing] = useState(false);
+  const [newClosingDate, setNewClosingDate] = useState("");
+  const [closingConfirmed, setClosingConfirmed] = useState(false);
+
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState(null);
 
@@ -254,7 +258,8 @@ export default function App() {
     departments.length > 0 &&
     categories.length > 0 &&
     reason.trim().length > 0 &&
-    totals.detail.length > 0;
+    totals.detail.length > 0 &&
+    (!updateClosing || (newClosingDate !== "" && closingConfirmed));
 
   // ---- actions ----------------------------------------------------------
   function addItem() {
@@ -289,6 +294,12 @@ export default function App() {
     L.push("Category: " + categories.join(", "));
     L.push("Reason:");
     L.push(reason.trim());
+    if (updateClosing && newClosingDate && closingConfirmed) {
+      L.push("");
+      L.push("CLOSING DATE CHANGED");
+      L.push("  " + (deal?.Closing_Date || "(none)") + "  ->  " + newClosingDate);
+      L.push("  Agent confirmed the client was contacted and approved the new date.");
+    }
     L.push("");
     L.push("AFFECTED ITEMS");
     L.push("---------------------------");
@@ -343,6 +354,10 @@ export default function App() {
       api[prefix + "_Department"] = departments;
       api[prefix + "_Reason"] = reason.trim();
       api.Failed_Quality_Check_Date_Time = now;
+
+      if (updateClosing && newClosingDate && closingConfirmed) {
+        api.Closing_Date = newClosingDate; // Zoho date format is YYYY-MM-DD
+      }
 
       if (formType === "Revision") {
         api.Revision_Category = categories; // multi-select
@@ -703,7 +718,54 @@ export default function App() {
         )}
       </Section>
 
-      <Section n="4" title="Review">
+      <Section n="4" title="Closing date">
+        <div style={S.closingNow}>
+          <span style={S.label2}>Current closing date</span>
+          <b style={S.closingVal}>{deal?.Closing_Date || "not set"}</b>
+        </div>
+
+        <label style={S.check}>
+          <input
+            type="checkbox"
+            checked={updateClosing}
+            onChange={(e) => {
+              setUpdateClosing(e.target.checked);
+              if (!e.target.checked) {
+                setNewClosingDate("");
+                setClosingConfirmed(false);
+              }
+            }}
+          />
+          <span>Update closing date?</span>
+        </label>
+
+        {updateClosing && (
+          <div style={S.closingBox}>
+            <Label>New closing date</Label>
+            <input
+              type="date"
+              value={newClosingDate}
+              onChange={(e) => setNewClosingDate(e.target.value)}
+              style={S.input}
+            />
+
+            <label style={{ ...S.check, marginTop: 14, alignItems: "flex-start" }}>
+              <input
+                type="checkbox"
+                checked={closingConfirmed}
+                onChange={(e) => setClosingConfirmed(e.target.checked)}
+                style={{ marginTop: 3 }}
+              />
+              <span style={S.disclaimer}>
+                Please ensure that the client has been contacted and has approved the new closing
+                date.
+              </span>
+            </label>
+          </div>
+        )}
+      </Section>
+
+      <Section n="5" title="Review">
         <div style={S.totalBox}>
           <div style={S.totalRow}>
             <span>Screen Print</span>
@@ -760,7 +822,9 @@ export default function App() {
         </div>
         {!canSubmit && !submitting && !overCap && (
           <p style={S.hint}>
-            Needs a department, a category, a reason, and at least one garment with a count.
+            {updateClosing && (newClosingDate === "" || !closingConfirmed)
+              ? "Pick a new closing date and confirm the client has approved it."
+              : "Needs a department, a category, a reason, and at least one garment with a count."}
           </p>
         )}
       </Section>
@@ -831,6 +895,12 @@ const S = {
   pillOn: { font: "600 13px " + sans, padding: "8px 16px", border: "1px solid #2743c7", background: "#2743c7", color: "#fff", borderRadius: 2, cursor: "pointer" },
   chip: { font: "13px " + sans, padding: "6px 10px", border: "1px solid #d3d6db", background: "#fff", borderRadius: 2, cursor: "pointer", textAlign: "left" },
   chipOn: { font: "13px " + sans, padding: "6px 10px", border: "1px solid #2743c7", background: "#e4e7f8", color: "#2743c7", borderRadius: 2, cursor: "pointer", textAlign: "left" },
+  closingNow: { display: "flex", alignItems: "baseline", gap: 10, marginBottom: 12 },
+  label2: { font: "600 11px " + mono, letterSpacing: ".09em", textTransform: "uppercase", color: "#5b6270" },
+  closingVal: { font: "600 15px " + mono, fontVariantNumeric: "tabular-nums" },
+  check: { display: "flex", alignItems: "center", gap: 9, font: "14px " + sans, cursor: "pointer" },
+  closingBox: { border: "1px solid #d3d6db", borderLeft: "3px solid #8e5a00", background: "#fffdf7", borderRadius: "0 2px 2px 0", padding: "14px 16px", marginTop: 12 },
+  disclaimer: { fontSize: 13.5, lineHeight: 1.45, color: "#15171b" },
   tags: { display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 },
   tag: { display: "inline-flex", alignItems: "center", gap: 6, font: "12.5px " + sans, background: "#e4e7f8", color: "#2743c7", border: "1px solid #c9d0f4", borderRadius: 2, padding: "4px 6px 4px 9px" },
   tagX: { font: "15px/1 " + sans, color: "#2743c7", background: "none", border: "none", cursor: "pointer", padding: "0 2px" },
