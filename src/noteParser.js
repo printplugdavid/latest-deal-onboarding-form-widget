@@ -52,16 +52,70 @@ export function toPlainText(raw) {
   return t;
 }
 
+const splitList = (v) =>
+  String(v || "")
+    .split(",")
+    .map((x) => x.trim())
+    .filter(Boolean);
+
+/*
+ * Checkbox fields switched from `true`/`false` to `Yes`/`No` in the note on
+ * 2026-09-01, so the catalogue carries both. Normalise on read -- any later
+ * `=== "true"` would work on old deals and silently fail on new ones.
+ */
+export function yesNo(v) {
+  const s = String(v == null ? "" : v).trim().toLowerCase();
+  if (s === "yes" || s === "true") return "Yes";
+  if (s === "no" || s === "false") return "No";
+  return "";
+}
+
 function escapeRe(s) {
   return String(s).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-/* Value of a "Label: value" line inside a block. Returns "" when absent. */
+const DIVIDER = /^[ \t]*-{3,}[ \t]*$/;
+/*
+ * A line that starts a new field: some text, then a colon followed by a space
+ * or end-of-line. Requiring the space is what stops a value like `2.5" at 2:30`
+ * from being mistaken for a label.
+ */
+const NEXT_LABEL = /^[ \t]*[^:\n]{1,70}:(?:[ \t]|$)/;
+
+/*
+ * Value of a "Label: value" field. Returns "" when absent.
+ *
+ * Values are frequently MULTI-LINE: agents type into textareas, and when their
+ * text begins with a newline the note reads
+ *
+ *     Garment Type (Brand / Style):
+ *     Client Owned Infant Hat
+ *     1- White
+ *
+ * so an end-of-line capture returns "" and the garment loses its label. Read
+ * on until the next field, a divider, or a section heading (headings are always
+ * the line directly above a divider).
+ */
 function field(block, label) {
-  const m = block.match(new RegExp("^[ \\t]*" + escapeRe(label) + "[ \\t]*:[ \\t]*(.*)$", "mi"));
-  if (!m) return "";
-  const v = m[1].trim();
-  return v === "undefined" || v === "null" ? "" : v;
+  const lines = String(block || "").split("\n");
+  const head = new RegExp("^[ \\t]*" + escapeRe(label) + "[ \\t]*:[ \\t]*(.*)$", "i");
+
+  for (let i = 0; i < lines.length; i++) {
+    const m = lines[i].match(head);
+    if (!m) continue;
+
+    const parts = [m[1]];
+    for (let j = i + 1; j < lines.length; j++) {
+      if (DIVIDER.test(lines[j])) break;
+      if (NEXT_LABEL.test(lines[j])) break;
+      if (DIVIDER.test(lines[j + 1] || "")) break; // a heading sitting above its rule
+      parts.push(lines[j]);
+    }
+
+    const v = parts.join("\n").trim();
+    return v === "undefined" || v === "null" ? "" : v;
+  }
+  return "";
 }
 
 /*
@@ -108,7 +162,10 @@ export function parseOnboardingNote(rawContent) {
       productName,
       productType,
       numberOfGarmentTypes: field(p.body, "Number of Garment Types"),
-      otherInformation: field(p.body, "Other Information"),
+      // Relabelled 2026-09-01 on non-garment/graphic products; older deals of
+      // those types carry the same text under "Special Instructions".
+      otherInformation:
+        field(p.body, "Other Information") || field(p.body, "Special Instructions"),
       _source: "note",
     };
 
@@ -120,6 +177,9 @@ export function parseOnboardingNote(rawContent) {
         garmentType: field(g.body, "Garment Type (Brand / Style)"),
         countColorSize: field(g.body, "Total Count, Colors & Sizes"),
         numberOfGraphics: field(g.body, "Number of Graphics"),
+        // Added to the note 2026-09-01. Shaped like the JSON payload's key so a
+        // note-sourced deal and a JSON-sourced one look the same to consumers.
+        garmentSkus: splitList(field(g.body, "SKU(s)")).map((sku) => ({ sku })),
         // Not recorded in the note. The agent supplies the affected count, and
         // the calculation overrides this anyway.
         garmentQuantity: "",
@@ -144,7 +204,7 @@ export function parseOnboardingNote(rawContent) {
       product.quantityOrdered = field(p.body, "Quantity Ordered");
       product.dimensions = field(p.body, "Dimensions");
       product.numberOfSides = field(p.body, "# Of Sides");
-      product.isOutsourced = field(p.body, "Is Outsourced?");
+      product.isOutsourced = yesNo(field(p.body, "Is Outsourced?"));
       product.vendorsUsed = field(p.body, "Vendors Used");
       product.branches = splitSections(p.body, "Graphic").map((gr) => ({
         graphicDescription: field(gr.body, "Graphic Description"),

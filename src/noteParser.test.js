@@ -6,7 +6,7 @@
  * back the print count the note itself printed in its summary. That closes the
  * loop -- parser and math together reproduce the original job.
  */
-import { parseOnboardingNote, toPlainText } from "./noteParser";
+import { parseOnboardingNote, toPlainText, yesNo } from "./noteParser";
 import { computePrints } from "./printMath";
 
 // Note 5249739000122607751 -- "Season 2 - Putnam Valley High School- Volleyball"
@@ -230,5 +230,209 @@ describe("parseOnboardingNote — robustness", () => {
 
   test("stops at OTHER INFORMATION so the summary is never read as product data", () => {
     expect(parseOnboardingNote(putnamValley)).toHaveLength(1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Live note from 2026-09-02, AFTER the onboarding lane's changes: Yes/No
+// booleans, SKU(s) rows, "Placement sizes" in the summary, and -- the thing
+// that actually bit -- MULTI-LINE values, because agents type into textareas
+// and their text often begins with a newline.
+// Deal 5249739000122977028 · note 5249739000122977057
+// ---------------------------------------------------------------------------
+const postChangeNote = `PRODUCT INFORMATION
+---------------------------
+
+Selected Product Types: Direct-to-Film
+
+Product 1: Direct-to-Film
+---------------------------
+
+Garment &amp; Graphic Information
+---------------------------
+
+Number of Garment Types: 2
+
+Garment 1:
+---------------------------
+
+Garment Type (Brand / Style): 
+Client Owned Infant Hat 
+1- White 
+
+SKU(s): Client Owned Hobby Lobby Hat 
+
+Total Count, Colors &amp; Sizes: 
+1- White 
+Client Owned Infant Hat 
+
+Graphic &amp; Placement Information
+---------------------------
+
+Number of Graphics: 1
+
+Graphic 1:
+---------------------------
+
+Graphic Description: 
+Maroon Heart goose graphic at 2.5" tall center hat 
+
+Is Graphic Print Ready?: No
+
+Current Graphic Format: PNG
+
+Fine Detail?: No
+
+Upcharge Acknowledged?: No
+
+Number Of Colors Used: 1
+
+Underbase Needed?: None
+
+Colors Used (Threads / PANTONES): 
+Full color DTF
+
+Color Change?: No
+
+Fonts Used: 
+NA
+
+Number Of Placements: 1
+
+Placement 1:
+---------------------------
+
+Placement Location: Center hat 
+
+Sizes &amp; Dimensions: 
+2.5" tall 
+
+Placement Size: Small
+
+Is This Garment Used With Other Application Types?: No
+
+Vendors Used: Client Owned 
+
+Special Instructions / Considerations: 
+
+Garment 2:
+---------------------------
+
+Garment Type (Brand / Style): 
+6277 Flexfit Hats 
+Black 
+1- S/M
+1- L/XL 
+
+SKU(s): 6277
+
+Total Count, Colors &amp; Sizes: 
+6277 Flexfit hats 
+Black 
+
+Graphic &amp; Placement Information
+---------------------------
+
+Number of Graphics: 1
+
+Graphic 1:
+---------------------------
+
+Graphic Description: 
+Talk to me goose image at 2.5" tall center hat 
+
+Number Of Colors Used: 1
+
+Underbase Needed?: None
+
+Number Of Placements: 1
+
+Placement 1:
+---------------------------
+
+Placement Location: Center Hat
+
+Placement Size: Small
+
+Vendors Used: Inventory 
+
+Special Instructions / Considerations: 
+
+Other Information: 
+
+
+OTHER INFORMATION
+---------------------------
+
+How Did You Hear About Us?: Other
+
+PRINT COUNT SUMMARY
+---------------------------
+
+Embroidery
+   Actual: 0  |  Projected: 0  |  Total: 0
+   Placement sizes — Small: 0  |  Medium: 0  |  Large: 0
+`;
+
+describe("parseOnboardingNote — the current note format", () => {
+  const products = parseOnboardingNote(postChangeNote);
+  const g1 = products[0].primaryBranches[0];
+  const g2 = products[0].primaryBranches[1];
+
+  test("finds both garments", () => {
+    expect(products[0].productName).toBe("Direct-to-Film");
+    expect(products[0].primaryBranches).toHaveLength(2);
+  });
+
+  test("MULTI-LINE values are captured, not lost", () => {
+    // An end-of-line capture returned "" here, and the garment dropdown would
+    // have read "Garment 1" with no brand or style at all.
+    expect(g1.garmentType).toBe("Client Owned Infant Hat \n1- White");
+    expect(g2.garmentType).toContain("6277 Flexfit Hats");
+    expect(g2.garmentType).toContain("1- L/XL");
+  });
+
+  test("a multi-line value stops before the next field", () => {
+    expect(g1.garmentType).not.toContain("SKU");
+    expect(g1.countColorSize).not.toContain("Graphic");
+  });
+
+  test("a multi-line value stops before a section heading", () => {
+    expect(g2.countColorSize).toBe("6277 Flexfit hats \nBlack");
+  });
+
+  test("SKU rows parse to the same shape as the JSON payload", () => {
+    expect(g1.garmentSkus).toEqual([{ sku: "Client Owned Hobby Lobby Hat" }]);
+    expect(g2.garmentSkus).toEqual([{ sku: "6277" }]);
+  });
+
+  test("the terms the calculation needs still land", () => {
+    const gfx = g1.secondaryBranches[0];
+    expect(gfx.numberOfColorsUsed).toBe("1");
+    expect(gfx.underbase).toBe("None");
+    expect(gfx.numberOfPlacements).toBe("1");
+    expect(gfx.tartiaryBranches[0].placementSize).toBe("Small");
+  });
+
+  test("costs what the note's own summary says", () => {
+    const withQty = JSON.parse(JSON.stringify(products));
+    withQty[0].primaryBranches.forEach((b) => (b.garmentQuantity = "1"));
+    // DTF: qty x placements, doubled for the heat press. 1 each, 2 garments.
+    expect(computePrints(withQty).VD).toBe(4);
+  });
+
+  test("'Placement sizes' in the summary is never read as 'Placement Size'", () => {
+    // It also sits outside the parsed section, so this is belt and braces.
+    expect(g1.secondaryBranches[0].tartiaryBranches[0].placementSize).toBe("Small");
+  });
+});
+
+describe("yesNo", () => {
+  test("normalises both eras of checkbox rendering", () => {
+    expect(yesNo("true")).toBe("Yes");
+    expect(yesNo("Yes")).toBe("Yes");
+    expect(yesNo("false")).toBe("No");
+    expect(yesNo("No")).toBe("No");
+    expect(yesNo("")).toBe("");
   });
 });
