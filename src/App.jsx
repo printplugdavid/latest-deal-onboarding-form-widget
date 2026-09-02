@@ -67,7 +67,11 @@ function pcGarmentSummary(items, bi) {
   const gs = []; items.forEach((p) => { if (p.productType === "garment") (p.primaryBranches || []).forEach((g) => { if (pcHas(g?.garmentType) || pcHas(g?.garmentQuantity)) gs.push(`${pcHas(g?.garmentQuantity) ? pcEsc(g.garmentQuantity) + "× " : ""}${pcEsc(g?.garmentType || "Garment")}`); }); });
   if (!gs.length) return ""; return `<div class="gsummary"><b>${bi ? "Garments / Prendas" : "Garments"}:</b> ${gs.join("  •  ")}</div>`;
 }
-function pcOverview(p) { const bits = [pcHas(p?.quantityOrdered) ? `<b>${pcEsc(p.quantityOrdered)}×</b>` : "", pcEsc(p?.productName)].filter(Boolean).join(" "); const extra = [pcHas(p?.dimensions) ? pcEsc(p.dimensions) : "", pcHas(p?.vendorsUsed) ? "vendor: " + pcEsc(p.vendorsUsed) : ""].filter(Boolean).join(" · "); return `<div class="orow">${bits}${extra ? ` <span class="omute">— ${extra}</span>` : ""}</div>`; }
+// The product-level note lives under different keys by product type - garments use
+// otherInformation, non-garment and graphic use specialInstructions - but both are
+// labelled "Other Information" in the form. One accessor so the cards never care which.
+const pcNote = (p) => (pcHas(p?.otherInformation) ? p.otherInformation : pcHas(p?.specialInstructions) ? p.specialInstructions : "");
+function pcOverview(p) { const bits = [pcHas(p?.quantityOrdered) ? `<b>${pcEsc(p.quantityOrdered)}×</b>` : "", pcEsc(p?.productName)].filter(Boolean).join(" "); const extra = [pcHas(p?.dimensions) ? pcEsc(p.dimensions) : "", pcHas(p?.vendorsUsed) ? "vendor: " + pcEsc(p.vendorsUsed) : ""].filter(Boolean).join(" · "); const note = pcHas(pcNote(p)) ? `<div class="orow"><span class="omute">Other Information —</span> <b>${pcEsc(pcNote(p))}</b></div>` : ""; return `<div class="orow">${bits}${extra ? ` <span class="omute">— ${extra}</span>` : ""}</div>${note}`; }
 const PC_CSS = `body{font-family:-apple-system,Segoe UI,Roboto,sans-serif;background:#e9eaec;margin:0;padding:24px;color:#1a1a1a}.pcard{background:#fff;max-width:760px;margin:0 auto 28px;border:1px solid #ccc;border-radius:6px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.08)}.strip{background:#111;color:#fff;padding:14px 18px}.stripline{display:flex;align-items:center;gap:12px;flex-wrap:wrap}.acct{font-size:18px;font-weight:700}.deal{color:#bbb;font-size:14px}.rush{margin-left:auto;background:#d32f2f;color:#fff;font-weight:800;padding:3px 12px;border-radius:4px;letter-spacing:.05em}.stripmeta{display:flex;gap:18px;flex-wrap:wrap;margin-top:8px;font-size:14px;align-items:baseline}.dept{font-size:20px;font-weight:800}.pc{margin-left:auto}.pc b{font-size:20px}.due b{color:#ffd54f}.gsummary{background:#f0f7ff;border-bottom:1px solid #cfe3ff;padding:8px 18px;font-size:14px}.cbody{padding:16px 18px}.job{border:1px solid #ddd;border-radius:5px;margin-bottom:14px;overflow:hidden}.jhead{background:#f3f4f6;padding:8px 12px;font-weight:700;display:flex;justify-content:space-between}.jcount{color:#d32f2f}.omute{color:#999;font-weight:400;font-size:13px}.garment{border-left:3px solid #111;padding:10px 12px;margin:10px}.ghead{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px}.gname{font-size:16px;font-weight:700}.gqty{font-weight:700}.graphic{margin:8px 0 8px 10px;padding-left:12px;border-left:2px solid #ddd}.grtitle{font-weight:600;margin-bottom:4px}.row{display:flex;gap:8px;font-size:14px;padding:1px 0}.lbl{color:#666;min-width:170px}.val{font-weight:500}.row.crit .val{font-weight:800}.row.crit .lbl{color:#111}.plc{margin-top:5px}.prow{font-size:14px;background:#fff7e6;border:1px solid #ffe0a3;border-radius:3px;padding:3px 8px;margin:3px 0;display:inline-block}.ploc{font-weight:800}.alsonote{margin-top:6px;font-size:13px;background:#eef2ff;border:1px solid #c7d2fe;border-radius:3px;padding:5px 9px}.orow{padding:5px 12px;font-size:15px;border-bottom:1px solid #eee}.cfooter{background:#f3f4f6;padding:9px 18px;font-size:13px;color:#444;border-top:1px solid #ddd}`;
 const pcDoc = (cm, inner) => `<!doctype html><html><head><meta charset="utf-8"><title>${pcEsc(cm.dept)}</title><style>${PC_CSS}</style></head><body><section class="pcard">${inner}</section></body></html>`;
 function buildProductionCards(data, counts) {
@@ -88,7 +92,7 @@ function buildProductionCards(data, counts) {
         const sz = [["Small", counts.embroiderySmallPrints], ["Medium", counts.embroideryMediumPrints], ["Large", counts.embroideryLargePrints]]
           .filter(([, v]) => v > 0).map(([k, v]) => `${k}: ${v}`).join("  •  ");
         if (sz) gsum += `<div class="gsummary"><b>Placement sizes:</b> ${pcEsc(sz)}</div>`;
-      } const jobs = {}; byCard[cardKey].forEach(({ p, r }) => { (jobs[r.job] = jobs[r.job] || { key: r.key, items: [] }).items.push(p); }); body = Object.entries(jobs).map(([job, info]) => { const cnt = info.key && counts && pcHas(counts[info.key]) ? `<span class="jcount">${counts[info.key]} prints</span>` : ""; const entries = info.items.map((p) => p.productType === "garment" ? (p.primaryBranches || []).map((g) => pcGarmentBlock(g, bi, p.premiumIronPass)).join("") : pcOverview(p)).join(""); return `<div class="job"><div class="jhead"><span>${pcEsc(job)}</span>${cnt}</div>${entries}</div>`; }).join(""); }
+      } const jobs = {}; byCard[cardKey].forEach(({ p, r }) => { (jobs[r.job] = jobs[r.job] || { key: r.key, items: [] }).items.push(p); }); body = Object.entries(jobs).map(([job, info]) => { const cnt = info.key && counts && pcHas(counts[info.key]) ? `<span class="jcount">${counts[info.key]} prints</span>` : ""; const entries = info.items.map((p) => { if (p.productType !== "garment") return pcOverview(p); const pnote = pcHas(pcNote(p)) ? `<div class="garment">${pcRow("Other Information", "Información Adicional", pcNote(p), { crit: true, bi })}</div>` : ""; return pnote + (p.primaryBranches || []).map((g) => pcGarmentBlock(g, bi, p.premiumIronPass)).join(""); }).join(""); return `<div class="job"><div class="jhead"><span>${pcEsc(job)}</span>${cnt}</div>${entries}</div>`; }).join(""); }
     const deptTotal = cm.countKey && counts && pcHas(counts[cm.countKey]) ? counts[cm.countKey] : null;
     files.push({ name: cm.file, html: pcDoc(cm, strip(cm, deptTotal, gsum) + `<div class="cbody">${body}</div>` + footer(cm.dept)) });
   }
@@ -712,7 +716,7 @@ function App() {
           product?.numberOfSides +
           newLine +
           newLine +
-          "Special Instructions: " +
+          "Other Information: " +
           product?.specialInstructions +
           newLine +
           newLine +
@@ -908,7 +912,7 @@ function App() {
           customDate(product?.dateNeededBy) +
           newLine +
           newLine +
-          "Special Instructions: " +
+          "Other Information: " +
           product?.specialInstructions +
           newLine +
           newLine +

@@ -189,7 +189,7 @@ const GraphicForm = ({ index }) => {
             id="specialInstructions"
             variant="outlined"
             fullWidth
-            label="Special Instructions"
+            label="Other Information"
             {...field}
             sx={{ mb: "1rem", mt: "5px" }}
           />
