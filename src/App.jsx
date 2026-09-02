@@ -13,6 +13,7 @@ import { useEffect, useMemo, useState } from "react";
 import { computePrints, departmentFor } from "./printMath";
 import { readPayload } from "./payload";
 import { deriveAgents } from "./agentAssign";
+import { placementsOf, syntheticProducts } from "./affected";
 import {
   makeT,
   loadLang,
@@ -30,7 +31,6 @@ const DEPARTMENTS = [
   "Vinyl Department",
   "Outsourced",
   "Graphic Design",
-  "Ordering",
 ];
 
 const REVISION_CATEGORIES = [
@@ -134,29 +134,6 @@ function placementLabel(pl, i) {
  * onboarding calculation. Revision = every graphic on that garment reprints.
  * Correction = only the affected placement is redone.
  */
-function syntheticProducts(products, item, formType) {
-  const product = products[item.productIndex];
-  if (!product) return [];
-  const branch = product?.primaryBranches?.[item.garmentIndex];
-  if (!branch) return [];
-
-  let graphics = branch.secondaryBranches || [];
-  if (formType === "Correction") {
-    const g = graphics[item.graphicIndex];
-    if (!g) return [];
-    graphics = [{ ...g, numberOfPlacements: "1" }];
-  }
-
-  return [
-    {
-      ...product,
-      primaryBranches: [
-        { ...branch, garmentQuantity: String(item.affected || 0), secondaryBranches: graphics },
-      ],
-    },
-  ];
-}
-
 // ---------------------------------------------------------------- component
 
 export default function App() {
@@ -177,8 +154,6 @@ export default function App() {
   const [items, setItems] = useState([]);
   const [touchedDepartments, setTouchedDepartments] = useState(false);
   const [completedTasks, setCompletedTasks] = useState([]);
-  const [agents, setAgents] = useState([]);
-  const [touchedAgents, setTouchedAgents] = useState(false);
 
   const [updateClosing, setUpdateClosing] = useState(false);
   const [newClosingDate, setNewClosingDate] = useState("");
@@ -271,7 +246,7 @@ export default function App() {
     const detail = [];
     items.forEach((item) => {
       if (!item.affected || item.productIndex === "" || item.garmentIndex === "") return;
-      if (formType === "Correction" && item.graphicIndex === "") return;
+      if (formType === "Correction" && !(item.placementKeys || []).length) return;
       const synth = syntheticProducts(products, item, formType);
       const r = computePrints(synth);
       sum.SD += r.SD;
@@ -292,11 +267,6 @@ export default function App() {
       }),
     [categories, departments, completedTasks]
   );
-
-  useEffect(() => {
-    if (touchedAgents) return;
-    setAgents(derived.agents);
-  }, [derived, touchedAgents]);
 
   // Pre-fill the producing department from the selection, so it can't be omitted.
   useEffect(() => {
@@ -331,7 +301,7 @@ export default function App() {
   function addItem() {
     setItems((prev) => [
       ...prev,
-      { productIndex: "", garmentIndex: "", graphicIndex: "", placementIndex: "", affected: "" },
+      { productIndex: "", garmentIndex: "", placementKeys: [], affected: "" },
     ]);
   }
 
@@ -358,7 +328,7 @@ export default function App() {
     L.push("");
     L.push("Department(s): " + departments.join(", "));
     L.push("Category: " + categories.join(", "));
-    L.push("Agent(s): " + (agents.length ? agents.join(", ") : "(none identified)"));
+    L.push("Agent(s): " + (derived.agents.length ? derived.agents.join(", ") : "(none identified)"));
     L.push("Reason:");
     L.push(reason.trim());
     if (updateClosing && newClosingDate && closingConfirmed) {
@@ -377,12 +347,19 @@ export default function App() {
       L.push("Item " + (n + 1) + ": " + p?.productName);
       L.push("  " + garmentLabel(b, item.garmentIndex));
       if (formType === "Correction") {
-        const g = b?.secondaryBranches?.[item.graphicIndex];
-        L.push("  " + graphicLabel(g, item.graphicIndex));
-        if (item.placementIndex !== "") {
-          const pl = g?.tartiaryBranches?.[item.placementIndex];
-          L.push("  " + placementLabel(pl, item.placementIndex));
-        }
+        const all = placementsOf(b);
+        L.push("  Placements redone (" + (item.placementKeys || []).length + "):");
+        (item.placementKeys || []).forEach((k) => {
+          const hit = all.find((x) => x.key === k);
+          if (hit) {
+            L.push(
+              "    " +
+                graphicLabel(hit.graphic, hit.gi) +
+                "  ->  " +
+                placementLabel(hit.placement, hit.pi)
+            );
+          }
+        });
       } else {
         L.push(
           "  All graphics on this garment reprinted (" + (b?.secondaryBranches || []).length + ")"
@@ -426,7 +403,8 @@ export default function App() {
         api.Closing_Date = newClosingDate; // Zoho date format is YYYY-MM-DD
       }
 
-      if (agents.length) api[prefix + "_Agent"] = agents;
+      // Accountability is traced, never chosen by the person filing the form.
+      if (derived.agents.length) api[prefix + "_Agent"] = derived.agents;
 
       if (formType === "Revision") {
         api.Revision_Category = categories; // multi-select
@@ -644,35 +622,6 @@ export default function App() {
           placeholder={t("ph.reason")}
         />
 
-        <Label>{t("lbl.agent", { type: t("app." + formType) })}</Label>
-        <div style={S.wrap}>
-          {AGENTS.map((a) => (
-            <button
-              key={a}
-              type="button"
-              onClick={() => {
-                setTouchedAgents(true);
-                toggle(agents, setAgents, a);
-              }}
-              style={agents.includes(a) ? S.chipOn : S.chip}
-            >
-              {a}
-            </button>
-          ))}
-        </div>
-        <p style={S.hint}>
-          {agents.length ? t("agent.identified") : t("agent.none")}
-          {derived.misses.length
-            ? t("agent.miss", { list: derived.misses.map((d) => labelDepartment(d, lang)).join(", ") })
-            : ""}
-          {derived.unmappedDepartments.length
-            ? t("agent.unmapped", {
-                list: derived.unmappedDepartments.map((d) => labelDepartment(d, lang)).join(", "),
-              })
-            : ""}
-          {derived.orderOwnerMissing ? t("agent.noOrder") : ""}
-          {derived.rejected.length ? t("agent.rejected", { list: derived.rejected.join(", ") }) : ""}
-        </p>
       </Section>
 
       <Section n="3" title={t("sec.garments")}>
@@ -683,8 +632,7 @@ export default function App() {
           const branches = prod?.primaryBranches || [];
           const branch = branches[item.garmentIndex];
           const graphics = branch?.secondaryBranches || [];
-          const graphic = graphics[item.graphicIndex];
-          const placements = graphic?.tartiaryBranches || [];
+          const allPlacements = branch ? placementsOf(branch) : [];
           const found = totals.detail.find((d) => d.item === item);
           const r = found ? found.result : null;
 
@@ -704,8 +652,7 @@ export default function App() {
                   patchItem(i, {
                     productIndex: e.target.value === "" ? "" : Number(e.target.value),
                     garmentIndex: "",
-                    graphicIndex: "",
-                    placementIndex: "",
+                    placementKeys: [],
                   })
                 }
                 style={S.select}
@@ -726,8 +673,7 @@ export default function App() {
                     onChange={(e) =>
                       patchItem(i, {
                         garmentIndex: e.target.value === "" ? "" : Number(e.target.value),
-                        graphicIndex: "",
-                        placementIndex: "",
+                        placementKeys: [],
                       })
                     }
                     style={S.select}
@@ -744,46 +690,38 @@ export default function App() {
 
               {formType === "Correction" && item.garmentIndex !== "" && (
                 <>
-                  <Label>{t("g.graphic")}</Label>
-                  <select
-                    value={item.graphicIndex}
-                    onChange={(e) =>
-                      patchItem(i, {
-                        graphicIndex: e.target.value === "" ? "" : Number(e.target.value),
-                        placementIndex: "",
-                      })
-                    }
-                    style={S.select}
-                  >
-                    <option value="">{t("g.select")}</option>
-                    {graphics.map((g, gi) => (
-                      <option key={gi} value={gi}>
-                        {graphicLabel(g, gi)}
-                      </option>
-                    ))}
-                  </select>
-                </>
-              )}
-
-              {formType === "Correction" && item.graphicIndex !== "" && placements.length > 0 && (
-                <>
-                  <Label>{t("g.placement")}</Label>
-                  <select
-                    value={item.placementIndex}
-                    onChange={(e) =>
-                      patchItem(i, {
-                        placementIndex: e.target.value === "" ? "" : Number(e.target.value),
-                      })
-                    }
-                    style={S.select}
-                  >
-                    <option value="">{t("g.select")}</option>
-                    {placements.map((pl, pi) => (
-                      <option key={pi} value={pi}>
-                        {placementLabel(pl, pi)}
-                      </option>
-                    ))}
-                  </select>
+                  <Label>{t("g.placements")}</Label>
+                  {allPlacements.length ? (
+                    <>
+                      <div style={S.placeList}>
+                        {allPlacements.map((x) => {
+                          const on = (item.placementKeys || []).indexOf(x.key) >= 0;
+                          return (
+                            <label key={x.key} style={on ? S.placeRowOn : S.placeRow}>
+                              <input
+                                type="checkbox"
+                                checked={on}
+                                onChange={() =>
+                                  patchItem(i, {
+                                    placementKeys: on
+                                      ? item.placementKeys.filter((k) => k !== x.key)
+                                      : (item.placementKeys || []).concat(x.key),
+                                  })
+                                }
+                              />
+                              <span>
+                                <b>{placementLabel(x.placement, x.pi)}</b>
+                                <span style={S.placeSub}>{graphicLabel(x.graphic, x.gi)}</span>
+                              </span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                      <p style={S.hint}>{t("g.placementsHint")}</p>
+                    </>
+                  ) : (
+                    <p style={S.hint}>{t("g.noPlacements")}</p>
+                  )}
                 </>
               )}
 
@@ -1020,6 +958,10 @@ const S = {
   item: { border: "1px solid #d3d6db", borderRadius: 2, padding: "14px 16px", marginBottom: 12, background: "#fbfbfc" },
   itemHead: { display: "flex", justifyContent: "space-between", alignItems: "center" },
   remove: { font: "12px " + sans, color: "#b5372c", background: "none", border: "none", cursor: "pointer", padding: 0 },
+  placeList: { display: "flex", flexDirection: "column", gap: 4, marginTop: 2 },
+  placeRow: { display: "flex", alignItems: "flex-start", gap: 9, font: "13.5px " + sans, cursor: "pointer", padding: "7px 9px", border: "1px solid #e3e5e9", borderRadius: 2, background: "#fff" },
+  placeRowOn: { display: "flex", alignItems: "flex-start", gap: 9, font: "13.5px " + sans, cursor: "pointer", padding: "7px 9px", border: "1px solid #2743c7", borderRadius: 2, background: "#e4e7f8" },
+  placeSub: { display: "block", fontSize: 12, color: "#5b6270", marginTop: 2 },
   itemTotals: { marginTop: 12, paddingTop: 10, borderTop: "1px solid #e3e5e9", font: "13px " + mono, color: "#15171b" },
   add: { font: "600 13px " + sans, padding: "9px 14px", border: "1px dashed #b6bbc4", background: "#fff", borderRadius: 2, cursor: "pointer", width: "100%" },
   totalBox: { border: "1px solid #d3d6db", borderRadius: 2, overflow: "hidden" },

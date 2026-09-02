@@ -92,14 +92,10 @@ describe("deriveAgents — matches the Deluge", () => {
 });
 
 describe("deriveAgents — what the Deluge swallowed", () => {
-  test("Ordering attributes to whoever ordered the garments", () => {
-    const r = run(["Missing Product"], ["Ordering"]);
-    expect(r.agents).toEqual(["Ray Castaneda"]);
-    expect(r.unmappedDepartments).toEqual([]);
-  });
-
-  test("Ordering plus the producing department gives both people", () => {
-    const r = run(["Missing Product"], ["Screen Printing", "Ordering"]);
+  test("ordering accountability comes from the category, not a department", () => {
+    // A Misorder already pulls in whoever ordered the garments, which is why an
+    // "Ordering" department was redundant and was removed from the form.
+    const r = run(["Wrong Product Type (Misorder)"], ["Screen Printing"]);
     expect(r.agents).toEqual(["Yefri Rivera", "Ray Castaneda"]);
   });
 

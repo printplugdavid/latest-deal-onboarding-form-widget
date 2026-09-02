@@ -48,8 +48,8 @@ const STRINGS = {
     es: "Se reordena la prenda en blanco y se reimprime cada gráfico de la prenda.",
   },
   "type.correctionHint": {
-    en: "The garment is salvaged in-house and one placement is redone.",
-    es: "La prenda se recupera internamente y se rehace una sola ubicación.",
+    en: "The garment is salvaged in-house and only the affected placements are redone.",
+    es: "La prenda se recupera internamente y solo se rehacen las ubicaciones afectadas.",
   },
 
   // ---- what went wrong --------------------------------------------------
@@ -97,6 +97,15 @@ const STRINGS = {
   "g.garment": { en: "Garment", es: "Prenda" },
   "g.graphic": { en: "Graphic", es: "Gráfico" },
   "g.placement": { en: "Placement redone", es: "Ubicación rehecha" },
+  "g.placements": { en: "Placements affected", es: "Ubicaciones afectadas" },
+  "g.placementsHint": {
+    en: "Only the placements you tick are counted — a shirt with three placements where one is redone costs one placement, not three.",
+    es: "Solo se cuentan las ubicaciones marcadas — una camisa con tres ubicaciones donde se rehace una cuesta una ubicación, no tres.",
+  },
+  "g.noPlacements": {
+    en: "No placements recorded for this garment.",
+    es: "No hay ubicaciones registradas para esta prenda.",
+  },
   "g.affected": { en: "Garments affected", es: "Prendas afectadas" },
   "g.select": { en: "— select —", es: "— seleccione —" },
   "g.originalQty": { en: "Original order was {n}.", es: "El pedido original fue de {n}." },
