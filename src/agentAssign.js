@@ -1,5 +1,11 @@
 /*
- * agentAssign.js -- who is responsible for a revision.
+ * agentAssign.js -- who is RESPONSIBLE for a revision.
+ *
+ * Not the same question as Revision_Department, which is who has to FIX it.
+ * The department is pre-filled from the producing department (that is who runs
+ * the reprint); the agent is traced from who owned the original Produce Order
+ * task. They diverge on purpose -- a missing garment still needs someone to
+ * reprint it, but nobody can be fairly blamed for losing it.
  *
  * A faithful port of the agent-identification block in the Deluge function
  * `Order Revision function` (steps 1-6). The intent is that the FORM derives
@@ -8,6 +14,9 @@
  *
  * Behaviour is deliberately identical to the Deluge, including its quirks:
  *   - "Shipped Damaged" alone means no agent at all
+ *   - "Missing Product" the same (David's ruling, 2026-09-02): a lost garment
+ *     cannot be pinned on anyone by formula. If there IS someone to blame, a
+ *     human assigns it by hand rather than the form guessing.
  *   - "Misorder" additionally pulls in whoever ordered the garments
  *   - the first matching completed task wins (the Deluge breaks on first hit)
  *   - Outsourced always also adds Korie Byrd; Graphic Design always also adds
@@ -57,19 +66,21 @@ export function deriveAgents({
   // ---- Step 1: what does the category tell us to look for? ----------------
   let needsProduceOrderOwner = false;
   let needsOrderProductsOwner = false;
-  let shippedDamagedOnly = true;
+  // True while every category chosen is one nobody can be fairly blamed for.
+  let unattributableOnly = true;
 
   categories.forEach((c) => {
     const s = String(c || "");
-    if (s.includes("Shipped Damaged")) {
-      // no agent needed for this category
+    if (s.includes("Shipped Damaged") || s.includes("Missing Product")) {
+      // Nobody is identified for these. A courier damaging a box, or a garment
+      // going missing, is not something a completed task can pin on a person.
     } else if (s.includes("Misorder")) {
       needsProduceOrderOwner = true;
       needsOrderProductsOwner = true;
-      shippedDamagedOnly = false;
+      unattributableOnly = false;
     } else {
       needsProduceOrderOwner = true;
-      shippedDamagedOnly = false;
+      unattributableOnly = false;
     }
   });
 
@@ -81,7 +92,7 @@ export function deriveAgents({
   };
 
   // ---- Steps 2-4: the producing agent, per department ---------------------
-  if (!shippedDamagedOnly && needsProduceOrderOwner) {
+  if (!unattributableOnly && needsProduceOrderOwner) {
     departments.forEach((dept) => {
       const map = DEPARTMENT_TASK_KEYWORD[dept];
       if (!map) {

@@ -46,6 +46,22 @@ describe("deriveAgents — matches the Deluge", () => {
     expect(r.agents).toEqual([]);
   });
 
+  test("Missing Product alone assigns nobody — a lost garment is not traceable", () => {
+    const r = run(["Missing Product"], ["Screen Printing"]);
+    expect(r.agents).toEqual([]);
+  });
+
+  test("Missing Product does not pull the order-garments owner either", () => {
+    // It is not a misorder; nobody demonstrably lost it.
+    const r = run(["Missing Product"], ["Screen Printing", "Embroidery"]);
+    expect(r.agents).toEqual([]);
+  });
+
+  test("Missing Product alongside a misprint still attributes the misprint", () => {
+    const r = run(["Missing Product", "Misprint (Wrong Colors)"], ["Screen Printing"]);
+    expect(r.agents).toEqual(["Yefri Rivera"]);
+  });
+
   test("Shipped Damaged alongside another category still assigns", () => {
     const r = run(
       ["Damaged Product (Shipped Damaged)", "Misprint (Wrong Colors)"],
