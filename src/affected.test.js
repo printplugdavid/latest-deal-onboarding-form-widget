@@ -4,7 +4,7 @@
  * placement's worth of work, not three -- and getting that wrong overstates
  * every correction the shop logs.
  */
-import { placementsOf, syntheticProducts } from "./affected";
+import { placementsOf, syntheticProducts, embroiderySizes } from "./affected";
 import { computePrints } from "./printMath";
 
 // One screen-print garment: 2 graphics, 2 placements each, 1 colour, no underbase.
@@ -122,5 +122,69 @@ describe("the quantity the agent types is what gets costed", () => {
     expect(six.SD).toBe(6);
     // the original garment was 100 -- that number is never used
     expect(branch.garmentQuantity).toBe("100");
+  });
+});
+
+describe("embroiderySizes", () => {
+  const emb = [
+    {
+      productName: "Embroidery",
+      productType: "garment",
+      primaryBranches: [
+        {
+          garmentQuantity: "50",
+          secondaryBranches: [
+            {
+              numberOfPlacements: "2",
+              tartiaryBranches: [
+                { placementLocation: "Left Chest", placementSize: "Small" },
+                { placementLocation: "Back", placementSize: "Large" },
+              ],
+            },
+            {
+              numberOfPlacements: "1",
+              tartiaryBranches: [{ placementLocation: "Sleeve" }], // no size recorded
+            },
+          ],
+        },
+      ],
+    },
+  ];
+
+  test("a revision attributes every placement at the affected quantity", () => {
+    const s = embroiderySizes(emb, { productIndex: 0, garmentIndex: 0, affected: "5" }, "Revision");
+    expect(s).toEqual({ Small: 5, Medium: 0, Large: 5, Unsized: 5 });
+  });
+
+  test("the breakdown sums to the embroidery total", () => {
+    const item = { productIndex: 0, garmentIndex: 0, affected: "5" };
+    const s = embroiderySizes(emb, item, "Revision");
+    const total = computePrints(syntheticProducts(emb, item, "Revision")).ED;
+    expect(s.Small + s.Medium + s.Large + s.Unsized).toBe(total); // 3 placements x 5
+    expect(total).toBe(15);
+  });
+
+  test("a correction only attributes the placements ticked", () => {
+    const s = embroiderySizes(
+      emb,
+      { productIndex: 0, garmentIndex: 0, placementKeys: ["0:1"], affected: "4" },
+      "Correction"
+    );
+    expect(s).toEqual({ Small: 0, Medium: 0, Large: 4, Unsized: 0 });
+  });
+
+  test("an unsized placement is never guessed into a bucket", () => {
+    const s = embroiderySizes(
+      emb,
+      { productIndex: 0, garmentIndex: 0, placementKeys: ["1:0"], affected: "4" },
+      "Correction"
+    );
+    expect(s.Unsized).toBe(4);
+    expect(s.Small + s.Medium + s.Large).toBe(0);
+  });
+
+  test("non-embroidery work has no size split", () => {
+    const s = embroiderySizes(PRODUCTS, { productIndex: 0, garmentIndex: 0, affected: "5" }, "Revision");
+    expect(s).toEqual({ Small: 0, Medium: 0, Large: 0, Unsized: 0 });
   });
 });

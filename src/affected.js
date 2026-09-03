@@ -57,3 +57,41 @@ export function syntheticProducts(products, item, formType) {
     },
   ];
 }
+
+/*
+ * Embroidery prints broken down by placement size, for one affected item.
+ *
+ * Onboarding now splits Embroidery_Department_Prints into Small/Medium/Large
+ * Deal fields. Revisions have no equivalent fields -- and adding them would be
+ * 15 of them across the slots -- so the breakdown goes in the note instead,
+ * where it can be read without a schema change. David's call, 2026-09-02.
+ *
+ * Embroidery costs qty x placements, so each placement contributes the full
+ * affected quantity, attributed to that placement's size. A placement with no
+ * size recorded counts as Unsized rather than being guessed at -- the same
+ * ruling onboarding applied.
+ */
+export function embroiderySizes(products, item, formType) {
+  const out = { Small: 0, Medium: 0, Large: 0, Unsized: 0 };
+
+  const product = products?.[item?.productIndex];
+  if (!product || String(product.productName || "").trim() !== "Embroidery") return out;
+
+  const branch = product?.primaryBranches?.[item.garmentIndex];
+  if (!branch) return out;
+
+  const qty = parseInt(item.affected, 10) || 0;
+  if (!qty) return out;
+
+  // A revision reprints every placement; a correction only the ticked ones.
+  const picked = formType === "Correction" ? item.placementKeys || [] : null;
+
+  placementsOf(branch).forEach((x) => {
+    if (picked && picked.indexOf(x.key) < 0) return;
+    const size = String(x.placement?.placementSize || "").trim();
+    if (size === "Small" || size === "Medium" || size === "Large") out[size] += qty;
+    else out.Unsized += qty;
+  });
+
+  return out;
+}

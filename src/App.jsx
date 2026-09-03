@@ -13,7 +13,7 @@ import { useEffect, useMemo, useState } from "react";
 import { computePrints, departmentFor } from "./printMath";
 import { readPayload } from "./payload";
 import { deriveAgents } from "./agentAssign";
-import { placementsOf, syntheticProducts } from "./affected";
+import { placementsOf, syntheticProducts, embroiderySizes } from "./affected";
 import {
   makeT,
   loadLang,
@@ -101,6 +101,19 @@ function zohoNow() {
 }
 
 const int = (v) => parseInt(v, 10) || 0;
+
+/*
+ * Same wording the onboarding note uses in its PRINT COUNT SUMMARY, so the two
+ * read alike. Unsized is shown only when there is one, as onboarding does.
+ */
+function sizeLine(s) {
+  return (
+    "Placement sizes \u2014 Small: " + s.Small +
+    "  |  Medium: " + s.Medium +
+    "  |  Large: " + s.Large +
+    (s.Unsized ? "  |  Unsized: " + s.Unsized : "")
+  );
+}
 
 
 function garmentLabel(branch, i) {
@@ -373,12 +386,27 @@ export default function App() {
       L.push(
         "    projected  SD " + result.projected.SD + " | ED " + result.projected.ED + " | VD " + result.projected.VD
       );
+      const sz = embroiderySizes(products, item, formType);
+      if (sz.Small || sz.Medium || sz.Large || sz.Unsized) {
+        L.push("    " + sizeLine(sz));
+      }
     });
     L.push("");
     L.push("TOTAL WRITTEN TO SLOT " + slot);
     L.push("---------------------------");
     L.push("  Screen Print: " + totals.sum.SD);
     L.push("  Embroidery:   " + totals.sum.ED);
+    const szTotal = { Small: 0, Medium: 0, Large: 0, Unsized: 0 };
+    totals.detail.forEach(({ item }) => {
+      const s2 = embroiderySizes(products, item, formType);
+      szTotal.Small += s2.Small;
+      szTotal.Medium += s2.Medium;
+      szTotal.Large += s2.Large;
+      szTotal.Unsized += s2.Unsized;
+    });
+    if (szTotal.Small || szTotal.Medium || szTotal.Large || szTotal.Unsized) {
+      L.push("     " + sizeLine(szTotal));
+    }
     L.push("  Vinyl:        " + totals.sum.VD);
     return L.join("\n");
   }
