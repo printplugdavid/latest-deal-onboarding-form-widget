@@ -151,7 +151,7 @@ function garmentLabel(branch, i) {
 function graphicLabel(graphic, i) {
   const bits = [];
   if (graphic?.graphicDescription) {
-    const d = String(graphic.graphicDescription).trim();
+    const d = oneLine(graphic.graphicDescription);
     bits.push(d.length > 60 ? d.slice(0, 60) + "…" : d);
   }
   if (graphic?.numberOfColorsUsed) bits.push(graphic.numberOfColorsUsed + " color");
@@ -161,8 +161,8 @@ function graphicLabel(graphic, i) {
 
 function placementLabel(pl, i) {
   const bits = [];
-  if (pl?.placementLocation) bits.push(String(pl.placementLocation).trim());
-  if (pl?.sizeAndDimensions) bits.push(String(pl.sizeAndDimensions).trim());
+  if (pl?.placementLocation) bits.push(oneLine(pl.placementLocation));
+  if (pl?.sizeAndDimensions) bits.push(oneLine(pl.sizeAndDimensions));
   return "Placement " + (i + 1) + (bits.length ? " — " + bits.join("  ·  ") : "");
 }
 
