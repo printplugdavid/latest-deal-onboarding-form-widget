@@ -292,25 +292,6 @@ const NonGarmentForm = ({ index }) => {
         )}
       />
 
-      <Controller
-        control={control}
-        name={`products.${index}.specialInstructions`}
-        defaultValue=""
-        render={({ field }) => (
-          <TextField
-            multiline
-            rows={3}
-            size="small"
-            id="specialInstructions"
-            variant="outlined"
-            fullWidth
-            label="Other Information"
-            {...field}
-            sx={{ mb: "1rem", mt: "5px" }}
-          />
-        )}
-      />
-
       <Typography
         variant="p"
         sx={{
@@ -350,6 +331,25 @@ const NonGarmentForm = ({ index }) => {
             size="small"
             fullWidth
             label="Vendors Used"
+            {...field}
+            sx={{ mb: "1rem", mt: "5px" }}
+          />
+        )}
+      />
+
+      <Controller
+        control={control}
+        name={`products.${index}.specialInstructions`}
+        defaultValue=""
+        render={({ field }) => (
+          <TextField
+            multiline
+            rows={3}
+            size="small"
+            id="specialInstructions"
+            variant="outlined"
+            fullWidth
+            label="Other Information"
             {...field}
             sx={{ mb: "1rem", mt: "5px" }}
           />
