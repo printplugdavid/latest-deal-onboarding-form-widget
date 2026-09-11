@@ -7,6 +7,42 @@
  */
 
 /*
+ * Garment sizes offered in the picker. The main run covers nearly every order;
+ * "Other" opens a free-text box for toddler, youth, infant, split hat sizes
+ * (S/M, L/XL) and anything else. Big sizes read 2XL-5XL rather than
+ * XXL-XXXXXL -- counting X's is how a reorder goes wrong.
+ */
+export const SIZE_OPTIONS = ["XXS", "XS", "S", "M", "L", "XL", "2XL", "3XL", "4XL", "5XL", "OSFA"];
+export const OTHER_SIZE = "__other__";
+
+const qtyOf = (v) => {
+  const n = parseInt(v, 10);
+  return n > 0 ? n : 0;
+};
+
+/*
+ * How many garments this item covers. When the agent breaks the count down by
+ * size, the sizes ARE the count -- one source of truth, so the total can never
+ * disagree with its own breakdown. Without sizes, the typed total stands.
+ */
+export function effectiveQty(item) {
+  const rows = item?.sizes || [];
+  if (rows.length) return rows.reduce((n, r) => n + qtyOf(r.qty), 0);
+  return qtyOf(item?.affected);
+}
+
+/* "M ×3, L ×2, 3T ×1" -- rows with no quantity are left out. */
+export function formatSizes(sizes) {
+  return (sizes || [])
+    .filter((r) => qtyOf(r.qty) > 0)
+    .map((r) => {
+      const label = r.size === OTHER_SIZE ? String(r.other || "").trim() || "Other" : r.size;
+      return label + " \u00d7" + qtyOf(r.qty);
+    })
+    .join(", ");
+}
+
+/*
  * Every placement on a garment, flattened, so a correction can pick the ones
  * actually being redone. A graphic that records a placement count but no
  * placement detail still contributes selectable slots.
@@ -52,7 +88,7 @@ export function syntheticProducts(products, item, formType) {
     {
       ...product,
       primaryBranches: [
-        { ...branch, garmentQuantity: String(item.affected || 0), secondaryBranches: graphics },
+        { ...branch, garmentQuantity: String(effectiveQty(item)), secondaryBranches: graphics },
       ],
     },
   ];
@@ -80,7 +116,7 @@ export function embroiderySizes(products, item, formType) {
   const branch = product?.primaryBranches?.[item.garmentIndex];
   if (!branch) return out;
 
-  const qty = parseInt(item.affected, 10) || 0;
+  const qty = effectiveQty(item);
   if (!qty) return out;
 
   // A revision reprints every placement; a correction only the ticked ones.

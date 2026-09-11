@@ -107,6 +107,22 @@ const STRINGS = {
     es: "No hay ubicaciones registradas para esta prenda.",
   },
   "g.affected": { en: "Garments affected", es: "Prendas afectadas" },
+  "g.totalFromSizes": { en: "— added up from the sizes below", es: "— suma de las tallas abajo" },
+  "g.sizes": { en: "Sizes (optional)", es: "Tallas (opcional)" },
+  "g.addSize": { en: "+ Add a size…", es: "+ Agregar una talla…" },
+  "g.otherSize": { en: "Other…", es: "Otra…" },
+  "g.otherPh": { en: "e.g. 3T, YM, S/M", es: "p. ej. 3T, YM, S/M" },
+  "g.qty": { en: "Qty", es: "Cant." },
+  "g.removeSize": { en: "Remove size", es: "Quitar talla" },
+  "g.sizesHint": {
+    en: "Break the count down by size and the total adds itself up. Use Other for toddler, youth, split hat sizes or anything else.",
+    es: "Desglose la cantidad por talla y el total se suma solo. Use Otra para niños pequeños, jóvenes, gorras u otras tallas.",
+  },
+  "g.details": { en: "Garment Details (optional)", es: "Detalles de la prenda (opcional)" },
+  "g.detailsPh": {
+    en: "Anything about this garment worth knowing — the blank, particular pieces, special handling.",
+    es: "Cualquier dato de esta prenda que convenga saber — la prenda en blanco, piezas específicas, manejo especial.",
+  },
   "g.select": { en: "— select —", es: "— seleccione —" },
   "g.originalQty": { en: "Original order was {n}.", es: "El pedido original fue de {n}." },
   "g.allGraphics": {

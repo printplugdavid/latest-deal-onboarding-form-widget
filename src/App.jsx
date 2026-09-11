@@ -13,7 +13,15 @@ import { useEffect, useMemo, useState } from "react";
 import { computePrints, departmentFor } from "./printMath";
 import { readPayload } from "./payload";
 import { deriveAgents } from "./agentAssign";
-import { placementsOf, syntheticProducts, embroiderySizes } from "./affected";
+import {
+  placementsOf,
+  syntheticProducts,
+  embroiderySizes,
+  effectiveQty,
+  formatSizes,
+  SIZE_OPTIONS,
+  OTHER_SIZE,
+} from "./affected";
 import {
   makeT,
   loadLang,
@@ -102,6 +110,22 @@ function zohoNow() {
 
 const int = (v) => parseInt(v, 10) || 0;
 
+// Garment text is often typed across several lines; labels and notes want one.
+const oneLine = (v) => String(v || "").trim().replace(/\s*\n\s*/g, " / ");
+
+/*
+ * Revision_Details / Correction_Details are multi-line fields. Zoho's default
+ * multi-line size is 2,000 characters, and a write that exceeds it fails the
+ * WHOLE update -- print counts included. Cap it; the note always carries the
+ * full version.
+ */
+const DETAILS_MAX = 2000;
+function capDetails(text) {
+  if (text.length <= DETAILS_MAX) return text;
+  const tail = "\n… (shortened — full detail in the ORDER FORM note)";
+  return text.slice(0, DETAILS_MAX - tail.length) + tail;
+}
+
 /*
  * Same wording the onboarding note uses in its PRINT COUNT SUMMARY, so the two
  * read alike. Unsized is shown only when there is one, as onboarding does.
@@ -118,9 +142,9 @@ function sizeLine(s) {
 
 function garmentLabel(branch, i) {
   const bits = [];
-  if (branch?.garmentType) bits.push(String(branch.garmentType).trim());
+  if (branch?.garmentType) bits.push(oneLine(branch.garmentType));
   if (branch?.garmentQuantity) bits.push("qty " + branch.garmentQuantity);
-  if (branch?.countColorSize) bits.push(String(branch.countColorSize).trim());
+  if (branch?.countColorSize) bits.push(oneLine(branch.countColorSize));
   return "Garment " + (i + 1) + (bits.length ? " — " + bits.join("  ·  ") : "");
 }
 
@@ -258,7 +282,7 @@ export default function App() {
     const sum = { SD: 0, ED: 0, VD: 0 };
     const detail = [];
     items.forEach((item) => {
-      if (!item.affected || item.productIndex === "" || item.garmentIndex === "") return;
+      if (!effectiveQty(item) || item.productIndex === "" || item.garmentIndex === "") return;
       if (formType === "Correction" && !(item.placementKeys || []).length) return;
       const synth = syntheticProducts(products, item, formType);
       const r = computePrints(synth);
@@ -314,12 +338,43 @@ export default function App() {
   function addItem() {
     setItems((prev) => [
       ...prev,
-      { productIndex: "", garmentIndex: "", placementKeys: [], affected: "" },
+      { productIndex: "", garmentIndex: "", placementKeys: [], affected: "", sizes: [], details: "" },
     ]);
   }
 
   function patchItem(i, patch) {
     setItems((prev) => prev.map((it, j) => (j === i ? { ...it, ...patch } : it)));
+  }
+
+  function addSize(i, value) {
+    if (!value) return;
+    setItems((prev) =>
+      prev.map((it, j) => {
+        if (j !== i) return it;
+        const rows = it.sizes || [];
+        // The first size inherits a total already typed, so nothing is lost.
+        const carry = rows.length === 0 && int(it.affected) > 0 ? String(int(it.affected)) : "";
+        return { ...it, sizes: rows.concat({ size: value, other: "", qty: carry }) };
+      })
+    );
+  }
+
+  function patchSize(i, si, patch) {
+    setItems((prev) =>
+      prev.map((it, j) =>
+        j === i
+          ? { ...it, sizes: (it.sizes || []).map((r, k) => (k === si ? { ...r, ...patch } : r)) }
+          : it
+      )
+    );
+  }
+
+  function removeSize(i, si) {
+    setItems((prev) =>
+      prev.map((it, j) =>
+        j === i ? { ...it, sizes: (it.sizes || []).filter((_, k) => k !== si) } : it
+      )
+    );
   }
 
   function removeItem(i) {
@@ -330,72 +385,104 @@ export default function App() {
     setList(list.includes(value) ? list.filter((v) => v !== value) : list.concat(value));
   }
 
-  function buildNote() {
+  const DIV = "---------------------------";
+
+  /*
+   * The AFFECTED ITEMS section. Written into the note AND into
+   * Revision_Details / Correction_Details from this one function, so the field
+   * the Deluge pastes into the reorder task can never drift from the note.
+   * `audit` adds the actual/projected split, which belongs in the note only.
+   */
+  function buildItemLines({ audit }) {
     const L = [];
-    L.push("ORDER " + formType.toUpperCase() + " FORM");
-    L.push("---------------------------");
-    L.push("");
-    L.push("Type: Order " + formType);
-    L.push("Event number: " + slot + " of " + MAX_SLOTS[formType]);
-    L.push("Logged: " + zohoNow());
-    L.push("");
-    L.push("Department(s): " + departments.join(", "));
-    L.push("Category: " + categories.join(", "));
-    L.push("Agent(s): " + (derived.agents.length ? derived.agents.join(", ") : "(none identified)"));
-    L.push("Reason:");
-    L.push(reason.trim());
-    if (updateClosing && newClosingDate && closingConfirmed) {
-      L.push("");
-      L.push("CLOSING DATE CHANGED");
-      L.push("  " + (deal?.Closing_Date || "(none)") + "  ->  " + newClosingDate);
-      L.push("  Agent confirmed the client was contacted and approved the new date.");
-    }
-    L.push("");
-    L.push("AFFECTED ITEMS");
-    L.push("---------------------------");
     totals.detail.forEach(({ item, result }, n) => {
       const p = products[item.productIndex];
       const b = p?.primaryBranches?.[item.garmentIndex];
-      L.push("");
-      L.push("Item " + (n + 1) + ": " + p?.productName);
-      L.push("  " + garmentLabel(b, item.garmentIndex));
+      const qty = effectiveQty(item);
+
+      if (n > 0) L.push("");
+      L.push("Item " + (n + 1) + " · " + (p?.productName || ""));
+      if (b?.garmentType) L.push("  Garment: " + oneLine(b.garmentType));
+
+      const skus = (b?.garmentSkus || []).map((x) => String(x?.sku || "").trim()).filter(Boolean);
+      if (skus.length) L.push("  SKU: " + skus.join(", "));
+
+      const sizes = formatSizes(item.sizes);
+      L.push(
+        sizes
+          ? "  Sizes: " + sizes + "  (" + qty + " garment" + (qty === 1 ? "" : "s") + ")"
+          : "  Garments: " + qty
+      );
+
       if (formType === "Correction") {
         const all = placementsOf(b);
-        L.push("  Placements redone (" + (item.placementKeys || []).length + "):");
+        L.push("  Placements redone:");
         (item.placementKeys || []).forEach((k) => {
           const hit = all.find((x) => x.key === k);
           if (hit) {
-            L.push(
-              "    " +
-                graphicLabel(hit.graphic, hit.gi) +
-                "  ->  " +
-                placementLabel(hit.placement, hit.pi)
-            );
+            L.push("    " + placementLabel(hit.placement, hit.pi) + "  (" + graphicLabel(hit.graphic, hit.gi) + ")");
           }
         });
       } else {
-        L.push(
-          "  All graphics on this garment reprinted (" + (b?.secondaryBranches || []).length + ")"
-        );
+        const g = (b?.secondaryBranches || []).length;
+        L.push("  Reprint: all " + g + " graphic" + (g === 1 ? "" : "s"));
       }
-      L.push("  Garments affected: " + item.affected);
-      L.push("  Prints — SD " + result.SD + " | ED " + result.ED + " | VD " + result.VD);
-      L.push(
-        "    actual  SD " + result.actual.SD + " | ED " + result.actual.ED + " | VD " + result.actual.VD
-      );
-      L.push(
-        "    projected  SD " + result.projected.SD + " | ED " + result.projected.ED + " | VD " + result.projected.VD
-      );
+
+      const det = String(item.details || "").trim();
+      if (det) {
+        L.push("  Garment details:");
+        det.split("\n").forEach((line) => L.push("    " + line.trimEnd()));
+      }
+
+      L.push("  Prints: Screen Print " + result.SD + " | Embroidery " + result.ED + " | Vinyl " + result.VD);
+      if (audit) {
+        L.push("    actual     SD " + result.actual.SD + " | ED " + result.actual.ED + " | VD " + result.actual.VD);
+        L.push("    projected  SD " + result.projected.SD + " | ED " + result.projected.ED + " | VD " + result.projected.VD);
+      }
       const sz = embroiderySizes(products, item, formType);
-      if (sz.Small || sz.Medium || sz.Large || sz.Unsized) {
-        L.push("    " + sizeLine(sz));
-      }
+      if (sz.Small || sz.Medium || sz.Large || sz.Unsized) L.push("    " + sizeLine(sz));
     });
+    return L;
+  }
+
+  function buildDetails() {
+    const head = "Order " + formType + " · event " + slot + " of " + MAX_SLOTS[formType];
+    return capDetails([head, ""].concat(buildItemLines({ audit: false })).join("\n"));
+  }
+
+  function buildNote() {
+    const L = [];
+    L.push("ORDER " + formType.toUpperCase() + " FORM");
+    L.push(DIV);
+    L.push("Event " + slot + " of " + MAX_SLOTS[formType] + " · logged " + zohoNow());
+
+    L.push("");
+    L.push("WHAT WENT WRONG");
+    L.push(DIV);
+    L.push("Department: " + departments.join(", "));
+    L.push("Category: " + categories.join(", "));
+    L.push("Agent: " + (derived.agents.length ? derived.agents.join(", ") : "(none identified)"));
+    L.push("Reason:");
+    reason.trim().split("\n").forEach((line) => L.push("  " + line.trimEnd()));
+
+    if (updateClosing && newClosingDate && closingConfirmed) {
+      L.push("");
+      L.push("CLOSING DATE");
+      L.push(DIV);
+      L.push((deal?.Closing_Date || "(none)") + "  ->  " + newClosingDate);
+      L.push("Client contacted and approved the new date.");
+    }
+
+    L.push("");
+    L.push("AFFECTED ITEMS");
+    L.push(DIV);
+    buildItemLines({ audit: true }).forEach((line) => L.push(line));
+
     L.push("");
     L.push("TOTAL WRITTEN TO SLOT " + slot);
-    L.push("---------------------------");
-    L.push("  Screen Print: " + totals.sum.SD);
-    L.push("  Embroidery:   " + totals.sum.ED);
+    L.push(DIV);
+    L.push("Screen Print: " + totals.sum.SD);
+    L.push("Embroidery:   " + totals.sum.ED);
     const szTotal = { Small: 0, Medium: 0, Large: 0, Unsized: 0 };
     totals.detail.forEach(({ item }) => {
       const s2 = embroiderySizes(products, item, formType);
@@ -405,9 +492,9 @@ export default function App() {
       szTotal.Unsized += s2.Unsized;
     });
     if (szTotal.Small || szTotal.Medium || szTotal.Large || szTotal.Unsized) {
-      L.push("     " + sizeLine(szTotal));
+      L.push("   " + sizeLine(szTotal));
     }
-    L.push("  Vinyl:        " + totals.sum.VD);
+    L.push("Vinyl:        " + totals.sum.VD);
     return L.join("\n");
   }
 
@@ -425,6 +512,8 @@ export default function App() {
       api[prefix + "_Count"] = slot;
       api[prefix + "_Department"] = departments;
       api[prefix + "_Reason"] = reason.trim();
+      // What the reorder / reproduce tasks need, in a field the Deluge can read.
+      api[prefix + "_Details"] = buildDetails();
       api.Failed_Quality_Check_Date_Time = now;
 
       if (updateClosing && newClosingDate && closingConfirmed) {
@@ -760,16 +849,83 @@ export default function App() {
               {item.garmentIndex !== "" && (
                 <>
                   <Label>{t("g.affected")}</Label>
-                  <input
-                    type="number"
-                    min="1"
-                    value={item.affected}
-                    onChange={(e) => patchItem(i, { affected: e.target.value })}
-                    style={S.input}
-                  />
+                  {(item.sizes || []).length ? (
+                    <p style={S.fromSizes}>
+                      <b style={S.fromSizesNum}>{effectiveQty(item)}</b> {t("g.totalFromSizes")}
+                    </p>
+                  ) : (
+                    <input
+                      type="number"
+                      min="1"
+                      value={item.affected}
+                      onChange={(e) => patchItem(i, { affected: e.target.value })}
+                      style={S.input}
+                    />
+                  )}
                   {branch?.garmentQuantity && (
                     <p style={S.hint}>{t("g.originalQty", { n: branch.garmentQuantity })}</p>
                   )}
+
+                  <Label>{t("g.sizes")}</Label>
+                  {(item.sizes || []).map((row, si) => (
+                    <div key={si} style={S.sizeRow}>
+                      {row.size === OTHER_SIZE ? (
+                        <input
+                          type="text"
+                          value={row.other || ""}
+                          placeholder={t("g.otherPh")}
+                          onChange={(e) => patchSize(i, si, { other: e.target.value })}
+                          style={S.sizeOther}
+                          autoFocus
+                        />
+                      ) : (
+                        <span style={S.sizeTag}>{row.size}</span>
+                      )}
+                      <input
+                        type="number"
+                        min="1"
+                        value={row.qty}
+                        placeholder={t("g.qty")}
+                        onChange={(e) => patchSize(i, si, { qty: e.target.value })}
+                        style={S.sizeQty}
+                        aria-label={t("g.qty")}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeSize(i, si)}
+                        style={S.sizeX}
+                        aria-label={t("g.removeSize")}
+                        title={t("g.removeSize")}
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                  <select
+                    value=""
+                    onChange={(e) => addSize(i, e.target.value)}
+                    style={{ ...S.select, maxWidth: 260 }}
+                  >
+                    <option value="">{t("g.addSize")}</option>
+                    {SIZE_OPTIONS.filter((sz) => !(item.sizes || []).some((r) => r.size === sz)).map(
+                      (sz) => (
+                        <option key={sz} value={sz}>
+                          {sz}
+                        </option>
+                      )
+                    )}
+                    <option value={OTHER_SIZE}>{t("g.otherSize")}</option>
+                  </select>
+                  <p style={S.hint}>{t("g.sizesHint")}</p>
+
+                  <Label>{t("g.details")}</Label>
+                  <textarea
+                    rows={3}
+                    value={item.details || ""}
+                    onChange={(e) => patchItem(i, { details: e.target.value })}
+                    placeholder={t("g.detailsPh")}
+                    style={S.textarea}
+                  />
                 </>
               )}
 
@@ -990,6 +1146,13 @@ const S = {
   placeRow: { display: "flex", alignItems: "flex-start", gap: 9, font: "13.5px " + sans, cursor: "pointer", padding: "7px 9px", border: "1px solid #e3e5e9", borderRadius: 2, background: "#fff" },
   placeRowOn: { display: "flex", alignItems: "flex-start", gap: 9, font: "13.5px " + sans, cursor: "pointer", padding: "7px 9px", border: "1px solid #2743c7", borderRadius: 2, background: "#e4e7f8" },
   placeSub: { display: "block", fontSize: 12, color: "#5b6270", marginTop: 2 },
+  sizeRow: { display: "flex", alignItems: "center", gap: 8, marginBottom: 6 },
+  sizeTag: { font: "600 13px " + mono, minWidth: 64, padding: "7px 10px", border: "1px solid #c9d0f4", background: "#e4e7f8", color: "#2743c7", borderRadius: 2, textAlign: "center", boxSizing: "border-box" },
+  sizeOther: { width: 150, font: "13.5px " + sans, padding: "7px 10px", border: "1px solid #2743c7", borderRadius: 2, boxSizing: "border-box" },
+  sizeQty: { width: 76, font: "14px " + sans, padding: "7px 10px", border: "1px solid #d3d6db", borderRadius: 2, boxSizing: "border-box" },
+  sizeX: { font: "17px/1 " + sans, color: "#b5372c", background: "none", border: "none", cursor: "pointer", padding: "0 4px" },
+  fromSizes: { margin: "2px 0 0", fontSize: 13.5, color: "#5b6270" },
+  fromSizesNum: { font: "700 17px " + mono, color: "#15171b", marginRight: 4 },
   itemTotals: { marginTop: 12, paddingTop: 10, borderTop: "1px solid #e3e5e9", font: "13px " + mono, color: "#15171b" },
   add: { font: "600 13px " + sans, padding: "9px 14px", border: "1px dashed #b6bbc4", background: "#fff", borderRadius: 2, cursor: "pointer", width: "100%" },
   totalBox: { border: "1px solid #d3d6db", borderRadius: 2, overflow: "hidden" },

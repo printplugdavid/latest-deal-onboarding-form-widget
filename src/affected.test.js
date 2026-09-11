@@ -4,7 +4,15 @@
  * placement's worth of work, not three -- and getting that wrong overstates
  * every correction the shop logs.
  */
-import { placementsOf, syntheticProducts, embroiderySizes } from "./affected";
+import {
+  placementsOf,
+  syntheticProducts,
+  embroiderySizes,
+  effectiveQty,
+  formatSizes,
+  SIZE_OPTIONS,
+  OTHER_SIZE,
+} from "./affected";
 import { computePrints } from "./printMath";
 
 // One screen-print garment: 2 graphics, 2 placements each, 1 colour, no underbase.
@@ -186,5 +194,53 @@ describe("embroiderySizes", () => {
   test("non-embroidery work has no size split", () => {
     const s = embroiderySizes(PRODUCTS, { productIndex: 0, garmentIndex: 0, affected: "5" }, "Revision");
     expect(s).toEqual({ Small: 0, Medium: 0, Large: 0, Unsized: 0 });
+  });
+});
+
+describe("sizes", () => {
+  test("the sizes ARE the count when the agent breaks it down", () => {
+    const item = { affected: "99", sizes: [{ size: "M", qty: "3" }, { size: "L", qty: "2" }] };
+    expect(effectiveQty(item)).toBe(5); // the stale typed 99 is ignored
+  });
+
+  test("without sizes, the typed total stands", () => {
+    expect(effectiveQty({ affected: "7", sizes: [] })).toBe(7);
+    expect(effectiveQty({ affected: "7" })).toBe(7);
+  });
+
+  test("blank, zero and junk quantities count as nothing", () => {
+    const item = { sizes: [{ size: "S", qty: "" }, { size: "M", qty: "0" }, { size: "L", qty: "-2" }, { size: "XL", qty: "x" }] };
+    expect(effectiveQty(item)).toBe(0);
+  });
+
+  test("the size breakdown drives the print count", () => {
+    const item = {
+      productIndex: 0,
+      garmentIndex: 0,
+      placementKeys: ["0:0"],
+      sizes: [{ size: "M", qty: "3" }, { size: OTHER_SIZE, other: "3T", qty: "2" }],
+    };
+    expect(cost(item, "Correction").SD).toBe(5);
+  });
+
+  test("formats for the note and the reorder, Other shows what was typed", () => {
+    expect(
+      formatSizes([
+        { size: "M", qty: "3" },
+        { size: "L", qty: "2" },
+        { size: OTHER_SIZE, other: " 3T ", qty: "1" },
+        { size: "XL", qty: "" },
+      ])
+    ).toBe("M ×3, L ×2, 3T ×1");
+  });
+
+  test("an Other row left blank still reads as Other rather than vanishing", () => {
+    expect(formatSizes([{ size: OTHER_SIZE, other: "", qty: "2" }])).toBe("Other ×2");
+  });
+
+  test("the picker covers XXS to 5XL plus OSFA", () => {
+    expect(SIZE_OPTIONS[0]).toBe("XXS");
+    expect(SIZE_OPTIONS).toContain("5XL");
+    expect(SIZE_OPTIONS).toContain("OSFA");
   });
 });
