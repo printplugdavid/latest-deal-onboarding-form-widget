@@ -137,6 +137,25 @@ const GarmentPrimaryBranchForm = ({
 
       <Controller
         control={control}
+        name={`products.${index}.primaryBranches.${branchIndex}.countColorSize`}
+        defaultValue=""
+        render={({ field }) => (
+          <TextField
+            multiline
+            rows={3}
+            size="small"
+            id="countColorSize"
+            variant="outlined"
+            fullWidth
+            label="Total Count, Colors & Sizes"
+            {...field}
+            sx={{ mb: "1rem", mt: "5px" }}
+          />
+        )}
+      />
+
+      <Controller
+        control={control}
         name={`products.${index}.primaryBranches.${branchIndex}.numberOfSkus`}
         defaultValue=""
         rules={{
@@ -240,25 +259,6 @@ const GarmentPrimaryBranchForm = ({
             fullWidth
             label="Total Garment Quantity"
             type="number"
-            {...field}
-            sx={{ mb: "1rem", mt: "5px" }}
-          />
-        )}
-      />
-
-      <Controller
-        control={control}
-        name={`products.${index}.primaryBranches.${branchIndex}.countColorSize`}
-        defaultValue=""
-        render={({ field }) => (
-          <TextField
-            multiline
-            rows={3}
-            size="small"
-            id="countColorSize"
-            variant="outlined"
-            fullWidth
-            label="Total Count, Colors & Sizes"
             {...field}
             sx={{ mb: "1rem", mt: "5px" }}
           />
