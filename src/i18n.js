@@ -61,33 +61,6 @@ const STRINGS = {
     en: "Plain description for whoever picks this up later.",
     es: "Descripción sencilla para quien lo retome después.",
   },
-  "lbl.agent": { en: "{type} Agent", es: "Agente de {type}" },
-  "agent.identified": {
-    en: "Identified from the completed production tasks on this deal. Override if it is wrong.",
-    es:
-      "Identificado a partir de las tareas de producción completadas en este acuerdo. " +
-      "Corríjalo si no es correcto.",
-  },
-  "agent.none": {
-    en: "Nobody identified yet — pick the department and category above, or select manually.",
-    es: "Nadie identificado aún — elija el departamento y la categoría arriba, o selecciónelo manualmente.",
-  },
-  "agent.miss": {
-    en: " No completed Produce Order task found for: {list}.",
-    es: " No se encontró tarea completada de Producir Orden para: {list}.",
-  },
-  "agent.unmapped": {
-    en: " {list} has no production task to trace, so it identifies nobody on its own.",
-    es: " {list} no tiene tarea de producción que rastrear, así que por sí solo no identifica a nadie.",
-  },
-  "agent.noOrder": {
-    en: " No Order Garments task found for the misorder.",
-    es: " No se encontró tarea de Pedido de Prendas para el error de pedido.",
-  },
-  "agent.rejected": {
-    en: " Skipped (not on the agent list): {list}.",
-    es: " Omitido (no está en la lista de agentes): {list}.",
-  },
 
   // ---- garments ---------------------------------------------------------
   "g.none": { en: "No items yet.", es: "Aún no hay artículos." },
@@ -95,8 +68,6 @@ const STRINGS = {
   "g.remove": { en: "Remove", es: "Quitar" },
   "g.application": { en: "Application", es: "Aplicación" },
   "g.garment": { en: "Garment", es: "Prenda" },
-  "g.graphic": { en: "Graphic", es: "Gráfico" },
-  "g.placement": { en: "Placement redone", es: "Ubicación rehecha" },
   "g.placements": { en: "Placements affected", es: "Ubicaciones afectadas" },
   "g.placementsHint": {
     en: "Only the placements you tick are counted — a shirt with three placements where one is redone costs one placement, not three.",
