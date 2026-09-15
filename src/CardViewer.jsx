@@ -8,13 +8,13 @@
  * Loaded when the widget URL carries ?view=cards (or #cards) -- see index.js. The onboarding form
  * itself is untouched.
  *
- * Two read paths, tried in order:
- *   1. the attached card itself:  getRelatedRecords(Attachments) -> getFile({ id: $file_id })
- *   2. REBUILT from the deal's data: getFile(onboarding-form.json) + getRecord(Deal) print-count
- *      fields -> buildProductionCards(), the same generator the form runs at submit.
- * Path 2 exists because in live Zoho (2026-09-15) path 1 came back empty for .html attachments,
- * while the same getFile call reads the JSON fine in the revision form. getFile's result shape is
- * handled loosely and reported on screen, so a failed read says what Zoho actually returned.
+ * Cards are REBUILT, not read: the attachment list decides which tabs exist, and each card's content
+ * comes from buildProductionCards() -- the generator the form runs at submit -- fed the newest
+ * onboarding-form.json plus the Deal's current print-count fields.
+ * Why: live in Zoho (2026-09-15), getFile on a .html attachment returns the STRING "[object Blob]"
+ * (the SDK stringifies it before we see it), while .json reads fine. Reading the attached cards was
+ * also the slow part (one wasted round trip per card), so it was removed rather than kept as a path.
+ * getFile's result shape is still handled loosely and reported, so a failed JSON read is diagnosable.
  * TRAP: getFile needs "$file_id", NOT the attachment record id -- the record id returns an empty
  * Blob and throws nothing.
  */
@@ -98,35 +98,29 @@ const COUNT_FIELDS = {
   Outsourced_Prints: "outsourcedProducts",
 };
 
-// Path 2: regenerate every card from the newest onboarding-form.json plus the Deal's counts.
-async function rebuildCards(entity, recordId, attachments) {
-  const json = attachments
-    .filter((a) => String(a?.File_Name || "").toLowerCase().endsWith(".json"))
-    .sort(newestFirst)[0];
-  if (!json?.["$file_id"]) throw new Error("this deal has no onboarding-form.json to rebuild from");
-  const { text, shape } = await readFileText(json["$file_id"]);
-  if (!text || !text.trim()) throw new Error(`onboarding-form.json also read empty (${shape})`);
-  const data = JSON.parse(text);
+const secs = (ms) => `${(ms / 1000).toFixed(1)}s`;
+const pcStamp = (iso) => {
+  const d = new Date(iso);
+  return isNaN(d) ? "(date unknown)" : d.toLocaleString([], { dateStyle: "medium", timeStyle: "short" });
+};
 
-  const rec = await ZOHO.CRM.API.getRecord({ Entity: entity, RecordID: recordId, approved: "both" });
-  const deal = rec?.data?.[0] || {};
-  const counts = {};
-  for (const [field, key] of Object.entries(COUNT_FIELDS)) {
-    if (deal[field] != null) counts[key] = deal[field];
-  }
-  const built = new Map();
-  for (const c of buildProductionCards(data, counts)) built.set(c.name.toLowerCase(), c.html);
-  return built;
-}
-
+// The attachment list decides WHICH tabs exist; the card content is always rebuilt from the newest
+// onboarding-form.json + the Deal's counts. Three SDK calls in two parallel rounds:
+//   round 1: attachment list + Deal record     round 2: the JSON file
 async function loadCards(entity, recordId) {
-  const resp = await ZOHO.CRM.API.getRelatedRecords({
-    Entity: entity,
-    RecordID: recordId,
-    RelatedList: "Attachments",
-    page: 1,
-    per_page: 200,
-  });
+  const t0 = performance.now();
+  const [resp, rec] = await Promise.all([
+    ZOHO.CRM.API.getRelatedRecords({
+      Entity: entity,
+      RecordID: recordId,
+      RelatedList: "Attachments",
+      page: 1,
+      per_page: 200,
+    }),
+    ZOHO.CRM.API.getRecord({ Entity: entity, RecordID: recordId, approved: "both" }),
+  ]);
+  const t1 = performance.now();
+
   const all = resp?.data || [];
   const attachments = all
     .filter((a) => {
@@ -140,59 +134,46 @@ async function loadCards(entity, recordId) {
   const byName = new Map();
   for (const a of attachments) {
     const name = String(a.File_Name).toLowerCase();
-    if (!byName.has(name)) byName.set(name, { attachment: a, olderCopies: 0 });
+    if (!byName.has(name)) byName.set(name, { olderCopies: 0 });
     else byName.get(name).olderCopies += 1;
   }
+  if (!byName.size) return { cards: [], info: "" };
 
-  // Path 1: the attached files.
-  const cards = await Promise.all(
-    [...byName.entries()].map(async ([name, { attachment, olderCopies }]) => {
-      const base = { name, label: labelFor(name), olderCopies };
-      try {
-        const fileId = attachment["$file_id"];
-        if (!fileId) return { ...base, error: "attachment has no $file_id" };
-        const { text, shape } = await readFileText(fileId);
-        if (!text || !text.trim()) return { ...base, error: `Zoho returned an empty file (${shape})` };
-        // Live 2026-09-15: for .html, Zoho returned the literal text "[object Blob]" -- non-empty,
-        // so it must be checked. Only accept something that is actually one of our cards.
-        if (!/<!doctype html|<html/i.test(text) || !text.includes("pcard")) {
-          return { ...base, error: `Zoho returned "${text.trim().slice(0, 40)}" instead of the card (${shape})` };
-        }
-        return { ...base, html: text };
-      } catch (e) {
-        return { ...base, error: String(e?.message || e) };
-      }
-    })
-  );
-
-  // Path 2, only for the cards path 1 couldn't read.
-  if (cards.some((c) => c.error)) {
-    let built = null;
-    let rebuildError = "";
-    try {
-      built = await rebuildCards(entity, recordId, all);
-    } catch (e) {
-      rebuildError = String(e?.message || e);
-    }
-    for (const c of cards) {
-      if (!c.error) continue;
-      if (built?.has(c.name)) {
-        c.readError = c.error;
-        c.html = built.get(c.name);
-        c.rebuilt = true;
-        delete c.error;
-      } else {
-        c.error = rebuildError
-          ? `${c.error}. Rebuilding from the deal's data also failed: ${rebuildError}`
-          : `${c.error}. The deal's current data no longer produces this card.`;
-      }
-    }
+  const json = all
+    .filter((a) => String(a?.File_Name || "").toLowerCase().endsWith(".json"))
+    .sort(newestFirst)[0];
+  if (!json?.["$file_id"]) {
+    throw new Error("this deal has cards but no onboarding-form.json to build them from");
   }
-  return cards.sort((a, b) => orderOf(a.name) - orderOf(b.name));
+  // .json reads fine through getFile. .html does not: live 2026-09-15 the SDK returned the string
+  // "[object Blob]" (String, 13 bytes) for every card, so the attached cards are never read.
+  const { text, shape } = await readFileText(json["$file_id"]);
+  const t2 = performance.now();
+  if (!text || !text.trim()) throw new Error(`onboarding-form.json read empty (${shape})`);
+  const data = JSON.parse(text);
+
+  const deal = rec?.data?.[0] || {};
+  const counts = {};
+  for (const [field, key] of Object.entries(COUNT_FIELDS)) {
+    if (deal[field] != null) counts[key] = deal[field];
+  }
+  const built = new Map();
+  for (const c of buildProductionCards(data, counts)) built.set(c.name.toLowerCase(), c.html);
+
+  const cards = [...byName.entries()].map(([name, { olderCopies }]) => {
+    const base = { name, label: labelFor(name), olderCopies };
+    return built.has(name)
+      ? { ...base, html: built.get(name) }
+      : { ...base, error: "the deal's current onboarding data no longer produces this card." };
+  });
+  const info =
+    `Built from the onboarding form submitted ${pcStamp(json.Created_Time)} and the Deal's current print counts` +
+    ` · loaded in ${secs(t2 - t0)} (list + deal ${secs(t1 - t0)}, form ${secs(t2 - t1)})`;
+  return { cards: cards.sort((a, b) => orderOf(a.name) - orderOf(b.name)), info };
 }
 
 const CardViewer = () => {
-  const [state, setState] = useState({ status: "loading", cards: [], message: "" });
+  const [state, setState] = useState({ status: "loading", cards: [], message: "", info: "" });
   const [tab, setTab] = useState(0);
   const frameRef = useRef(null);
 
@@ -214,8 +195,8 @@ const CardViewer = () => {
       const entity = data?.Entity;
       const recordId = data?.EntityId?.[0] ?? data?.EntityId;
       try {
-        const cards = await loadCards(entity, recordId);
-        setState({ status: "ready", cards, message: "" });
+        const { cards, info } = await loadCards(entity, recordId);
+        setState({ status: "ready", cards, message: "", info });
       } catch (e) {
         setState({ status: "error", cards: [], message: String(e?.message || e) });
       }
@@ -319,14 +300,10 @@ const CardViewer = () => {
         </Button>
       </Box>
 
-      {current?.rebuilt && (
-        <Alert severity="info" sx={{ borderRadius: 0 }}>
-          Rebuilt from this deal's onboarding data, because Zoho wouldn't return the attached file.
-          Print counts come from the Deal's current fields.
-          <Typography component="span" sx={{ display: "block", fontSize: 11, opacity: 0.7 }}>
-            Attachment read: {current.readError}
-          </Typography>
-        </Alert>
+      {state.info && (
+        <Typography sx={{ px: 2, py: 0.5, fontSize: 11, color: "#666", borderBottom: 1, borderColor: "divider" }}>
+          {state.info}
+        </Typography>
       )}
 
       {current?.olderCopies > 0 && (

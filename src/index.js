@@ -16,6 +16,16 @@ const showCards =
 const root = ReactDOM.createRoot(document.getElementById("root"));
 root.render(
   <React.StrictMode>
-    <Suspense fallback={null}>{showCards ? <CardViewer /> : <App />}</Suspense>
+    <Suspense
+      fallback={
+        showCards ? (
+          <div style={{ padding: 32, fontFamily: "Roboto, sans-serif", color: "#1a1a1a", background: "#fff", minHeight: "100vh" }}>
+            Loading production cards…
+          </div>
+        ) : null
+      }
+    >
+      {showCards ? <CardViewer /> : <App />}
+    </Suspense>
   </React.StrictMode>
 );
