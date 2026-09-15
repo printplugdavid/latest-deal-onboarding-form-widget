@@ -8,10 +8,15 @@
  * Loaded when the widget URL carries ?view=cards (or #cards) -- see index.js. The onboarding form
  * itself is untouched.
  *
- * Read path is the one the revision form already uses in production (payload.js):
- *   getRelatedRecords(Attachments) -> getFile({ id: $file_id }) -> blob.text()
- * TRAP: getFile needs "$file_id", NOT the attachment record id. The record id returns an empty
- * Blob and throws nothing, so an empty result is treated as a read failure, not an empty card.
+ * Two read paths, tried in order:
+ *   1. the attached card itself:  getRelatedRecords(Attachments) -> getFile({ id: $file_id })
+ *   2. REBUILT from the deal's data: getFile(onboarding-form.json) + getRecord(Deal) print-count
+ *      fields -> buildProductionCards(), the same generator the form runs at submit.
+ * Path 2 exists because in live Zoho (2026-09-15) path 1 came back empty for .html attachments,
+ * while the same getFile call reads the JSON fine in the revision form. getFile's result shape is
+ * handled loosely and reported on screen, so a failed read says what Zoho actually returned.
+ * TRAP: getFile needs "$file_id", NOT the attachment record id -- the record id returns an empty
+ * Blob and throws nothing.
  */
 import React, { useEffect, useRef, useState } from "react";
 import {
@@ -23,6 +28,7 @@ import {
   Tabs,
   Typography,
 } from "@mui/material";
+import { buildProductionCards } from "./productionCards";
 
 const ZOHO = window.ZOHO;
 
@@ -46,6 +52,73 @@ const orderOf = (name) => {
 const newestFirst = (a, b) =>
   new Date(b?.Created_Time || 0) - new Date(a?.Created_Time || 0);
 
+// getFile's return shape is not documented. The revision form gets a Blob for JSON, but accept
+// whatever arrives, and describe it so a failure is diagnosable from the screen.
+async function readFileText(fileId) {
+  const r = await ZOHO.CRM.API.getFile({ id: fileId });
+  let text = "";
+  try {
+    if (typeof r === "string") text = r;
+    else if (r && typeof r.text === "function") text = await r.text(); // Blob, File, Response
+    else if (r instanceof ArrayBuffer || ArrayBuffer.isView(r)) text = new TextDecoder().decode(r);
+    else if (r && typeof r === "object") {
+      const inner = r.data ?? r.response ?? r.body ?? r.content;
+      if (typeof inner === "string") text = inner;
+      else if (inner && typeof inner.text === "function") text = await inner.text();
+    }
+  } catch (e) {
+    /* leave text empty; the shape below still explains what came back */
+  }
+  const size = r?.size ?? r?.byteLength ?? r?.length;
+  const shape =
+    Object.prototype.toString.call(r).slice(8, -1) +
+    (r?.type ? ` ${r.type}` : "") +
+    (size != null ? `, ${size} bytes` : "");
+  return { text, shape };
+}
+
+// Deal field -> the count key buildProductionCards() reads. 1:1 with the updateRecord in App.jsx.
+const COUNT_FIELDS = {
+  Screen_Print_Prints: "screenPrintPrints",
+  Embroidery_Department_Prints: "embroideryPrints",
+  Vinyl_Department_Prints: "vinylDeptPrints",
+  Embroidery_Small_Prints: "embroiderySmallPrints",
+  Embroidery_Medium_Prints: "embroideryMediumPrints",
+  Embroidery_Large_Prints: "embroideryLargePrints",
+  DTG_Prints: "dtgPrints",
+  DTF_Prints: "dtfPrints",
+  HTV_Prints: "htvPrints",
+  Vinyl_Prints: "vinylPrints",
+  Stickers_Prints: "stickersPrints",
+  Decals_Prints: "decalsPrints",
+  Banners_Prints: "bannersPrints",
+  Posters_Prints: "postersPrints",
+  Magnets_Prints: "magnetsPrints",
+  Patches_Prints: "patchesPrints",
+  Outsourced_Prints: "outsourcedProducts",
+};
+
+// Path 2: regenerate every card from the newest onboarding-form.json plus the Deal's counts.
+async function rebuildCards(entity, recordId, attachments) {
+  const json = attachments
+    .filter((a) => String(a?.File_Name || "").toLowerCase().endsWith(".json"))
+    .sort(newestFirst)[0];
+  if (!json?.["$file_id"]) throw new Error("this deal has no onboarding-form.json to rebuild from");
+  const { text, shape } = await readFileText(json["$file_id"]);
+  if (!text || !text.trim()) throw new Error(`onboarding-form.json also read empty (${shape})`);
+  const data = JSON.parse(text);
+
+  const rec = await ZOHO.CRM.API.getRecord({ Entity: entity, RecordID: recordId, approved: "both" });
+  const deal = rec?.data?.[0] || {};
+  const counts = {};
+  for (const [field, key] of Object.entries(COUNT_FIELDS)) {
+    if (deal[field] != null) counts[key] = deal[field];
+  }
+  const built = new Map();
+  for (const c of buildProductionCards(data, counts)) built.set(c.name.toLowerCase(), c.html);
+  return built;
+}
+
 async function loadCards(entity, recordId) {
   const resp = await ZOHO.CRM.API.getRelatedRecords({
     Entity: entity,
@@ -54,7 +127,8 @@ async function loadCards(entity, recordId) {
     page: 1,
     per_page: 200,
   });
-  const attachments = (resp?.data || [])
+  const all = resp?.data || [];
+  const attachments = all
     .filter((a) => {
       const n = String(a?.File_Name || "").toLowerCase();
       return n.startsWith("production-card-") && n.endsWith(".html");
@@ -70,20 +144,45 @@ async function loadCards(entity, recordId) {
     else byName.get(name).olderCopies += 1;
   }
 
+  // Path 1: the attached files.
   const cards = await Promise.all(
     [...byName.entries()].map(async ([name, { attachment, olderCopies }]) => {
+      const base = { name, label: labelFor(name), olderCopies };
       try {
         const fileId = attachment["$file_id"];
-        if (!fileId) throw new Error("attachment has no $file_id");
-        const blob = await ZOHO.CRM.API.getFile({ id: fileId });
-        const html = blob && typeof blob.text === "function" ? await blob.text() : "";
-        if (!html || !html.trim()) throw new Error("Zoho returned an empty file");
-        return { name, label: labelFor(name), html, olderCopies, created: attachment.Created_Time };
+        if (!fileId) return { ...base, error: "attachment has no $file_id" };
+        const { text, shape } = await readFileText(fileId);
+        if (!text || !text.trim()) return { ...base, error: `Zoho returned an empty file (${shape})` };
+        return { ...base, html: text };
       } catch (e) {
-        return { name, label: labelFor(name), error: String(e?.message || e), olderCopies };
+        return { ...base, error: String(e?.message || e) };
       }
     })
   );
+
+  // Path 2, only for the cards path 1 couldn't read.
+  if (cards.some((c) => c.error)) {
+    let built = null;
+    let rebuildError = "";
+    try {
+      built = await rebuildCards(entity, recordId, all);
+    } catch (e) {
+      rebuildError = String(e?.message || e);
+    }
+    for (const c of cards) {
+      if (!c.error) continue;
+      if (built?.has(c.name)) {
+        c.readError = c.error;
+        c.html = built.get(c.name);
+        c.rebuilt = true;
+        delete c.error;
+      } else {
+        c.error = rebuildError
+          ? `${c.error}. Rebuilding from the deal's data also failed: ${rebuildError}`
+          : `${c.error}. The deal's current data no longer produces this card.`;
+      }
+    }
+  }
   return cards.sort((a, b) => orderOf(a.name) - orderOf(b.name));
 }
 
@@ -214,6 +313,16 @@ const CardViewer = () => {
           Download
         </Button>
       </Box>
+
+      {current?.rebuilt && (
+        <Alert severity="info" sx={{ borderRadius: 0 }}>
+          Rebuilt from this deal's onboarding data, because Zoho wouldn't return the attached file.
+          Print counts come from the Deal's current fields.
+          <Typography component="span" sx={{ display: "block", fontSize: 11, opacity: 0.7 }}>
+            Attachment read: {current.readError}
+          </Typography>
+        </Alert>
+      )}
 
       {current?.olderCopies > 0 && (
         <Alert severity="warning" sx={{ borderRadius: 0 }}>
