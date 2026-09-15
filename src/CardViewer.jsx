@@ -153,6 +153,11 @@ async function loadCards(entity, recordId) {
         if (!fileId) return { ...base, error: "attachment has no $file_id" };
         const { text, shape } = await readFileText(fileId);
         if (!text || !text.trim()) return { ...base, error: `Zoho returned an empty file (${shape})` };
+        // Live 2026-09-15: for .html, Zoho returned the literal text "[object Blob]" -- non-empty,
+        // so it must be checked. Only accept something that is actually one of our cards.
+        if (!/<!doctype html|<html/i.test(text) || !text.includes("pcard")) {
+          return { ...base, error: `Zoho returned "${text.trim().slice(0, 40)}" instead of the card (${shape})` };
+        }
         return { ...base, html: text };
       } catch (e) {
         return { ...base, error: String(e?.message || e) };
