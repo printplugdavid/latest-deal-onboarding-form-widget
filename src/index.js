@@ -1,11 +1,21 @@
-import React from "react";
+import React, { Suspense, lazy } from "react";
 import ReactDOM from "react-dom/client";
 import "./index.css";
-import App from "./App";
+
+// One app, two Zoho buttons:
+//   default                 -> the Deal Onboarding Form
+//   ?view=cards  or  #cards -> the production card viewer (see CardViewer.jsx)
+// Each is loaded on demand, so the card viewer doesn't download the whole form first.
+const App = lazy(() => import("./App"));
+const CardViewer = lazy(() => import("./CardViewer"));
+
+const params = new URLSearchParams(window.location.search);
+const showCards =
+  params.get("view") === "cards" || window.location.hash.replace("#", "") === "cards";
 
 const root = ReactDOM.createRoot(document.getElementById("root"));
 root.render(
   <React.StrictMode>
-    <App />
+    <Suspense fallback={null}>{showCards ? <CardViewer /> : <App />}</Suspense>
   </React.StrictMode>
 );
