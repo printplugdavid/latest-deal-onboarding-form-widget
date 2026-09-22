@@ -33,6 +33,17 @@ import { gangSheetPrints } from "./gangSheet";
  */
 const atLeastZero = (n) => (n > 0 ? n : 0);
 
+/*
+ * Colours are the exception, and deliberately so (revision lane's gate run, 2026-09-22). The other
+ * three multiplicands default to 0 because zero garments, placements or items genuinely means no
+ * work. A graphic that exists is never printed in zero colours, which is why this field has always
+ * defaulted to 1 -- "", undefined, "abc" and even "0" all count as one colour. Flooring it at 0
+ * would have made a NEGATIVE the only bad input that makes a screen-print graphic vanish, adding a
+ * novel route to SD = 0 in the middle of an open zeros investigation. This folds the negative into
+ * the existing default instead of contradicting it, and replaces the old `|| 1` rather than wrapping it.
+ */
+const atLeastOne = (n) => (n > 0 ? n : 1);
+
 export function computePrints(products) {
   let vinylDeptPrints = 0;
   let embroideryPrints = 0;
@@ -71,7 +82,7 @@ export function computePrints(products) {
       product?.primaryBranches?.forEach((branch) => {
         const qty = atLeastZero(parseInt(branch?.garmentQuantity) || 0);
         branch?.secondaryBranches?.forEach((graphic) => {
-          const colors = atLeastZero(parseInt(graphic?.numberOfColorsUsed) || 1);
+          const colors = atLeastOne(parseInt(graphic?.numberOfColorsUsed));
           const placements = atLeastZero(parseInt(graphic?.numberOfPlacements) || 0);
           const underbase = graphic?.underbase;
           const underbaseValue =
