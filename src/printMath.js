@@ -223,8 +223,20 @@ export function computePrints(products) {
       ED: embroideryProjectedPrints,
       VD: vinylProjectedPrints,
     },
-    // embroidery placement-size split -- three Deal fields; they sum to ED unless a
-    // placement had no size, in which case the shortfall is deliberate (Unsized).
+    // Embroidery placement-size split -- three Deal fields.
+    //
+    // ⚠️ PRECONDITION (revision lane, measured 2026-09-22): this split is meaningful only when
+    // numberOfPlacements equals the number of placement rows -- i.e. payloads the onboarding form
+    // produces, where a watcher keeps them in lockstep. A consumer that narrows the COUNT without
+    // narrowing the ROWS -- the revision form's correction path, which knows how many placements
+    // were ticked but not which ones -- will see S+M+L exceed ED, because this loop attributes
+    // every row of a graphic that prints. The module cannot do better: the payload does not carry
+    // which row was ticked. Such a consumer must compute its own split; that duplicate is
+    // structural, not redundant.
+    //
+    // So "S+M+L <= ED" holds for onboarding-shaped payloads only. Do not state it unqualified.
+    // Within that precondition they sum to ED unless a placement had no size, in which case the
+    // shortfall is deliberate (Unsized).
     embroiderySizes: {
       small: embroiderySmallPrints,
       medium: embroideryMediumPrints,
