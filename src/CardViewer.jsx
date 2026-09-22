@@ -10,7 +10,8 @@
  *
  * Cards are REBUILT, not read: the attachment list decides which tabs exist, and each card's content
  * comes from buildProductionCards() -- the generator the form runs at submit -- fed the newest
- * onboarding-form.json plus the Deal's current print-count fields.
+ * onboarding-form.json plus the Deal's current print-count fields AND its current Closing Date, so a
+ * deal that moved does not leave production reading the date typed at onboarding (E-21).
  * Why: live in Zoho (2026-09-15), getFile on a .html attachment returns the STRING "[object Blob]"
  * (the SDK stringifies it before we see it), while .json reads fine. Reading the attached cards was
  * also the slow part (one wasted round trip per card), so it was removed rather than kept as a path.
@@ -158,8 +159,22 @@ async function loadCards(entity, recordId) {
   for (const [field, key] of Object.entries(COUNT_FIELDS)) {
     if (deal[field] != null) counts[key] = deal[field];
   }
+  // The due date on a card came from the payload -- the date typed at onboarding -- so a card kept
+  // showing it after the deal moved, which is what production was reading. David's ruling
+  // (2026-09-22, E-21): the Deal's CURRENT Closing Date wins. Viewer only; the attached files are
+  // create-only and still carry the original date, which is one more reason to read cards here.
+  // If the Deal has no Closing Date, fall through to the payload and the card's own
+  // "See Closing Date on Deal" fallback.
+  // TRAP: CRM date fields come back as bare "YYYY-MM-DD", which `new Date()` reads as UTC midnight.
+  // West of UTC that renders as the PREVIOUS day -- "2026-09-24" printed 2026-09-23 in Boise. Pin it
+  // to local midnight so the card shows the date the Deal actually says. (The form's own due date is
+  // a DatePicker object and was never affected, which is why this only bites here.)
+  const localDate = (d) => (/^\d{4}-\d{2}-\d{2}$/.test(d) ? `${d}T00:00:00` : d);
+  const liveDue = deal.Closing_Date
+    ? { ...data, hardDueDate: "Yes", dueDate: localDate(deal.Closing_Date) }
+    : data;
   const built = new Map();
-  for (const c of buildProductionCards(data, counts)) built.set(c.name.toLowerCase(), c.html);
+  for (const c of buildProductionCards(liveDue, counts)) built.set(c.name.toLowerCase(), c.html);
 
   const cards = [...byName.entries()].map(([name, { olderCopies }]) => {
     const base = { name, label: labelFor(name), olderCopies };
@@ -169,6 +184,7 @@ async function loadCards(entity, recordId) {
   });
   const info =
     `Built from the onboarding form submitted ${pcStamp(json.Created_Time)} and the Deal's current print counts` +
+    (deal.Closing_Date ? ` · due date is the Deal's Closing Date (${deal.Closing_Date})` : "") +
     ` · loaded in ${secs(t2 - t0)} (list + deal ${secs(t1 - t0)}, form ${secs(t2 - t1)})`;
   return { cards: cards.sort((a, b) => orderOf(a.name) - orderOf(b.name)), info };
 }
