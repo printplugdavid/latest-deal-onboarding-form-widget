@@ -26,12 +26,17 @@ const GARMENT_PRODUCTS = [
   "Vinyl",
 ];
 const GRAPHIC_PRODUCTS = ["Graphic Design"];
+// Fifth product type, onboarding branch feat/dtf-gang-sheet (06 §"NEW product type
+// gangsheet"). Print-only DTF: no garments, no placements. Without this it fell to
+// the nongarment default and the parser looked for a quantityOrdered that is not there.
+const GANGSHEET_PRODUCTS = ["DTF Gang Sheet"];
 const STOREFRONT_PRODUCTS = ["Online StoreFront"];
 
 function productTypeFor(name) {
   const n = String(name || "").trim();
   if (GARMENT_PRODUCTS.includes(n)) return "garment";
   if (GRAPHIC_PRODUCTS.includes(n)) return "graphic";
+  if (GANGSHEET_PRODUCTS.includes(n)) return "gangsheet";
   if (STOREFRONT_PRODUCTS.includes(n)) return "onlinestorefront";
   return "nongarment";
 }
@@ -200,6 +205,15 @@ export function parseOnboardingNote(rawContent) {
           })),
         })),
       }));
+    } else if (productType === "gangsheet") {
+      /*
+       * Captured so a note-sourced gang sheet carries the same facts as the JSON.
+       * NOT yet consumed: the revision form does not offer gang sheets (see 07).
+       * Sheet size is one label in the note ("22\" x 12.5\""), so it is kept raw.
+       */
+      product.numberOfGangSheets = field(p.body, "Number of Gang Sheets");
+      product.gangSheetSize = field(p.body, "Gang Sheet Size");
+      product.numberOfGraphics = field(p.body, "Number of Graphics");
     } else if (productType === "nongarment") {
       product.quantityOrdered = field(p.body, "Quantity Ordered");
       product.dimensions = field(p.body, "Dimensions");

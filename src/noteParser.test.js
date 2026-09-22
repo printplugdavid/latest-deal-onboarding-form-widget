@@ -436,3 +436,107 @@ describe("yesNo", () => {
     expect(yesNo("")).toBe("");
   });
 });
+
+// ---------------------------------------------------------------------------
+// The fifth product type, from the onboarding lane's handoff of 2026-09-21
+// (branch feat/dtf-gang-sheet). Print-only DTF: no garments, no placements, and
+// no quantityOrdered. These pin that the form TOLERATES it — the merge does not
+// need to be held — not that it supports revising one.
+// ---------------------------------------------------------------------------
+const gangSheetNote = `PRODUCT INFORMATION
+---------------------------
+
+Selected Product Types: DTF Gang Sheet
+
+Product 1: DTF Gang Sheet
+---------------------------
+
+Gang Sheet Information
+---------------------------
+
+Number of Gang Sheets: 3
+
+Gang Sheet Size: 22" x 12.5"
+
+Number of Graphics: 2
+
+Graphic 1:
+---------------------------
+
+Graphic Description: Shop logo
+
+Graphic Size: 3.5" x 3.5"
+
+How Many Per Sheet: 10
+
+Number Of Colors Used: 1
+
+Other Information: rush
+
+Estimated Prints: 3 per sheet x 3 = 9
+
+
+OTHER INFORMATION
+---------------------------
+
+Is This a Repeat Order?: No`;
+
+describe("gang sheet products (productType gangsheet)", () => {
+  const products = parseOnboardingNote(gangSheetNote);
+
+  test("is typed gangsheet, not the nongarment default", () => {
+    expect(products).toHaveLength(1);
+    expect(products[0].productName).toBe("DTF Gang Sheet");
+    expect(products[0].productType).toBe("gangsheet");
+  });
+
+  test("does not invent a nongarment shape it has no fields for", () => {
+    expect(products[0].quantityOrdered).toBeUndefined();
+    expect(products[0].branches).toBeUndefined();
+    expect(products[0].primaryBranches).toBeUndefined();
+  });
+
+  test("keeps the sheet facts for later, sheet size raw", () => {
+    expect(products[0].numberOfGangSheets).toBe("3");
+    expect(products[0].gangSheetSize).toBe('22" x 12.5"');
+  });
+
+  test("contributes no prints and does not throw", () => {
+    // The gang sheet count is computed by the onboarding lane's gangSheet.js,
+    // not by printMath — which must simply ignore the type.
+    const r = computePrints(products);
+    expect(r).toMatchObject({ SD: 0, ED: 0, VD: 0, outsourced: 0 });
+  });
+
+  test("a JSON-shaped gang sheet product is equally inert", () => {
+    const payload = [
+      {
+        productName: "DTF Gang Sheet",
+        productType: "gangsheet",
+        numberOfGangSheets: "3",
+        gangSheetWidth: "22",
+        gangSheetHeight: "12.5",
+        gangGraphics: [{ graphicDescription: "logo", graphicWidth: "3.5", graphicHeight: "3.5" }],
+      },
+    ];
+    expect(() => computePrints(payload)).not.toThrow();
+    expect(computePrints(payload).VD).toBe(0);
+  });
+
+  test("a mixed deal still costs its garment work normally", () => {
+    const mixed = [
+      { productName: "DTF Gang Sheet", productType: "gangsheet", numberOfGangSheets: "3" },
+      {
+        productName: "Screen Printing",
+        productType: "garment",
+        primaryBranches: [
+          {
+            garmentQuantity: "10",
+            secondaryBranches: [{ numberOfColorsUsed: "2", numberOfPlacements: "1" }],
+          },
+        ],
+      },
+    ];
+    expect(computePrints(mixed).SD).toBe(20);
+  });
+});
