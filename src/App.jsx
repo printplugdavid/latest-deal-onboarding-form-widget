@@ -205,6 +205,7 @@ function App() {
     // Per-job totals (written to dedicated Deal fields; feed the per-category Produce Order tasks)
     let dtgPrints = 0;
     let dtfPrints = 0;
+    let gangSheetPrintsTotal = 0; // DTF Gang Sheet -- its own Deal field, see D-14
     let htvPrints = 0;
     let vinylPrints = 0;
     let stickersPrints = 0;
@@ -301,14 +302,17 @@ function App() {
       } else if (product?.productType === "gangsheet") {
         // DTF Gang Sheet (D-13): prints per sheet are computed from the sheet and graphic sizes,
         // times the number of sheets. NO heat-press multiplier -- the sheet ships unpressed, so
-        // one print is one print. Feeds DTF_Prints, and so Vinyl_Department_Prints.
+        // one print is one print.
+        // Its OWN field, not DTF_Prints (D-14): a deal can carry both a gang sheet and DTF shirts,
+        // and they are different work on the floor. Separate fields let the production function
+        // stamp each task with only its own count instead of the pair's sum.
         const gangTotal = gangSheetPrints(product).total;
         vinylActualPrints += gangTotal;
-        dtfPrints += gangTotal;
+        gangSheetPrintsTotal += gangTotal;
       }
     });
     // Vinyl Department = sum of every vinyl-family job (the department roll-up)
-    vinylDeptPrints = dtgPrints + dtfPrints + htvPrints + vinylPrints + stickersPrints + decalsPrints + bannersPrints + postersPrints + magnetsPrints + patchesPrints;
+    vinylDeptPrints = dtgPrints + dtfPrints + htvPrints + vinylPrints + stickersPrints + decalsPrints + bannersPrints + postersPrints + magnetsPrints + patchesPrints + gangSheetPrintsTotal;
     const totalPrints = vinylDeptPrints + embroideryPrints + screenPrintPrints;
     const totalActualPrints = vinylActualPrints + embroideryActualPrints + screenActualPrints;
     const totalProjectedPrints = vinylProjectedPrints + embroideryProjectedPrints + screenProjectedPrints;
@@ -1108,6 +1112,7 @@ function App() {
           Vinyl_Prints: vinylPrints,
           DTG_Prints: dtgPrints,
           DTF_Prints: dtfPrints,
+          DTF_Gang_Sheet_Prints: gangSheetPrintsTotal,
           HTV_Prints: htvPrints,
           Stickers_Prints: stickersPrints,
           Decals_Prints: decalsPrints,
@@ -1155,6 +1160,7 @@ function App() {
         screenPrintPrints, embroideryPrints, vinylDeptPrints,
         embroiderySmallPrints, embroideryMediumPrints, embroideryLargePrints,
         dtgPrints, dtfPrints, htvPrints, vinylPrints, stickersPrints,
+        gangSheetPrints: gangSheetPrintsTotal,
         decalsPrints, bannersPrints, postersPrints, magnetsPrints,
         patchesPrints, outsourcedProducts,
       };

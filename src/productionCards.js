@@ -36,7 +36,7 @@ const PC_META = {
   graphicdesign: { title: "GRAPHIC DESIGN / ARTWORK", file: "production-card-graphicdesign.html", dept: "Graphics", countKey: null, bi: false },
   storefront: { title: "ONLINE STOREFRONT", file: "production-card-storefront.html", dept: "Online Storefront", countKey: null, bi: false },
 };
-const pcRoute = (p) => PC_ROUTE[p?.productName] || (p?.productType === "gangsheet" ? { card: "vinyl", job: "DTF Gang Sheet", key: "dtfPrints" } : p?.productType === "nongarment" ? { card: "outsourced", job: "Outsourced", key: "outsourcedProducts" } : (p?.productType === "onlinestorefront" ? { card: "storefront", job: "Online Storefront", key: null } : null));
+const pcRoute = (p) => PC_ROUTE[p?.productName] || (p?.productType === "gangsheet" ? { card: "vinyl", job: "DTF Gang Sheet", key: "gangSheetPrints" } : p?.productType === "nongarment" ? { card: "outsourced", job: "Outsourced", key: "outsourcedProducts" } : (p?.productType === "onlinestorefront" ? { card: "storefront", job: "Online Storefront", key: null } : null));
 function pcRow(en, es, v, opts) { opts = opts || {}; if (!pcHas(v)) return ""; const label = opts.bi && es ? `${en} / ${es}` : en; return `<div class="row${opts.crit ? " crit" : ""}"><span class="lbl">${pcEsc(label)}</span><span class="val">${pcEsc(v)}</span></div>`; }
 function pcGarmentBlock(g, bi, ironPass) {
   const graphics = (g?.secondaryBranches || []).map((gr, i) => {
