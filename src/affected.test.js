@@ -176,20 +176,95 @@ describe("embroiderySizes", () => {
   });
 
   /*
-   * D-15 cross-check. main's printMath.js now computes its own Small/Medium/Large
-   * split (shipped 618a5fb for the three Embroidery_*_Prints Deal fields). Ours
-   * stays because it also tracks Unsized, which the note prints and main's does
-   * not -- but the three sizes they share must never disagree, or one of the two
-   * lanes is reporting the wrong thing.
+   * D-15 / D-16 cross-check, widened 2026-09-22 after it failed to do its job.
+   * It used to test ONE well-formed value, so when main gated the buckets on the
+   * graphic producing prints (2835a96) it stayed green through a real divergence
+   * that the onboarding lane had predicted. It now walks the degenerate values
+   * too -- those are the only ones where the rule can move.
+   *
+   * main's split does not track Unsized, which the note prints, so ours stays.
+   * The three sizes they share must never disagree.
    */
-  test("agrees with the split main's printMath.js computes", () => {
-    const item = { productIndex: 0, garmentIndex: 0, affected: "5" };
-    const ours = embroiderySizes(emb, item, "Revision");
-    const theirs = costItem(emb, item, "Revision").embroiderySizes;
-    expect(theirs).toBeDefined();
-    expect([theirs.small, theirs.medium, theirs.large]).toEqual([ours.Small, ours.Medium, ours.Large]);
-    // Only ours accounts for the sleeve placement nobody sized.
-    expect(ours.Unsized).toBe(5);
+  describe("agrees with main's printMath.js split", () => {
+    const withPlacements = (v) => [
+      {
+        productName: "Embroidery",
+        productType: "garment",
+        primaryBranches: [
+          {
+            garmentQuantity: "50",
+            secondaryBranches: [
+              {
+                numberOfPlacements: v,
+                tartiaryBranches: [{ placementSize: "Small" }, { placementSize: "Large" }],
+              },
+            ],
+          },
+        ],
+      },
+    ];
+
+    // blank falls back to the rows (D-16); an explicit 0 or a negative prints nothing.
+    [["blank", ""], ["missing", undefined], ["unreadable", "abc"], ["explicit zero", "0"],
+     ["negative", "-2"], ["normal", "2"]].forEach(([label, v]) => {
+      test(label + " (" + JSON.stringify(v) + ")", () => {
+        const products = withPlacements(v);
+        const item = { productIndex: 0, garmentIndex: 0, affected: "10" };
+        const ours = embroiderySizes(products, item, "Revision");
+        const r = costItem(products, item, "Revision");
+        expect([r.embroiderySizes.small, r.embroiderySizes.medium, r.embroiderySizes.large])
+          .toEqual([ours.Small, ours.Medium, ours.Large]);
+        // the invariant main now states: the split never exceeds the department total
+        expect(ours.Small + ours.Medium + ours.Large).toBeLessThanOrEqual(r.ED);
+      });
+    });
+  });
+
+  /*
+   * ⚠️ CORRECTIONS DIVERGE FROM main's SPLIT, AND THAT IS CORRECT. Do not "fix"
+   * this into agreement.
+   *
+   * syntheticProducts() narrows a correction's numberOfPlacements to the ticked
+   * count but leaves every placement row in place, because the count is what the
+   * shared arithmetic reads. main's loop therefore attributes EVERY row of a
+   * graphic that prints -- it cannot do better, because the payload carries how
+   * many placements were redone, not WHICH one. Only this side knows that.
+   *
+   * So for corrections main's split can exceed the department total. Nothing in
+   * the CRM is wrong: this lane writes none of the three Embroidery_*_Prints
+   * fields (David, 2026-09-02 -- note only), and onboarding's own payloads always
+   * have count == rows because its form keeps them in lockstep.
+   */
+  test("a correction attributes only the placement redone, where main cannot", () => {
+    const products = [
+      {
+        productName: "Embroidery",
+        productType: "garment",
+        primaryBranches: [
+          {
+            garmentQuantity: "50",
+            secondaryBranches: [
+              {
+                numberOfPlacements: "2",
+                tartiaryBranches: [{ placementSize: "Small" }, { placementSize: "Large" }],
+              },
+            ],
+          },
+        ],
+      },
+    ];
+    const item = { productIndex: 0, garmentIndex: 0, placementKeys: ["0:1"], affected: "4" };
+    const r = costItem(products, item, "Correction");
+    const ours = embroiderySizes(products, item, "Correction");
+
+    expect(r.ED).toBe(4); // one placement redone on 4 garments
+    expect([ours.Small, ours.Medium, ours.Large]).toEqual([0, 0, 4]); // only the Large
+    expect(ours.Small + ours.Medium + ours.Large).toBe(r.ED);
+
+    // main's number for the same job counts both rows -- 8 against an ED of 4.
+    const theirs = r.embroiderySizes;
+    expect(theirs.small + theirs.medium + theirs.large).toBe(8);
+    expect(theirs.small + theirs.medium + theirs.large).toBeGreaterThan(r.ED);
   });
 
   test("a correction only attributes the placements ticked", () => {

@@ -160,6 +160,23 @@ export function syntheticProducts(products, item, formType) {
  * size recorded counts as Unsized rather than being guessed at -- the same
  * ruling onboarding applied.
  */
+/*
+ * Does this graphic produce any prints at all? Mirrors printMath.js's D-16 rule:
+ * a BLANK number falls back to the rows the agent built, an explicit "0" or a
+ * negative means none. A graphic that prints nothing has nothing to attribute,
+ * which is what keeps Small+Medium+Large <= the embroidery total.
+ *
+ * This duplicates three lines of the shared module on purpose -- we need the
+ * answer per graphic, and printMath only returns totals. The cross-check test in
+ * affected.test.js asserts we still agree with it across blank / "0" / "-2" /
+ * normal, so if that rule ever moves, the suite says so rather than drifting.
+ */
+function graphicPrints(graphic) {
+  const typed = parseInt(graphic?.numberOfPlacements, 10);
+  const rows = (graphic?.tartiaryBranches || []).length;
+  return (isNaN(typed) ? rows : Math.max(0, typed)) > 0;
+}
+
 export function embroiderySizes(products, item, formType) {
   const out = { Small: 0, Medium: 0, Large: 0, Unsized: 0 };
 
@@ -177,6 +194,7 @@ export function embroiderySizes(products, item, formType) {
 
   placementsOf(branch).forEach((x) => {
     if (picked && picked.indexOf(x.key) < 0) return;
+    if (!graphicPrints(x.graphic)) return;
     const size = String(x.placement?.placementSize || "").trim();
     if (size === "Small" || size === "Medium" || size === "Large") out[size] += qty;
     else out.Unsized += qty;
