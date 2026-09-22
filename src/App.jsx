@@ -1126,7 +1126,15 @@ function App() {
     // machine-readable handoff for downstream production tooling). Own try/catch so a
     // failure here never blocks the note, the counts, or the form closing.
     try {
-      const onboardingJson = JSON.stringify(data);
+      // E-6: stamp the payload so the consumers (the revision form today, the production child
+      // module later) can branch on version instead of sniffing for keys. Bumped to 1 with the
+      // gangsheet product type (D-13); history and the per-version shape live in docs/06.
+      // The stamp is added to the attached copy only -- `data` itself is never retyped (D-5).
+      const onboardingJson = JSON.stringify({
+        ...data,
+        _schemaVersion: 1,
+        _submittedAt: new Date().toISOString(),
+      });
       const jsonBlob = new Blob([onboardingJson], { type: "application/json" });
       await ZOHO.CRM.API.attachFile({
         Entity: entity,
