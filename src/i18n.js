@@ -38,7 +38,7 @@ const STRINGS = {
   // ---- section titles ---------------------------------------------------
   "sec.type": { en: "Type", es: "Tipo" },
   "sec.wrong": { en: "What went wrong", es: "Qué salió mal" },
-  "sec.garments": { en: "Which garments", es: "Cuáles prendas" },
+  "sec.garments": { en: "Which items", es: "Cuáles artículos" },
   "sec.closing": { en: "Closing date", es: "Fecha de cierre" },
   "sec.review": { en: "Review", es: "Revisar" },
 
@@ -100,11 +100,32 @@ const STRINGS = {
     en: "All {n} graphic(s) on this garment will be reprinted.",
     es: "Se reimprimirán los {n} gráfico(s) de esta prenda.",
   },
-  "g.add": { en: "+ Add an affected garment", es: "+ Agregar una prenda afectada" },
-  "g.addMore": { en: "+ Add another affected garment", es: "+ Agregar otra prenda afectada" },
+  "g.add": { en: "+ Add an affected item", es: "+ Agregar un artículo afectado" },
+  "g.addMore": { en: "+ Add another affected item", es: "+ Agregar otro artículo afectado" },
   "g.noGarments": {
-    en: "No garment products found in this deal's payload.",
-    es: "No se encontraron prendas en los datos de este acuerdo.",
+    en: "No garment or gang sheet products found in this deal's payload.",
+    es: "No se encontraron prendas ni hojas colectivas (gang sheets) en los datos de este acuerdo.",
+  },
+
+  // ---- gang sheets ------------------------------------------------------
+  "gs.sheets": { en: "Sheets to reprint", es: "Hojas a reimprimir" },
+  "gs.perSheet": {
+    en: "{n} print(s) per sheet — each reprinted sheet costs that again.",
+    es: "{n} impresión(es) por hoja — cada hoja reimpresa cuesta eso de nuevo.",
+  },
+  "gs.noPerSheet": {
+    en: "This deal does not say how many prints fit on a sheet, so no print count can be worked out. Enter it in the note below and tell the production manager.",
+    es: "Este acuerdo no indica cuántas impresiones caben en una hoja, así que no se puede calcular el conteo. Anótelo abajo y avise al gerente de producción.",
+  },
+  "gs.size": { en: "Sheet size: {v}", es: "Tamaño de hoja: {v}" },
+  "gs.originalSheets": {
+    en: "Original order was {n} sheet(s).",
+    es: "El pedido original fue de {n} hoja(s).",
+  },
+  "gs.details": { en: "Sheet Details (optional)", es: "Detalles de la hoja (opcional)" },
+  "gs.detailsPh": {
+    en: "e.g. which graphics were wrong, wrong sheet size, colour off",
+    es: "p. ej. cuáles gráficos salieron mal, tamaño de hoja incorrecto, color desviado",
   },
 
   // ---- closing date -----------------------------------------------------

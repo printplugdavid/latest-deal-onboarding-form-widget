@@ -10,12 +10,14 @@
  * underbase, placements, department -- comes off the record.
  */
 import { useEffect, useMemo, useState } from "react";
-import { computePrints, departmentFor } from "./printMath";
+import { departmentFor } from "./printMath";
 import { readPayload } from "./payload";
 import { deriveAgents } from "./agentAssign";
 import {
   placementsOf,
-  syntheticProducts,
+  costItem,
+  isGangSheet,
+  gangPerSheet,
   embroiderySizes,
   effectiveQty,
   formatSizes,
@@ -148,6 +150,18 @@ function garmentLabel(branch, i) {
   return "Garment " + (i + 1) + (bits.length ? " — " + bits.join("  ·  ") : "");
 }
 
+/*
+ * The sheet's size, however this deal recorded it: the note carries one
+ * "Gang Sheet Size" string, the JSON carries width and height separately.
+ */
+function sheetSizeLabel(product) {
+  const fromNote = oneLine(product?.gangSheetSize || "");
+  if (fromNote) return fromNote;
+  const w = String(product?.gangSheetWidth || "").trim();
+  const h = String(product?.gangSheetHeight || "").trim();
+  return w && h ? w + '" wide x ' + h + '" tall' : "";
+}
+
 function graphicLabel(graphic, i) {
   const bits = [];
   if (graphic?.graphicDescription) {
@@ -268,12 +282,16 @@ export default function App() {
   }, []);
 
   // ---- derived ----------------------------------------------------------
-  const garmentProducts = useMemo(
+  // Anything an agent can send back through the press: a garment that has at
+  // least one garment branch, or a DTF gang sheet, whose unit is the sheet.
+  const pickableProducts = useMemo(
     () =>
       products
         .map((p, i) => ({ product: p, index: i }))
         .filter(
-          (x) => x.product?.productType === "garment" && (x.product?.primaryBranches || []).length
+          (x) =>
+            isGangSheet(x.product) ||
+            (x.product?.productType === "garment" && (x.product?.primaryBranches || []).length)
         ),
     [products]
   );
@@ -282,10 +300,14 @@ export default function App() {
     const sum = { SD: 0, ED: 0, VD: 0 };
     const detail = [];
     items.forEach((item) => {
-      if (!effectiveQty(item) || item.productIndex === "" || item.garmentIndex === "") return;
-      if (formType === "Correction" && !(item.placementKeys || []).length) return;
-      const synth = syntheticProducts(products, item, formType);
-      const r = computePrints(synth);
+      if (!effectiveQty(item) || item.productIndex === "") return;
+      const gang = isGangSheet(products[item.productIndex]);
+      // A gang sheet has no garment and no placements -- the sheet is the unit.
+      if (!gang) {
+        if (item.garmentIndex === "") return;
+        if (formType === "Correction" && !(item.placementKeys || []).length) return;
+      }
+      const r = costItem(products, item, formType);
       sum.SD += r.SD;
       sum.ED += r.ED;
       sum.VD += r.VD;
@@ -402,6 +424,32 @@ export default function App() {
 
       if (n > 0) L.push("");
       L.push("Item " + (n + 1) + " · " + (p?.productName || ""));
+
+      // A gang sheet is reprinted by the sheet -- no garment, size or placement
+      // to record, and the per-sheet figure is what makes the count checkable.
+      if (isGangSheet(p)) {
+        const size = sheetSizeLabel(p);
+        if (size) L.push("  Sheet size: " + size);
+        L.push(
+          "  Sheets to reprint: " +
+            qty +
+            (result.gang?.perSheet
+              ? "  (" + result.gang.perSheet + " print" + (result.gang.perSheet === 1 ? "" : "s") + " per sheet)"
+              : "  (prints per sheet unknown)")
+        );
+        const gdet = String(item.details || "").trim();
+        if (gdet) {
+          L.push("  Sheet details:");
+          gdet.split("\n").forEach((line) => L.push("    " + line.trimEnd()));
+        }
+        L.push("  Prints: Screen Print " + result.SD + " | Embroidery " + result.ED + " | Vinyl " + result.VD);
+        if (audit) {
+          L.push("    actual     SD " + result.actual.SD + " | ED " + result.actual.ED + " | VD " + result.actual.VD);
+          L.push("    projected  SD " + result.projected.SD + " | ED " + result.projected.ED + " | VD " + result.projected.VD);
+        }
+        return;
+      }
+
       if (b?.garmentType) L.push("  Garment: " + oneLine(b.garmentType));
 
       const skus = (b?.garmentSkus || []).map((x) => String(x?.sku || "").trim()).filter(Boolean);
@@ -746,6 +794,8 @@ export default function App() {
 
         {items.map((item, i) => {
           const prod = products[item.productIndex];
+          const gang = isGangSheet(prod);
+          const perSheet = gang ? gangPerSheet(prod) : 0;
           const branches = prod?.primaryBranches || [];
           const branch = branches[item.garmentIndex];
           const graphics = branch?.secondaryBranches || [];
@@ -770,19 +820,20 @@ export default function App() {
                     productIndex: e.target.value === "" ? "" : Number(e.target.value),
                     garmentIndex: "",
                     placementKeys: [],
+                    sizes: [],
                   })
                 }
                 style={S.select}
               >
                 <option value="">{t("g.select")}</option>
-                {garmentProducts.map((x) => (
+                {pickableProducts.map((x) => (
                   <option key={x.index} value={x.index}>
                     {labelApplication(x.product.productName, lang)}
                   </option>
                 ))}
               </select>
 
-              {item.productIndex !== "" && (
+              {item.productIndex !== "" && !gang && (
                 <>
                   <Label>{t("g.garment")}</Label>
                   <select
@@ -805,7 +856,7 @@ export default function App() {
                 </>
               )}
 
-              {formType === "Correction" && item.garmentIndex !== "" && (
+              {formType === "Correction" && !gang && item.garmentIndex !== "" && (
                 <>
                   <Label>{t("g.placements")}</Label>
                   {allPlacements.length ? (
@@ -842,11 +893,11 @@ export default function App() {
                 </>
               )}
 
-              {formType === "Revision" && item.garmentIndex !== "" && (
+              {formType === "Revision" && !gang && item.garmentIndex !== "" && (
                 <p style={S.hint}>{t("g.allGraphics", { n: graphics.length })}</p>
               )}
 
-              {item.garmentIndex !== "" && (
+              {!gang && item.garmentIndex !== "" && (
                 <>
                   <Label>{t("g.affected")}</Label>
                   {(item.sizes || []).length ? (
@@ -929,6 +980,39 @@ export default function App() {
                 </>
               )}
 
+              {gang && (
+                <>
+                  <Label>{t("gs.sheets")}</Label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={item.affected}
+                    onChange={(e) => patchItem(i, { affected: e.target.value })}
+                    style={S.input}
+                  />
+                  <p style={S.hint}>
+                    {perSheet
+                      ? t("gs.perSheet", { n: perSheet })
+                      : t("gs.noPerSheet")}
+                  </p>
+                  {sheetSizeLabel(prod) && (
+                    <p style={S.hint}>{t("gs.size", { v: sheetSizeLabel(prod) })}</p>
+                  )}
+                  {prod?.numberOfGangSheets && (
+                    <p style={S.hint}>{t("gs.originalSheets", { n: prod.numberOfGangSheets })}</p>
+                  )}
+
+                  <Label>{t("gs.details")}</Label>
+                  <textarea
+                    rows={3}
+                    value={item.details || ""}
+                    onChange={(e) => patchItem(i, { details: e.target.value })}
+                    placeholder={t("gs.detailsPh")}
+                    style={S.textarea}
+                  />
+                </>
+              )}
+
               {r && (
                 <div style={S.itemTotals}>
                   {t("r.screenPrint")} <b>{r.SD}</b> &nbsp;·&nbsp; {t("r.embroidery")}{" "}
@@ -939,10 +1023,10 @@ export default function App() {
           );
         })}
 
-        <button type="button" onClick={addItem} style={S.add} disabled={!garmentProducts.length}>
+        <button type="button" onClick={addItem} style={S.add} disabled={!pickableProducts.length}>
           {items.length ? t("g.addMore") : t("g.add")}
         </button>
-        {!garmentProducts.length && (
+        {!pickableProducts.length && (
           <p style={S.hint}>{t("g.noGarments")}</p>
         )}
       </Section>

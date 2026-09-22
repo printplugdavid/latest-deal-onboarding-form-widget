@@ -1,3 +1,6 @@
+import { computePrints } from "./printMath";
+import { estimateGangSheet } from "./gangSheet";
+
 /*
  * affected.js -- turning "what the agent ticked" into something the print
  * calculation can cost.
@@ -40,6 +43,56 @@ export function formatSizes(sizes) {
       return label + " \u00d7" + qtyOf(r.qty);
     })
     .join(", ");
+}
+
+
+export const isGangSheet = (product) => String(product?.productType || "") === "gangsheet";
+
+/*
+ * Prints on ONE sheet. From the JSON we can re-run the packing with the
+ * onboarding lane's own module; from a note we cannot (no geometry), but the
+ * note printed the answer, so the parser kept it.
+ */
+export function gangPerSheet(product) {
+  const hasGeometry =
+    product?.gangSheetWidth && product?.gangSheetHeight && (product?.gangGraphics || []).length;
+  if (hasGeometry) {
+    return estimateGangSheet(product.gangSheetWidth, product.gangSheetHeight, product.gangGraphics)
+      .printsPerSheet;
+  }
+  const n = parseInt(product?.estimatedPrintsPerSheet, 10);
+  return n > 0 ? n : 0;
+}
+
+const zeroResult = () => ({
+  SD: 0, ED: 0, VD: 0, outsourced: 0,
+  actual: { SD: 0, ED: 0, VD: 0 },
+  projected: { SD: 0, ED: 0, VD: 0 },
+});
+
+/*
+ * What one affected item costs. Garments go through the onboarding form's
+ * calculation; gang sheets are prints-per-sheet x sheets being reprinted,
+ * with NO heat-press multiplier -- the sheet ships unpressed, so one print is
+ * one print (onboarding D-13). Gang sheet prints land in the Vinyl Department
+ * slot, matching where the original job's roll up (David, 2026-09-22).
+ */
+export function costItem(products, item, formType) {
+  const product = products?.[item?.productIndex];
+  if (!product) return zeroResult();
+
+  if (isGangSheet(product)) {
+    const sheets = effectiveQty(item);
+    const perSheet = gangPerSheet(product);
+    const total = perSheet * sheets;
+    const r = zeroResult();
+    r.VD = total;
+    r.actual.VD = total;
+    r.gang = { sheets, perSheet };
+    return r;
+  }
+
+  return computePrints(syntheticProducts(products, item, formType));
 }
 
 /*

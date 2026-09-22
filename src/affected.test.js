@@ -5,6 +5,9 @@
  * every correction the shop logs.
  */
 import {
+  costItem,
+  gangPerSheet,
+  isGangSheet,
   placementsOf,
   syntheticProducts,
   embroiderySizes,
@@ -242,5 +245,80 @@ describe("sizes", () => {
     expect(SIZE_OPTIONS[0]).toBe("XXS");
     expect(SIZE_OPTIONS).toContain("5XL");
     expect(SIZE_OPTIONS).toContain("OSFA");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Gang sheet revisions. The unit reprinted is a SHEET, and a sheet ships
+// unpressed, so there is no heat-press doubling. Prints land in the Vinyl
+// Department slot, matching where the original job rolls up.
+// ---------------------------------------------------------------------------
+describe("gang sheet costing", () => {
+  // 22 x 12.5 sheet of 3.5 x 3.5 graphics = 15 per sheet (onboarding's example).
+  const jsonSheet = [
+    {
+      productName: "DTF Gang Sheet",
+      productType: "gangsheet",
+      numberOfGangSheets: "3",
+      gangSheetWidth: "22",
+      gangSheetHeight: "12.5",
+      gangGraphics: [{ graphicWidth: "3.5", graphicHeight: "3.5" }],
+    },
+  ];
+  const noteSheet = [
+    {
+      productName: "DTF Gang Sheet",
+      productType: "gangsheet",
+      numberOfGangSheets: "3",
+      estimatedPrintsPerSheet: "15", // all a note can give us
+    },
+  ];
+
+  test("re-runs the onboarding packing from the JSON", () => {
+    expect(gangPerSheet(jsonSheet[0])).toBe(15);
+    expect(isGangSheet(jsonSheet[0])).toBe(true);
+  });
+
+  test("falls back to the per-sheet figure the note printed", () => {
+    expect(gangPerSheet(noteSheet[0])).toBe(15);
+  });
+
+  test("costs the sheets REPRINTED, not the sheets ordered", () => {
+    // The trap: gangSheetPrints().total is 15 x 3 = 45, the whole original
+    // order. Reprinting one sheet is 15, not 45.
+    const one = costItem(jsonSheet, { productIndex: 0, affected: "1" }, "Revision");
+    expect(one.VD).toBe(15);
+    const two = costItem(jsonSheet, { productIndex: 0, affected: "2" }, "Revision");
+    expect(two.VD).toBe(30);
+  });
+
+  test("lands in Vinyl, all actual, with no heat-press doubling", () => {
+    const r = costItem(jsonSheet, { productIndex: 0, affected: "1" }, "Revision");
+    expect(r).toMatchObject({ SD: 0, ED: 0, VD: 15 });
+    expect(r.actual.VD).toBe(15);
+    expect(r.projected.VD).toBe(0); // a sheet ships unpressed
+  });
+
+  test("a note-sourced sheet costs the same as the JSON one", () => {
+    expect(costItem(noteSheet, { productIndex: 0, affected: "2" }, "Revision").VD).toBe(30);
+  });
+
+  test("correction and revision cost a sheet identically", () => {
+    const item = { productIndex: 0, affected: "2" };
+    expect(costItem(jsonSheet, item, "Correction").VD).toBe(
+      costItem(jsonSheet, item, "Revision").VD
+    );
+  });
+
+  test("no sheets, or an unmeasurable sheet, costs nothing rather than guessing", () => {
+    expect(costItem(jsonSheet, { productIndex: 0, affected: "" }, "Revision").VD).toBe(0);
+    expect(costItem([{ productName: "DTF Gang Sheet", productType: "gangsheet" }],
+      { productIndex: 0, affected: "2" }, "Revision").VD).toBe(0);
+  });
+
+  test("garment items still go through the onboarding calculation", () => {
+    const r = costItem(PRODUCTS, { productIndex: 0, garmentIndex: 0, placementKeys: ["0:0"], affected: "5" }, "Correction");
+    expect(r.SD).toBe(5);
+    expect(isGangSheet(PRODUCTS[0])).toBe(false);
   });
 });

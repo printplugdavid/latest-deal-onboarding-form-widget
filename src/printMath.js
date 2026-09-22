@@ -179,6 +179,10 @@ export function departmentFor(productName, productType) {
   if (p === "Screen Printing") return "Screen Printing";
   if (p === "Embroidery") return "Embroidery";
   if (p === "Graphic Design") return "Graphic Design";
+  // A DTF gang sheet is Vinyl Department work. Its prints get their own Deal
+  // field (DTF_Gang_Sheet_Prints) AND roll into Vinyl_Department_Prints, so a
+  // revision of one belongs in the VD slot (David, 2026-09-22).
+  if (productType === "gangsheet") return VINYL_DEPT;
   if (productType === "garment") return VINYL_DEPT;
   if (["Patches", "Stickers", "Decals", "Banners", "Posters", "Magnets", "Fridge Magnets"].includes(p)) {
     return VINYL_DEPT;

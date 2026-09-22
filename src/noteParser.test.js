@@ -456,24 +456,24 @@ Gang Sheet Information
 
 Number of Gang Sheets: 3
 
-Gang Sheet Size: 22" x 12.5"
+Gang Sheet Size: 22" wide x 12.5" tall
 
-Number of Graphics: 2
+Number of Graphics on the Sheet: 2
 
 Graphic 1:
 ---------------------------
 
 Graphic Description: Shop logo
 
-Graphic Size: 3.5" x 3.5"
+Graphic Size: 3.5" wide x 3.5" tall
 
-How Many Per Sheet: 10
+How Many Per Sheet: 15 (fills the sheet)
 
 Number Of Colors Used: 1
 
 Other Information: rush
 
-Estimated Prints: 3 per sheet x 3 = 9
+Estimated Prints: 15 per sheet x 3 = 45
 
 
 OTHER INFORMATION
@@ -498,7 +498,9 @@ describe("gang sheet products (productType gangsheet)", () => {
 
   test("keeps the sheet facts for later, sheet size raw", () => {
     expect(products[0].numberOfGangSheets).toBe("3");
-    expect(products[0].gangSheetSize).toBe('22" x 12.5"');
+    expect(products[0].gangSheetSize).toBe('22" wide x 12.5" tall');
+    expect(products[0].numberOfGraphics).toBe("2");
+    expect(products[0].estimatedPrintsPerSheet).toBe("15");
   });
 
   test("contributes no prints and does not throw", () => {

@@ -213,7 +213,19 @@ export function parseOnboardingNote(rawContent) {
        */
       product.numberOfGangSheets = field(p.body, "Number of Gang Sheets");
       product.gangSheetSize = field(p.body, "Gang Sheet Size");
-      product.numberOfGraphics = field(p.body, "Number of Graphics");
+      // Label is "Number of Graphics on the Sheet" as shipped (380e9b0); the
+      // plain form is kept as a fallback in case it is ever reverted.
+      product.numberOfGraphics =
+        field(p.body, "Number of Graphics on the Sheet") || field(p.body, "Number of Graphics");
+      /*
+       * The note does not carry the sheet geometry, so the packing cannot be
+       * recomputed from it -- but it prints the result:
+       *   "Estimated Prints: 3 per sheet x 3 = 9"
+       * Keeping the per-sheet figure is what lets a note-sourced gang sheet be
+       * costed at all.
+       */
+      const est = field(p.body, "Estimated Prints").match(/(\d+)\s*per sheet/i);
+      if (est) product.estimatedPrintsPerSheet = est[1];
     } else if (productType === "nongarment") {
       product.quantityOrdered = field(p.body, "Quantity Ordered");
       product.dimensions = field(p.body, "Dimensions");
