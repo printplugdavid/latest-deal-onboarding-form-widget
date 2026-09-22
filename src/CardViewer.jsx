@@ -87,6 +87,7 @@ const COUNT_FIELDS = {
   Embroidery_Large_Prints: "embroideryLargePrints",
   DTG_Prints: "dtgPrints",
   DTF_Prints: "dtfPrints",
+  DTF_Gang_Sheet_Prints: "gangSheetPrints",
   HTV_Prints: "htvPrints",
   Vinyl_Prints: "vinylPrints",
   Stickers_Prints: "stickersPrints",
