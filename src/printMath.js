@@ -145,6 +145,13 @@ export function computePrints(products) {
       // DTF Gang Sheet: prints are computed from the sheet and graphic sizes (gangSheet.js),
       // times the number of sheets. NO heat-press multiplier -- the sheet ships unpressed.
       // Its own Deal field (D-14), and it still rolls into the Vinyl Department total.
+      //
+      // ⚠️ .total is printsPerSheet x numberOfGangSheets -- the sheets ORDERED. That is right here,
+      // because onboarding always costs the whole order. It is WRONG for any partial job: a re-run,
+      // a split shipment, or a reprint of 1 sheet on a 3-sheet order bills 3x. Anything costing part
+      // of a gang-sheet job must use estimateGangSheet().printsPerSheet x the sheets actually done.
+      // The revision form already intercepts gang sheets before this line for exactly that reason
+      // (revision lane, 2026-09-22).
       const gangTotal = gangSheetPrints(product).total;
       vinylActualPrints += gangTotal;
       gangSheetPrintsTotal += gangTotal;
