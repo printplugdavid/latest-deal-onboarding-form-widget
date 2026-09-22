@@ -17,7 +17,17 @@ import { computePrints } from "../printMath";
 const PrintCountPreview = () => {
   const { control } = useFormContext();
   const products = useWatch({ control, name: "products" });
-  const counts = computePrints(products);
+
+  // This renders on every keystroke, against half-filled data. computePrints is defensive and was
+  // differential-tested against empty/undefined/garbage input, but a preview must never be able to
+  // take the form down with it: if it ever throws, show nothing and let the agent carry on.
+  let counts;
+  try {
+    counts = computePrints(products);
+  } catch (e) {
+    console.log("Print count preview failed:", e);
+    return null;
+  }
 
   const rows = [
     ["Screen Print", counts.SD],
