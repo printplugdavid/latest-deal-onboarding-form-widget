@@ -19,9 +19,11 @@ import NonGarmentForm from "./components/NonGarmentForm";
 import GraphicForm from "./components/GraphicForm";
 import OnlineStorefrontForm from "./components/OnlineStorefrontForm";
 import DtfGangSheetForm from "./components/DtfGangSheetForm";
+import PrintCountPreview from "./components/PrintCountPreview";
 import { buildProductionCards } from "./productionCards";
 import { gangSheetPrints } from "./gangSheet";
 import { checkGarmentQuantity } from "./quantityCheck";
+import { computePrints } from "./printMath";
 import { DatePicker, LocalizationProvider } from "@mui/x-date-pickers";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import dayjs from "dayjs";
@@ -184,136 +186,36 @@ function App() {
     setLoading(true);
     console.log("Collected Form Data:", data);
 
-    // PRINT COUNT CALCULATION (runs first so counts are available while the note is assembled)
-    // Department roll-ups (feed the note's actual/projected summary)
-    let vinylDeptPrints = 0;
-    let embroideryPrints = 0;
-    let screenPrintPrints = 0;
-    let outsourcedProducts = 0;
-    let vinylActualPrints = 0;
-    let vinylProjectedPrints = 0;
-    let embroideryActualPrints = 0;
-    let embroideryProjectedPrints = 0;
-    // Embroidery split by the per-placement "Placement Size" selector. Deliberately built by
-    // iterating the placement ROWS, not numberOfPlacements: a placement with no size chosen is
-    // counted in the department total but in NO bucket, so the split never invents a size.
-    // The shortfall is reported as "Unsized" in the note rather than hidden.
-    let embroiderySmallPrints = 0;
-    let embroideryMediumPrints = 0;
-    let embroideryLargePrints = 0;
-    let screenActualPrints = 0;
-    let screenProjectedPrints = 0;
-    // Per-job totals (written to dedicated Deal fields; feed the per-category Produce Order tasks)
-    let dtgPrints = 0;
-    let dtfPrints = 0;
-    let gangSheetPrintsTotal = 0; // DTF Gang Sheet -- its own Deal field, see D-14
-    let htvPrints = 0;
-    let vinylPrints = 0;
-    let stickersPrints = 0;
-    let decalsPrints = 0;
-    let bannersPrints = 0;
-    let postersPrints = 0;
-    let magnetsPrints = 0;
-    let patchesPrints = 0;
-    const screenPrintDept = ["Screen Printing"];
-    const embroideryDept = ["Embroidery"];
-    const heatPressProducts = ["Direct-to-Garment", "Direct-to-Film", "Heat-Transfer"];
-    data?.products?.forEach((product) => {
-      const pName = product?.productName;
-      const heatPressMultiplier = heatPressProducts.includes(pName) ? 2 : 1;
-      const ironValue = product?.premiumIronPass === "Yes" ? 1 : 0;
-      if (product?.productType === "garment") {
-        product?.primaryBranches?.forEach((branch) => {
-          const qty = parseInt(branch?.garmentQuantity) || 0;
-          branch?.secondaryBranches?.forEach((graphic) => {
-            const colors = parseInt(graphic?.numberOfColorsUsed) || 1;
-            const placements = parseInt(graphic?.numberOfPlacements) || 0;
-            const underbase = graphic?.underbase;
-            const underbaseValue = underbase === "Single-pass" ? 1 : underbase === "Double-pass" ? 2 : underbase === "Triple-pass" ? 3 : 0;
-            if (screenPrintDept.includes(pName)) {
-              const actual = qty * colors * placements;
-              const projected = qty * (underbaseValue + ironValue);
-              screenActualPrints += actual;
-              screenProjectedPrints += projected;
-              screenPrintPrints += actual + projected;
-            } else if (embroideryDept.includes(pName)) {
-              const actual = qty * placements;
-              embroideryActualPrints += actual;
-              embroideryPrints += actual;
-              (graphic?.tartiaryBranches || []).forEach((placement) => {
-                const size = placement?.placementSize;
-                if (size === "Small") embroiderySmallPrints += qty;
-                else if (size === "Medium") embroideryMediumPrints += qty;
-                else if (size === "Large") embroideryLargePrints += qty;
-              });
-            } else if (pName === "Direct-to-Garment") {
-              const actual = qty * placements;
-              const total = actual * heatPressMultiplier;
-              vinylActualPrints += actual;
-              vinylProjectedPrints += total - actual;
-              dtgPrints += total;
-            } else if (pName === "Direct-to-Film") {
-              const actual = qty * placements;
-              const total = actual * heatPressMultiplier;
-              vinylActualPrints += actual;
-              vinylProjectedPrints += total - actual;
-              dtfPrints += total;
-            } else if (pName === "Heat-Transfer") {
-              const actual = qty * colors * placements;
-              const total = actual * heatPressMultiplier;
-              vinylActualPrints += actual;
-              vinylProjectedPrints += total - actual;
-              htvPrints += total;
-            } else if (pName === "Vinyl") {
-              const actual = qty * colors * placements;
-              vinylActualPrints += actual;
-              vinylPrints += actual;
-            } else if (pName === "Pressed Patches") {
-              const actual = qty * placements;
-              vinylActualPrints += actual;
-              patchesPrints += actual;
-            }
-          });
-        });
-      } else if (product?.productType === "nongarment") {
-        const qty = parseInt(product?.quantityOrdered) || 0;
-        if (pName === "Patches") {
-          vinylActualPrints += qty;
-          patchesPrints += qty;
-        } else if (pName === "Stickers") {
-          vinylActualPrints += qty;
-          stickersPrints += qty;
-        } else if (pName === "Decals") {
-          vinylActualPrints += qty;
-          decalsPrints += qty;
-        } else if (pName === "Banners") {
-          vinylActualPrints += qty;
-          bannersPrints += qty;
-        } else if (pName === "Posters") {
-          vinylActualPrints += qty;
-          postersPrints += qty;
-        } else if (pName === "Magnets" || pName === "Fridge Magnets") {
-          vinylActualPrints += qty;
-          magnetsPrints += qty;
-        } else {
-          // catch-all: Outsourced, Business Cards, Flyers, Keychains, Tumblers,
-          // Name Tag, Marketing Materials, Pocket Schedules, and any new nongarment product
-          outsourcedProducts += qty;
-        }
-      } else if (product?.productType === "gangsheet") {
-        // DTF Gang Sheet (D-13): prints per sheet are computed from the sheet and graphic sizes,
-        // times the number of sheets. NO heat-press multiplier -- the sheet ships unpressed, so
-        // one print is one print.
-        // Its OWN field, not DTF_Prints (D-14): a deal can carry both a gang sheet and DTF shirts,
-        // and they are different work on the floor. Separate fields let the production function
-        // stamp each task with only its own count instead of the pair's sum.
-        const gangTotal = gangSheetPrints(product).total;
-        vinylActualPrints += gangTotal;
-        gangSheetPrintsTotal += gangTotal;
-      }
-    });
-    // Vinyl Department = sum of every vinyl-family job (the department roll-up)
-    vinylDeptPrints = dtgPrints + dtfPrints + htvPrints + vinylPrints + stickersPrints + decalsPrints + bannersPrints + postersPrints + magnetsPrints + patchesPrints + gangSheetPrintsTotal;
+    // PRINT COUNT CALCULATION (runs first so counts are available while the note is assembled).
+    // The arithmetic lives in src/printMath.js, shared verbatim with the revision form (E-8 / D-11)
+    // so the two can never disagree, and so the form can show the same numbers before submit.
+    // Hard rule 7 still holds: computed at the top, destructured into the names everything below
+    // already reads.
+    const printCounts = computePrints(data?.products);
+    const screenPrintPrints = printCounts.SD;
+    const embroideryPrints = printCounts.ED;
+    const vinylDeptPrints = printCounts.VD;
+    const outsourcedProducts = printCounts.outsourced;
+    const screenActualPrints = printCounts.actual.SD;
+    const embroideryActualPrints = printCounts.actual.ED;
+    const vinylActualPrints = printCounts.actual.VD;
+    const screenProjectedPrints = printCounts.projected.SD;
+    const embroideryProjectedPrints = printCounts.projected.ED;
+    const vinylProjectedPrints = printCounts.projected.VD;
+    const embroiderySmallPrints = printCounts.embroiderySizes.small;
+    const embroideryMediumPrints = printCounts.embroiderySizes.medium;
+    const embroideryLargePrints = printCounts.embroiderySizes.large;
+    const gangSheetPrintsTotal = printCounts.perJob.gangSheet;
+    const dtgPrints = printCounts.perJob.dtg;
+    const dtfPrints = printCounts.perJob.dtf;
+    const htvPrints = printCounts.perJob.htv;
+    const vinylPrints = printCounts.perJob.vinyl;
+    const stickersPrints = printCounts.perJob.stickers;
+    const decalsPrints = printCounts.perJob.decals;
+    const bannersPrints = printCounts.perJob.banners;
+    const postersPrints = printCounts.perJob.posters;
+    const magnetsPrints = printCounts.perJob.magnets;
+    const patchesPrints = printCounts.perJob.patches;
     const totalPrints = vinylDeptPrints + embroideryPrints + screenPrintPrints;
     const totalActualPrints = vinylActualPrints + embroideryActualPrints + screenActualPrints;
     const totalProjectedPrints = vinylProjectedPrints + embroideryProjectedPrints + screenProjectedPrints;
@@ -2023,6 +1925,9 @@ function App() {
             >
               Submit
             </Button> */}
+
+            {/* What this submission will book -- same printMath.js onSubmit runs (E-17). */}
+            <PrintCountPreview />
 
             <Box
               sx={{
