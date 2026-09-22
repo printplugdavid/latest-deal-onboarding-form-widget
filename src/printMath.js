@@ -21,6 +21,18 @@
  */
 import { gangSheetPrints } from "./gangSheet";
 
+/*
+ * Negative input can only ever be a typo, and a negative print count is never a correct result --
+ * but every multiplicand below was unguarded, so "-2" placements on 10 garments booked -20 prints.
+ * The onboarding form's watchers reject negatives in the UI; the revision form feeds this module
+ * parsed note text, where no watcher has ever run. The engine is the last line of defence, so the
+ * guard belongs here, at all four sites, with one idiom (revision lane's ack, 2026-09-22).
+ *
+ * It changes negative input ONLY: "3"->3, ""->0, undefined->0, "0"->the existing default. Nothing
+ * that was already correct moves.
+ */
+const atLeastZero = (n) => (n > 0 ? n : 0);
+
 export function computePrints(products) {
   let vinylDeptPrints = 0;
   let embroideryPrints = 0;
@@ -57,10 +69,10 @@ export function computePrints(products) {
     const ironValue = product?.premiumIronPass === "Yes" ? 1 : 0;
     if (product?.productType === "garment") {
       product?.primaryBranches?.forEach((branch) => {
-        const qty = parseInt(branch?.garmentQuantity) || 0;
+        const qty = atLeastZero(parseInt(branch?.garmentQuantity) || 0);
         branch?.secondaryBranches?.forEach((graphic) => {
-          const colors = parseInt(graphic?.numberOfColorsUsed) || 1;
-          const placements = parseInt(graphic?.numberOfPlacements) || 0;
+          const colors = atLeastZero(parseInt(graphic?.numberOfColorsUsed) || 1);
+          const placements = atLeastZero(parseInt(graphic?.numberOfPlacements) || 0);
           const underbase = graphic?.underbase;
           const underbaseValue =
             underbase === "Single-pass"
@@ -119,7 +131,7 @@ export function computePrints(products) {
         });
       });
     } else if (product?.productType === "nongarment") {
-      const qty = parseInt(product?.quantityOrdered) || 0;
+      const qty = atLeastZero(parseInt(product?.quantityOrdered) || 0);
       if (pName === "Patches") {
         vinylActualPrints += qty;
         patchesPrints += qty;
