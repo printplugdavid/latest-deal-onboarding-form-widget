@@ -175,6 +175,23 @@ describe("embroiderySizes", () => {
     expect(total).toBe(15);
   });
 
+  /*
+   * D-15 cross-check. main's printMath.js now computes its own Small/Medium/Large
+   * split (shipped 618a5fb for the three Embroidery_*_Prints Deal fields). Ours
+   * stays because it also tracks Unsized, which the note prints and main's does
+   * not -- but the three sizes they share must never disagree, or one of the two
+   * lanes is reporting the wrong thing.
+   */
+  test("agrees with the split main's printMath.js computes", () => {
+    const item = { productIndex: 0, garmentIndex: 0, affected: "5" };
+    const ours = embroiderySizes(emb, item, "Revision");
+    const theirs = costItem(emb, item, "Revision").embroiderySizes;
+    expect(theirs).toBeDefined();
+    expect([theirs.small, theirs.medium, theirs.large]).toEqual([ours.Small, ours.Medium, ours.Large]);
+    // Only ours accounts for the sleeve placement nobody sized.
+    expect(ours.Unsized).toBe(5);
+  });
+
   test("a correction only attributes the placements ticked", () => {
     const s = embroiderySizes(
       emb,

@@ -10,7 +10,16 @@
  * a synthetic products array containing only the affected garments, with
  * garmentQuantity replaced by the number of garments being redone -- so a
  * revision is costed by exactly the same rules as the job that caused it.
+ *
+ * ADOPTED ON main 2026-09-22 (E-8 / D-11), and extended here with the two things the
+ * onboarding form had that the lifted copy did not:
+ *   - the embroidery placement-size split (Small/Medium/Large), shipped in c569647
+ *   - DTF gang sheets (D-13/D-14), whose prints are computed by gangSheet.js
+ * Both are ADDITIVE for the revision form: new keys on the returned object, and a product
+ * type it does not pass. The arithmetic that existed before is untouched -- verified by
+ * differential test against the previous inline engine (docs/03, 2026-09-22 (11)).
  */
+import { gangSheetPrints } from "./gangSheet";
 
 export function computePrints(products) {
   let vinylDeptPrints = 0;
@@ -23,8 +32,12 @@ export function computePrints(products) {
   let embroideryProjectedPrints = 0;
   let screenActualPrints = 0;
   let screenProjectedPrints = 0;
+  let embroiderySmallPrints = 0;
+  let embroideryMediumPrints = 0;
+  let embroideryLargePrints = 0;
   let dtgPrints = 0;
   let dtfPrints = 0;
+  let gangSheetPrintsTotal = 0;
   let htvPrints = 0;
   let vinylPrints = 0;
   let stickersPrints = 0;
@@ -67,6 +80,15 @@ export function computePrints(products) {
             const actual = qty * placements;
             embroideryActualPrints += actual;
             embroideryPrints += actual;
+            // Split by the per-placement size selector. Iterate the placement ROWS, not
+            // numberOfPlacements: a placement with no size counts in the department total and
+            // in NO bucket, so the split never invents a size (the shortfall shows as Unsized).
+            (graphic?.tartiaryBranches || []).forEach((placement) => {
+              const size = placement?.placementSize;
+              if (size === "Small") embroiderySmallPrints += qty;
+              else if (size === "Medium") embroideryMediumPrints += qty;
+              else if (size === "Large") embroideryLargePrints += qty;
+            });
           } else if (pName === "Direct-to-Garment") {
             const actual = qty * placements;
             const total = actual * heatPressMultiplier;
@@ -119,6 +141,13 @@ export function computePrints(products) {
       } else {
         outsourcedProducts += qty;
       }
+    } else if (product?.productType === "gangsheet") {
+      // DTF Gang Sheet: prints are computed from the sheet and graphic sizes (gangSheet.js),
+      // times the number of sheets. NO heat-press multiplier -- the sheet ships unpressed.
+      // Its own Deal field (D-14), and it still rolls into the Vinyl Department total.
+      const gangTotal = gangSheetPrints(product).total;
+      vinylActualPrints += gangTotal;
+      gangSheetPrintsTotal += gangTotal;
     }
   });
 
@@ -132,7 +161,8 @@ export function computePrints(products) {
     bannersPrints +
     postersPrints +
     magnetsPrints +
-    patchesPrints;
+    patchesPrints +
+    gangSheetPrintsTotal;
 
   return {
     // department roll-ups -- what the revision/correction slot fields receive
@@ -151,7 +181,15 @@ export function computePrints(products) {
       ED: embroideryProjectedPrints,
       VD: vinylProjectedPrints,
     },
+    // embroidery placement-size split -- three Deal fields; they sum to ED unless a
+    // placement had no size, in which case the shortfall is deliberate (Unsized).
+    embroiderySizes: {
+      small: embroiderySmallPrints,
+      medium: embroideryMediumPrints,
+      large: embroideryLargePrints,
+    },
     perJob: {
+      gangSheet: gangSheetPrintsTotal,
       dtg: dtgPrints,
       dtf: dtfPrints,
       htv: htvPrints,

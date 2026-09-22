@@ -8,6 +8,7 @@
  */
 import { parseOnboardingNote, toPlainText, yesNo } from "./noteParser";
 import { computePrints } from "./printMath";
+import { costItem } from "./affected";
 
 // Note 5249739000122607751 -- "Season 2 - Putnam Valley High School- Volleyball"
 // Plain-text form (real newlines). Its own summary reads:
@@ -503,14 +504,23 @@ describe("gang sheet products (productType gangsheet)", () => {
     expect(products[0].estimatedPrintsPerSheet).toBe("15");
   });
 
-  test("contributes no prints and does not throw", () => {
-    // The gang sheet count is computed by the onboarding lane's gangSheet.js,
-    // not by printMath — which must simply ignore the type.
+  test("a note-derived sheet costs nothing through computePrints -- no geometry to pack", () => {
+    // A note carries "Gang Sheet Size" as prose, not width/height, so the packer
+    // has nothing to measure. The per-sheet figure for a note-only deal comes
+    // from the "Estimated Prints: N per sheet" line instead -- see costItem.
     const r = computePrints(products);
     expect(r).toMatchObject({ SD: 0, ED: 0, VD: 0, outsourced: 0 });
   });
 
-  test("a JSON-shaped gang sheet product is equally inert", () => {
+  /*
+   * ⚠️ THE TWO-LANE TRAP (D-15). Since main adopted the shared module (618a5fb),
+   * computePrints costs a gang sheet at the sheet count ORDERED AT ONBOARDING --
+   * correct for the original job, and three times too much for a one-sheet
+   * reprint. The revision form must therefore never hand a gang sheet to
+   * computePrints; costItem() intercepts it. These two tests hold that line, so
+   * that if anyone ever routes a sheet down the garment path the suite says so.
+   */
+  describe("the ordered-sheet-count trap", () => {
     const payload = [
       {
         productName: "DTF Gang Sheet",
@@ -521,8 +531,14 @@ describe("gang sheet products (productType gangsheet)", () => {
         gangGraphics: [{ graphicDescription: "logo", graphicWidth: "3.5", graphicHeight: "3.5" }],
       },
     ];
-    expect(() => computePrints(payload)).not.toThrow();
-    expect(computePrints(payload).VD).toBe(0);
+
+    test("computePrints bills all 3 ordered sheets -- right for onboarding, wrong for us", () => {
+      expect(computePrints(payload).VD).toBe(45);
+    });
+
+    test("costItem bills only the sheet being reprinted", () => {
+      expect(costItem(payload, { productIndex: 0, affected: "1" }, "Revision").VD).toBe(15);
+    });
   });
 
   test("a mixed deal still costs its garment work normally", () => {
