@@ -1,4 +1,5 @@
 import {
+  Alert,
   Autocomplete,
   Box,
   Checkbox,
@@ -15,6 +16,7 @@ import {
   useWatch,
 } from "react-hook-form";
 import GarmentSecondaryBranchForm from "./GarmentSecondaryBranchForm";
+import { checkGarmentQuantity } from "../quantityCheck";
 
 const GarmentPrimaryBranchForm = ({
   index,
@@ -62,6 +64,20 @@ const GarmentPrimaryBranchForm = ({
       }
     }
   }, [numberOfGraphics]);
+
+  // The size breakdown is free text and the quantity below drives every print count, so nothing
+  // reconciled them until now. Warn live; never block -- see quantityCheck.js.
+  const countColorSize = useWatch({
+    control,
+    name: `products.${index}.primaryBranches.${branchIndex}.countColorSize`,
+  });
+
+  const garmentQuantity = useWatch({
+    control,
+    name: `products.${index}.primaryBranches.${branchIndex}.garmentQuantity`,
+  });
+
+  const quantityWarning = checkGarmentQuantity(countColorSize, garmentQuantity);
 
   const numberOfSkus = useWatch({
     control,
@@ -153,6 +169,12 @@ const GarmentPrimaryBranchForm = ({
           />
         )}
       />
+
+      {quantityWarning && (
+        <Alert severity="warning" sx={{ mb: "1rem" }}>
+          {quantityWarning.message}
+        </Alert>
+      )}
 
       <Controller
         control={control}

@@ -21,6 +21,7 @@ import OnlineStorefrontForm from "./components/OnlineStorefrontForm";
 import DtfGangSheetForm from "./components/DtfGangSheetForm";
 import { buildProductionCards } from "./productionCards";
 import { gangSheetPrints } from "./gangSheet";
+import { checkGarmentQuantity } from "./quantityCheck";
 import { DatePicker, LocalizationProvider } from "@mui/x-date-pickers";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import dayjs from "dayjs";
@@ -417,6 +418,20 @@ function App() {
               branch?.countColorSize +
               newLine +
               newLine +
+              // E-18: the number every print count is multiplied by was never printed here, so a
+              // wrong count could not be audited from the note (Stephanie McBride Deal 2, docs/03
+              // 2026-09-22 (6), had to be recovered by division). Print it, and say so when the
+              // size breakdown disagrees with it.
+              "Total Garment Quantity: " +
+              (branch?.garmentQuantity ?? "") +
+              newLine +
+              newLine +
+              (checkGarmentQuantity(branch?.countColorSize, branch?.garmentQuantity)
+                ? "NOTE: " +
+                  checkGarmentQuantity(branch?.countColorSize, branch?.garmentQuantity).message +
+                  newLine +
+                  newLine
+                : "") +
               "Graphic & Placement Information" +
               newLine +
               "---------------------------" +
