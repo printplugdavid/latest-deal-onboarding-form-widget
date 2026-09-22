@@ -21,6 +21,29 @@
  */
 import { gangSheetPrints } from "./gangSheet";
 
+/*
+ * Negative input can only ever be a typo, and a negative print count is never a correct result --
+ * but every multiplicand below was unguarded, so "-2" placements on 10 garments booked -20 prints.
+ * The onboarding form's watchers reject negatives in the UI; the revision form feeds this module
+ * parsed note text, where no watcher has ever run. The engine is the last line of defence, so the
+ * guard belongs here, at all four sites, with one idiom (revision lane's ack, 2026-09-22).
+ *
+ * It changes negative input ONLY: "3"->3, ""->0, undefined->0, "0"->the existing default. Nothing
+ * that was already correct moves.
+ */
+const atLeastZero = (n) => (n > 0 ? n : 0);
+
+/*
+ * Colours are the exception, and deliberately so (revision lane's gate run, 2026-09-22). The other
+ * three multiplicands default to 0 because zero garments, placements or items genuinely means no
+ * work. A graphic that exists is never printed in zero colours, which is why this field has always
+ * defaulted to 1 -- "", undefined, "abc" and even "0" all count as one colour. Flooring it at 0
+ * would have made a NEGATIVE the only bad input that makes a screen-print graphic vanish, adding a
+ * novel route to SD = 0 in the middle of an open zeros investigation. This folds the negative into
+ * the existing default instead of contradicting it, and replaces the old `|| 1` rather than wrapping it.
+ */
+const atLeastOne = (n) => (n > 0 ? n : 1);
+
 export function computePrints(products) {
   let vinylDeptPrints = 0;
   let embroideryPrints = 0;
@@ -57,10 +80,18 @@ export function computePrints(products) {
     const ironValue = product?.premiumIronPass === "Yes" ? 1 : 0;
     if (product?.productType === "garment") {
       product?.primaryBranches?.forEach((branch) => {
-        const qty = parseInt(branch?.garmentQuantity) || 0;
+        const qty = atLeastZero(parseInt(branch?.garmentQuantity) || 0);
         branch?.secondaryBranches?.forEach((graphic) => {
-          const colors = parseInt(graphic?.numberOfColorsUsed) || 1;
-          const placements = parseInt(graphic?.numberOfPlacements) || 0;
+          const colors = atLeastOne(parseInt(graphic?.numberOfColorsUsed));
+          // David's ruling (D-16, 2026-09-22): when the number is BLANK but placement rows exist,
+          // the rows are the truth -- they are the surviving evidence of what the agent built.
+          // Clearing the field after building rows used to book 0 prints while the size buckets
+          // still counted those rows, so the three embroidery size fields could exceed the
+          // department total (revision lane, reproduced both ways).
+          // An EXPLICIT "0" is still respected: only an unreadable value falls back to the rows.
+          const placementRows = graphic?.tartiaryBranches?.length || 0;
+          const placementsTyped = parseInt(graphic?.numberOfPlacements);
+          const placements = isNaN(placementsTyped) ? placementRows : atLeastZero(placementsTyped);
           const underbase = graphic?.underbase;
           const underbaseValue =
             underbase === "Single-pass"
@@ -83,7 +114,11 @@ export function computePrints(products) {
             // Split by the per-placement size selector. Iterate the placement ROWS, not
             // numberOfPlacements: a placement with no size counts in the department total and
             // in NO bucket, so the split never invents a size (the shortfall shows as Unsized).
-            (graphic?.tartiaryBranches || []).forEach((placement) => {
+            // Only attribute sizes when this graphic actually produces prints. The buckets
+            // attribute prints to rows; with 0 placements there are no prints to attribute, and
+            // counting the rows anyway made Small/Medium/Large exceed the department total (the
+            // explicit-"0" and negative cases). Keeps S+M+L <= ED true in every case.
+            (placements > 0 ? graphic?.tartiaryBranches || [] : []).forEach((placement) => {
               const size = placement?.placementSize;
               if (size === "Small") embroiderySmallPrints += qty;
               else if (size === "Medium") embroideryMediumPrints += qty;
@@ -119,7 +154,7 @@ export function computePrints(products) {
         });
       });
     } else if (product?.productType === "nongarment") {
-      const qty = parseInt(product?.quantityOrdered) || 0;
+      const qty = atLeastZero(parseInt(product?.quantityOrdered) || 0);
       if (pName === "Patches") {
         vinylActualPrints += qty;
         patchesPrints += qty;
@@ -145,6 +180,13 @@ export function computePrints(products) {
       // DTF Gang Sheet: prints are computed from the sheet and graphic sizes (gangSheet.js),
       // times the number of sheets. NO heat-press multiplier -- the sheet ships unpressed.
       // Its own Deal field (D-14), and it still rolls into the Vinyl Department total.
+      //
+      // ⚠️ .total is printsPerSheet x numberOfGangSheets -- the sheets ORDERED. That is right here,
+      // because onboarding always costs the whole order. It is WRONG for any partial job: a re-run,
+      // a split shipment, or a reprint of 1 sheet on a 3-sheet order bills 3x. Anything costing part
+      // of a gang-sheet job must use estimateGangSheet().printsPerSheet x the sheets actually done.
+      // The revision form already intercepts gang sheets before this line for exactly that reason
+      // (revision lane, 2026-09-22).
       const gangTotal = gangSheetPrints(product).total;
       vinylActualPrints += gangTotal;
       gangSheetPrintsTotal += gangTotal;
@@ -181,8 +223,20 @@ export function computePrints(products) {
       ED: embroideryProjectedPrints,
       VD: vinylProjectedPrints,
     },
-    // embroidery placement-size split -- three Deal fields; they sum to ED unless a
-    // placement had no size, in which case the shortfall is deliberate (Unsized).
+    // Embroidery placement-size split -- three Deal fields.
+    //
+    // ⚠️ PRECONDITION (revision lane, measured 2026-09-22): this split is meaningful only when
+    // numberOfPlacements equals the number of placement rows -- i.e. payloads the onboarding form
+    // produces, where a watcher keeps them in lockstep. A consumer that narrows the COUNT without
+    // narrowing the ROWS -- the revision form's correction path, which knows how many placements
+    // were ticked but not which ones -- will see S+M+L exceed ED, because this loop attributes
+    // every row of a graphic that prints. The module cannot do better: the payload does not carry
+    // which row was ticked. Such a consumer must compute its own split; that duplicate is
+    // structural, not redundant.
+    //
+    // So "S+M+L <= ED" holds for onboarding-shaped payloads only. Do not state it unqualified.
+    // Within that precondition they sum to ED unless a placement had no size, in which case the
+    // shortfall is deliberate (Unsized).
     embroiderySizes: {
       small: embroiderySmallPrints,
       medium: embroideryMediumPrints,
