@@ -83,7 +83,15 @@ export function computePrints(products) {
         const qty = atLeastZero(parseInt(branch?.garmentQuantity) || 0);
         branch?.secondaryBranches?.forEach((graphic) => {
           const colors = atLeastOne(parseInt(graphic?.numberOfColorsUsed));
-          const placements = atLeastZero(parseInt(graphic?.numberOfPlacements) || 0);
+          // David's ruling (D-16, 2026-09-22): when the number is BLANK but placement rows exist,
+          // the rows are the truth -- they are the surviving evidence of what the agent built.
+          // Clearing the field after building rows used to book 0 prints while the size buckets
+          // still counted those rows, so the three embroidery size fields could exceed the
+          // department total (revision lane, reproduced both ways).
+          // An EXPLICIT "0" is still respected: only an unreadable value falls back to the rows.
+          const placementRows = graphic?.tartiaryBranches?.length || 0;
+          const placementsTyped = parseInt(graphic?.numberOfPlacements);
+          const placements = isNaN(placementsTyped) ? placementRows : atLeastZero(placementsTyped);
           const underbase = graphic?.underbase;
           const underbaseValue =
             underbase === "Single-pass"
@@ -106,7 +114,11 @@ export function computePrints(products) {
             // Split by the per-placement size selector. Iterate the placement ROWS, not
             // numberOfPlacements: a placement with no size counts in the department total and
             // in NO bucket, so the split never invents a size (the shortfall shows as Unsized).
-            (graphic?.tartiaryBranches || []).forEach((placement) => {
+            // Only attribute sizes when this graphic actually produces prints. The buckets
+            // attribute prints to rows; with 0 placements there are no prints to attribute, and
+            // counting the rows anyway made Small/Medium/Large exceed the department total (the
+            // explicit-"0" and negative cases). Keeps S+M+L <= ED true in every case.
+            (placements > 0 ? graphic?.tartiaryBranches || [] : []).forEach((placement) => {
               const size = placement?.placementSize;
               if (size === "Small") embroiderySmallPrints += qty;
               else if (size === "Medium") embroideryMediumPrints += qty;
