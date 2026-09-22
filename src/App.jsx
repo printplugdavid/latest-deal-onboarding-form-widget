@@ -18,7 +18,9 @@ import GarmentForm from "./components/GarmentForm";
 import NonGarmentForm from "./components/NonGarmentForm";
 import GraphicForm from "./components/GraphicForm";
 import OnlineStorefrontForm from "./components/OnlineStorefrontForm";
+import DtfGangSheetForm from "./components/DtfGangSheetForm";
 import { buildProductionCards } from "./productionCards";
+import { gangSheetPrints } from "./gangSheet";
 import { DatePicker, LocalizationProvider } from "@mui/x-date-pickers";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import dayjs from "dayjs";
@@ -296,6 +298,13 @@ function App() {
           // Name Tag, Marketing Materials, Pocket Schedules, and any new nongarment product
           outsourcedProducts += qty;
         }
+      } else if (product?.productType === "gangsheet") {
+        // DTF Gang Sheet (D-13): prints per sheet are computed from the sheet and graphic sizes,
+        // times the number of sheets. NO heat-press multiplier -- the sheet ships unpressed, so
+        // one print is one print. Feeds DTF_Prints, and so Vinyl_Department_Prints.
+        const gangTotal = gangSheetPrints(product).total;
+        vinylActualPrints += gangTotal;
+        dtfPrints += gangTotal;
       }
     });
     // Vinyl Department = sum of every vinyl-family job (the department roll-up)
@@ -647,6 +656,108 @@ function App() {
           newLine +
           "Vendors Used: " +
           product?.vendorsUsed +
+          newLine +
+          newLine +
+          newLine;
+      } else if (productType === "gangsheet") {
+        // DTF Gang Sheet: print-only DTF. Counts are computed from the sheet + graphic sizes
+        // (gangSheet.js), so the note reports the estimate the Deal fields were written from.
+        const gang = gangSheetPrints(product);
+        content =
+          content +
+          "Gang Sheet Information" +
+          newLine +
+          "---------------------------" +
+          newLine +
+          newLine +
+          "Number of Gang Sheets: " +
+          product?.numberOfGangSheets +
+          newLine +
+          newLine +
+          "Gang Sheet Size: " +
+          product?.gangSheetWidth +
+          '" wide x ' +
+          product?.gangSheetHeight +
+          '" tall' +
+          newLine +
+          newLine +
+          "Number of Graphics on the Sheet: " +
+          product?.numberOfGraphics +
+          newLine +
+          newLine;
+
+        if (Number(product?.numberOfGraphics) > 0) {
+          product?.gangGraphics?.forEach((branch, branchIndex) => {
+            const row = gang.perGraphic?.[branchIndex];
+            content =
+              content +
+              "Graphic " +
+              (branchIndex + 1) +
+              ": " +
+              newLine +
+              "---------------------------" +
+              newLine +
+              newLine +
+              "Graphic Description: " +
+              branch?.graphicDescription +
+              newLine +
+              newLine +
+              "Graphic Size: " +
+              branch?.graphicWidth +
+              '" wide x ' +
+              branch?.graphicHeight +
+              '" tall' +
+              newLine +
+              newLine +
+              "How Many Per Sheet: " +
+              (branch?.quantityPerSheet ||
+                (row ? row.placed + " (fills the sheet)" : "")) +
+              newLine +
+              newLine +
+              "Is Graphic Print Ready?: " +
+              yn(branch?.isGraphicPrintReady) +
+              newLine +
+              newLine +
+              "Number of Colors Used: " +
+              branch?.numberOfColorsUsed +
+              newLine +
+              newLine +
+              "Colors Used: " +
+              branch?.colorsUsed +
+              newLine +
+              newLine +
+              "Current Graphic Format: " +
+              branch?.currentGraphicFormat +
+              newLine +
+              newLine +
+              "Upcharge Acknowledged?: " +
+              yn(branch?.upchargedAcknowledged) +
+              newLine +
+              newLine +
+              "Fonts Used: " +
+              branch?.fontsUsed +
+              newLine +
+              newLine;
+          });
+        }
+
+        content =
+          content +
+          "Estimated Prints: " +
+          gang.printsPerSheet +
+          " per sheet x " +
+          gang.sheets +
+          " = " +
+          gang.total +
+          newLine +
+          newLine +
+          (gang.overflow
+            ? "NOTE: the requested graphics do not all fit on one sheet at these sizes." +
+              newLine +
+              newLine
+            : "") +
+          "Other Information: " +
+          product?.otherInformation +
           newLine +
           newLine +
           newLine;
@@ -1408,6 +1519,10 @@ function App() {
 
                   {productType === "onlinestorefront" && (
                     <OnlineStorefrontForm index={index} />
+                  )}
+
+                  {productType === "gangsheet" && (
+                    <DtfGangSheetForm index={index} />
                   )}
                 </Box>
               );
