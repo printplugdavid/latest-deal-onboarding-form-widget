@@ -10,12 +10,20 @@
  * DTF_Gang_Sheet_Prints 12 / DTF_Prints 0 / Vinyl_Department_Prints 12 -- so a
  * full one-sheet reprint must cost 12, and the note is its own answer key.
  *
- * Note the shape: THREE graphics, each "How Many Per Sheet: 4", no width/height
- * geometry we can pack -- a note-only deal, so the per-sheet figure has to come
+ * Note the shape: THREE graphics, each "How Many Per Sheet: 4". A NOTE records
+ * the sheet as one prose string ('12" wide x 80" tall'), not as separate width
+ * and height, so nothing here can be packed -- the per-sheet figure has to come
  * from the "Estimated Prints: 12 per sheet x 1 = 12" line.
+ *
+ * ⚠️ That is a fact about the NOTE, not about the deal. This deal DOES carry an
+ * onboarding-form.json attachment, so in production payload.js takes the JSON
+ * path and the packer runs on real geometry. Both paths are asserted below, and
+ * on real data they agree -- which is the point: what a revision costs must not
+ * depend on whether the JSON attachment survived.
  */
 import { parseOnboardingNote } from "./noteParser";
 import { costItem, gangPerSheet, isGangSheet } from "./affected";
+import { estimateGangSheet } from "./gangSheet";
 
 const REAL_GANG_SHEET_NOTE = "CONTACT INFO\n---------------------------\n\nAccount Name: Rachel Nash\n\nContact Name: Rachel Nash\n\nContact Phone: 2083536544\n\nContact Email: rachelnash36@yahoo.com\n\nDeal Name: RUSH - Deal 3 - Rachel Nash - DTF Prints Only\n\nSales Person: Ray Castaneda\n\n\nPRODUCT INFORMATION\n---------------------------\n\nSelected Product Types: DTF Gang Sheet\n\nProduct 1: DTF Gang Sheet\n---------------------------\n\nGang Sheet Information\n---------------------------\n\nNumber of Gang Sheets: 1\n\nGang Sheet Size: 12\" wide x 80\" tall\n\nNumber of Graphics on the Sheet: 3\n\nGraphic 1: \n---------------------------\n\nGraphic Description: Out with it with Truck logo\n\nGraphic Size: 11\" wide x 12\" tall\n\nHow Many Per Sheet: 4\n\nIs Graphic Print Ready?: No\n\nNumber of Colors Used: \n\nColors Used: Full Color DTF\n\nCurrent Graphic Format: PNG\n\nUpcharge Acknowledged?: No\n\nFonts Used: IDK\n\nGraphic 2: \n---------------------------\n\nGraphic Description: OUt with it with truck logo, but it will be smaller\n\nGraphic Size: 2\" wide x 2.5\" tall\n\nHow Many Per Sheet: 4\n\nIs Graphic Print Ready?: No\n\nNumber of Colors Used: \n\nColors Used: Full Color DTF\n\nCurrent Graphic Format: PNG\n\nUpcharge Acknowledged?: No\n\nFonts Used: IDK\n\nGraphic 3: \n---------------------------\n\nGraphic Description: OutWithIt Text\n\nGraphic Size: 4\" wide x 2\" tall\n\nHow Many Per Sheet: 4\n\nIs Graphic Print Ready?: No\n\nNumber of Colors Used: \n\nColors Used: Full Color DTF\n\nCurrent Graphic Format: PNG\n\nUpcharge Acknowledged?: No\n\nFonts Used: IDK\n\nEstimated Prints: 12 per sheet x 1 = 12\n\nOther Information: \n\n\nOTHER INFORMATION\n---------------------------\n\nHow Did You Hear About Us?: Previous Customer\n\nSupplies / Materials Needed: \n\nOutsourced Products Ordered: 0\n\nSpecial Instructions: \n\nIs This a Repeat Order?: No\n\nDo Products Need Shipped?: No\n\nCustomer Consents to Email and Text?: Yes\n\nRound up for Charity?: No\n\n\nTURNAROUND TIME\n---------------------------\n\nDoes Customer Have A Hard Due Date?: Yes\n\nDue Date: 2026-09-25\n\nUpcharged For Rush Turnaround Time?: No\n\nCustmer Acknowledged 24-48 Hour Mock-Up?: Yes\n\nPRINT COUNT SUMMARY\n---------------------------\n\nActual = base design prints. Projected = extra prints from process steps (underbase, premium iron, heat press). Total = Actual + Projected.\n\nScreen Print\n   Actual: 0  |  Projected: 0  |  Total: 0\n\nVinyl\n   Actual: 12  |  Projected: 0  |  Total: 12\n\nEmbroidery\n   Actual: 0  |  Projected: 0  |  Total: 0\n   Placement sizes \u2014 Small: 0  |  Medium: 0  |  Large: 0\n\n---------------------------\n\nALL DEPARTMENTS\n   Actual: 12  |  Projected: 0  |  Total: 12";
 
@@ -53,6 +61,25 @@ describe("a real gang sheet note (Rachel Nash, 2026-09-23)", () => {
     // The agent can reprint more sheets than were ordered -- the count they type
     // is the truth, never numberOfGangSheets.
     expect(costItem(products, { productIndex: 0, affected: "2" }, "Revision").VD).toBe(24);
+  });
+
+  test("THE PATH THIS DEAL ACTUALLY TAKES: packing the JSON geometry gives the same 12", () => {
+    // The deal has an onboarding-form.json, so payload.js prefers it and the
+    // packer runs instead of the Estimated Prints line. Same dimensions the note
+    // printed, in the shape the JSON carries them.
+    const fromJson = {
+      productName: "DTF Gang Sheet", productType: "gangsheet", numberOfGangSheets: "1",
+      gangSheetWidth: "12", gangSheetHeight: "80",
+      gangGraphics: [
+        { graphicWidth: "11", graphicHeight: "12", quantityPerSheet: "4" },
+        { graphicWidth: "2", graphicHeight: "2.5", quantityPerSheet: "4" },
+        { graphicWidth: "4", graphicHeight: "2", quantityPerSheet: "4" },
+      ],
+    };
+    expect(estimateGangSheet("12", "80", fromJson.gangGraphics).printsPerSheet).toBe(12);
+    expect(gangPerSheet(fromJson)).toBe(12);
+    expect(gangPerSheet(fromJson)).toBe(gangPerSheet(products[0])); // both paths, one answer
+    expect(costItem([fromJson], { productIndex: 0, affected: "1" }, "Revision").VD).toBe(12);
   });
 });
 
@@ -93,5 +120,26 @@ describe("a real gang sheet with an overflow warning (Stitchit, 2026-09-22)", ()
     expect(r.VD).toBe(1000);        // matches Vinyl_Department_Prints on the Deal
     expect(r.actual.VD).toBe(1000);
     expect(r.projected.VD).toBe(0);
+  });
+
+  /*
+   * ⚠️ OVERFLOW DOES NOT CAP THE COUNT -- pinned because the opposite is the
+   * intuitive guess. 1000 graphics at .8" do not fit a 12x108 sheet, which is why
+   * the form printed its overflow warning; estimateGangSheet still returns the
+   * 1000 that were REQUESTED and reports overflow as a separate flag. So the
+   * JSON path agrees with the note here too, and a reprint bills the whole job
+   * rather than only what physically fits.
+   */
+  test("THE PATH THIS DEAL ACTUALLY TAKES: overflow flagged, count not reduced", () => {
+    const fromJson = {
+      productName: "DTF Gang Sheet", productType: "gangsheet", numberOfGangSheets: "1",
+      gangSheetWidth: "12", gangSheetHeight: "108",
+      gangGraphics: [{ graphicWidth: ".8", graphicHeight: ".8", quantityPerSheet: "1000" }],
+    };
+    const est = estimateGangSheet("12", "108", fromJson.gangGraphics);
+    expect(est.overflow).toBe(true);
+    expect(est.printsPerSheet).toBe(1000);
+    expect(gangPerSheet(fromJson)).toBe(gangPerSheet(products[0])); // both paths, one answer
+    expect(costItem([fromJson], { productIndex: 0, affected: "1" }, "Revision").VD).toBe(1000);
   });
 });
