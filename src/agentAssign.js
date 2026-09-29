@@ -25,6 +25,16 @@
  * One deliberate improvement: an unrecognised department is RETURNED rather
  * than silently skipped, so the form can say it identified nobody instead of
  * quietly assigning no one.
+ *
+ * ⚠️ AND ONE DELIBERATE DEPARTURE from the Deluge (D-21, 2026-09-29): the task
+ * list handed in is NO LONGER filtered to completed tasks. A revision is
+ * normally raised WHILE the department is producing, so the original Produce
+ * Order task is usually still OPEN -- filtering it out meant the producing agent
+ * was never even a candidate. It cost two real embroidery revisions:
+ * Evergreen `5249739000123744307` (produce task closed 28 hours AFTER the
+ * revision was filed) and Honor Plumbing `5249739000123698131` (still open).
+ * Angela Zervudakis was credited on neither. See `orderTasksForTrace` below.
+ * The Deluge still has this bug -- handoff in docs/23.
  */
 
 // dept -> the keyword that appears in that department's task subjects
@@ -44,6 +54,28 @@ export const DEPARTMENT_TASK_KEYWORD = {
    */
 };
 
+/*
+ * Order a Deal's tasks for tracing. BOTH lists belong here -- see the departure
+ * note above. Completed tasks come FIRST so that deriveAgents' first-match-wins
+ * still prefers a finished task over an open one when both would match.
+ */
+export function orderTasksForTrace(closed = [], open = []) {
+  const all = [].concat(closed || [], open || []);
+  const done = (t) => String(t?.Status || "") === "Completed";
+  return all.filter(done).concat(all.filter((t) => !done(t)));
+}
+
+/*
+ * Remediation tasks must never be mistaken for the ORIGINAL produce/order task.
+ * Live task names spell the reorder one both ways -- `ACCOUNT MANAGER: Re-Order
+ * Garments` and `ACCOUNT MANAGER: Reorder Needed` both exist -- so match the
+ * hyphen optionally and case-insensitively. \b matters: without it "Pre-Order"
+ * would normalise to "PREORDER", which contains "REORDER", and be excluded.
+ */
+const RE_REORDER = /\bre-?order/i;
+const RE_REPRODUCE = /\bre-?produce/i;
+const RE_CORRECT = /\bcorrect/i;
+
 function ownerNameOf(task, userNameById) {
   const owner = task?.Owner;
   if (!owner) return "";
@@ -53,13 +85,14 @@ function ownerNameOf(task, userNameById) {
 }
 
 /*
- * completedTasks: [{ Subject, Owner: { id, name }, Status }]
+ * tasks: [{ Subject, Owner: { id, name }, Status }] -- open AND completed,
+ *        ordered by orderTasksForTrace (completed first).
  * Returns { agents, unmappedDepartments, misses, orderOwnerMissing }
  */
 export function deriveAgents({
   categories = [],
   departments = [],
-  completedTasks = [],
+  tasks = [],
   userNameById = {},
   allowedNames = null,
 }) {
@@ -101,15 +134,15 @@ export function deriveAgents({
       }
 
       let found = false;
-      for (let i = 0; i < completedTasks.length; i++) {
-        const subject = String(completedTasks[i]?.Subject || "");
+      for (let i = 0; i < tasks.length; i++) {
+        const subject = String(tasks[i]?.Subject || "");
         if (
           subject.includes(map.keyword) &&
           (subject.includes("Produce Order") || subject.includes("Order Products")) &&
-          !subject.includes("Reproduce") &&
-          !subject.includes("Correct")
+          !RE_REPRODUCE.test(subject) &&
+          !RE_CORRECT.test(subject)
         ) {
-          const name = ownerNameOf(completedTasks[i], userNameById);
+          const name = ownerNameOf(tasks[i], userNameById);
           if (name) {
             add(name);
             found = true;
@@ -128,14 +161,14 @@ export function deriveAgents({
   let orderOwnerMissing = false;
   if (needsOrderProductsOwner) {
     let found = false;
-    for (let i = 0; i < completedTasks.length; i++) {
-      const subject = String(completedTasks[i]?.Subject || "");
+    for (let i = 0; i < tasks.length; i++) {
+      const subject = String(tasks[i]?.Subject || "");
       if (
         (subject.includes("Order Garments") || subject.includes("Order Products")) &&
-        !subject.includes("Re-Order") &&
-        !subject.includes("Reproduce")
+        !RE_REORDER.test(subject) &&
+        !RE_REPRODUCE.test(subject)
       ) {
-        const name = ownerNameOf(completedTasks[i], userNameById);
+        const name = ownerNameOf(tasks[i], userNameById);
         if (name) {
           add(name);
           found = true;
