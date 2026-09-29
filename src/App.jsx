@@ -12,7 +12,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { departmentFor } from "./printMath";
 import { readPayload } from "./payload";
-import { deriveAgents } from "./agentAssign";
+import { deriveAgents, orderTasksForTrace } from "./agentAssign";
 import {
   placementsOf,
   costItem,
@@ -204,7 +204,7 @@ export default function App() {
   const [reason, setReason] = useState("");
   const [items, setItems] = useState([]);
   const [touchedDepartments, setTouchedDepartments] = useState(false);
-  const [completedTasks, setCompletedTasks] = useState([]);
+  const [traceTasks, setTraceTasks] = useState([]);
 
   const [updateClosing, setUpdateClosing] = useState(false);
   const [newClosingDate, setNewClosingDate] = useState("");
@@ -250,7 +250,7 @@ export default function App() {
         setPayloadInfo(p);
         if (p.ok) setProducts(p.products);
 
-        // Completed tasks are how the responsible agent is identified.
+        // The Deal's tasks are how the responsible agent is identified.
         const grab = async (relatedList) => {
           try {
             const r = await ZOHO.CRM.API.getRelatedRecords({
@@ -267,9 +267,12 @@ export default function App() {
         };
         const closed = await grab("Tasks_History");
         const open = await grab("Tasks");
-        setCompletedTasks(
-          closed.concat(open).filter((t) => String(t?.Status || "") === "Completed")
-        );
+        // ⚠️ BOTH lists, deliberately (D-21). This used to keep only Completed
+        // tasks, which meant the producing agent was never a candidate for a
+        // revision raised mid-production -- and that is when revisions are
+        // normally raised. orderTasksForTrace puts completed ones first, so a
+        // finished task still wins over an open one.
+        setTraceTasks(orderTasksForTrace(closed, open));
 
         setStatus("ready");
       } catch (err) {
@@ -321,10 +324,10 @@ export default function App() {
       deriveAgents({
         categories,
         departments,
-        completedTasks,
+        tasks: traceTasks,
         allowedNames: AGENTS,
       }),
-    [categories, departments, completedTasks]
+    [categories, departments, traceTasks]
   );
 
   // Pre-fill the producing department from the selection, so it can't be omitted.
