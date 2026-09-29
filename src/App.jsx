@@ -706,6 +706,11 @@ function App() {
           product?.companyAddressForStorefront +
           newLine +
           newLine +
+          // E-22: whether that contact block is shown publicly on the storefront.
+          "Display Contact Info on the Storefront?: " +
+          product?.displayContactInfo +
+          newLine +
+          newLine +
           "Specific Products on Storefront: " +
           product?.specificProductsOnStorefront +
           newLine +
@@ -722,6 +727,30 @@ function App() {
           product?.areGraphicsPrintReady +
           newLine +
           newLine;
+
+        // E-22: logo and banner asked separately; either "No" means a half-hour design charge.
+        content =
+          content +
+          "Is the Logo Print-Ready?: " +
+          product?.logoPrintReady +
+          newLine +
+          newLine +
+          "Is the Header Banner Print-Ready?: " +
+          product?.headerBannerPrintReady +
+          newLine +
+          newLine;
+
+        if (
+          product?.logoPrintReady === "No" ||
+          product?.headerBannerPrintReady === "No"
+        ) {
+          content =
+            content +
+            "1/2 Hour Graphic Design Charge Acknowledged?: " +
+            yn(product?.halfHourGraphicDesignAcknowledged) +
+            newLine +
+            newLine;
+        }
 
         if (product?.areGraphicsPrintReady === "No") {
           content =
@@ -785,7 +814,36 @@ function App() {
           "Do You Want Your Products to Be Customizable?: " +
           product?.productsCustomizable +
           newLine +
+          newLine;
+
+        // E-22: which areas may be designed -- instructions for whoever builds the store.
+        if (product?.productsCustomizable === "Yes") {
+          content =
+            content +
+            "Areas They Would Like to Design: " +
+            (product?.customizableAreas || []).join(", ") +
+            newLine +
+            newLine;
+        }
+
+        content =
+          content +
+          "Custom Product Titles for the Storefront?: " +
+          product?.useCustomProductTitles +
           newLine +
+          newLine;
+
+        if (product?.useCustomProductTitles === "Yes") {
+          content =
+            content +
+            "Custom Product Titles: " +
+            product?.customProductTitles +
+            newLine +
+            newLine;
+        }
+
+        content =
+          content +
           "Are There Any Custom Fields or Notes You Would Like on Your Page?: " +
           product?.customFieldsOrNotes +
           newLine +

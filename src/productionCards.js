@@ -82,7 +82,12 @@ function buildProductionCards(data, counts) {
     const cm = PC_META[cardKey], bi = cm.bi, items = byCard[cardKey].map((x) => x.p);
     let body, gsum = "";
     if (cardKey === "outsourced") { body = `<div class="job"><div class="jhead"><span>Items to order / stock</span></div>${items.map(pcOverview).join("")}</div>`; }
-    else if (cardKey === "storefront") { const p = items[0]; body = `<div class="job"><div class="jhead"><span>Storefront setup</span></div><div class="garment">${pcRow("Online Suffix", "", p?.preferredOnlineSuffix, { crit: true })}${pcRow("Contact Email", "", p?.contactEmailForStorefront)}${pcRow("Temporary/Evergreen", "", p?.isStorefrontTemporaryOrEvergreen)}${pcRow("End Date", "", p?.isStorefrontTemporaryOrEvergreen === "Temporary" ? pcDate(p?.storefrontEndDate) : "")}${pcRow("Fulfillment", "", (p?.howToFulfillOrders || []).join(", "))}</div></div>`; }
+    else if (cardKey === "storefront") { const p = items[0];
+      // E-22: the person BUILDING the store reads this card, so everything they act on belongs here --
+      // whether to publish the contact block, whether artwork is print-ready (and the half-hour charge),
+      // which areas are designable, and any custom product titles (David, 2026-09-29).
+      const artFlag = p?.logoPrintReady === "No" || p?.headerBannerPrintReady === "No";
+      body = `<div class="job"><div class="jhead"><span>Storefront setup</span></div><div class="garment">${pcRow("Online Suffix", "", p?.preferredOnlineSuffix, { crit: true })}${pcRow("Contact Email", "", p?.contactEmailForStorefront)}${pcRow("Display Contact Info", "", p?.displayContactInfo, { crit: true })}${pcRow("Temporary/Evergreen", "", p?.isStorefrontTemporaryOrEvergreen)}${pcRow("End Date", "", p?.isStorefrontTemporaryOrEvergreen === "Temporary" ? pcDate(p?.storefrontEndDate) : "")}${pcRow("Fulfillment", "", (p?.howToFulfillOrders || []).join(", "))}${pcRow("Logo Print-Ready", "", p?.logoPrintReady, { crit: artFlag })}${pcRow("Header Banner Print-Ready", "", p?.headerBannerPrintReady, { crit: artFlag })}${artFlag ? pcRow("1/2 Hr Design Charge Acknowledged", "", p?.halfHourGraphicDesignAcknowledged === true ? "Yes" : "NO", { crit: true }) : ""}${pcRow("Customizable", "", p?.productsCustomizable)}${pcRow("Designable Areas", "", (p?.customizableAreas || []).join(", "), { crit: true })}${pcRow("Custom Product Titles", "", p?.useCustomProductTitles === "Yes" ? p?.customProductTitles : "")}</div></div>`; }
     else { gsum = pcGarmentSummary(items, bi);
       if (cardKey === "embroidery" && counts) {
         const sz = [["Small", counts.embroiderySmallPrints], ["Medium", counts.embroideryMediumPrints], ["Large", counts.embroideryLargePrints]]
