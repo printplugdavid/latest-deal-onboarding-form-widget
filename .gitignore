@@ -1,0 +1,8 @@
+# Kept when the revision form merged into this branch (docs 21). Without these,
+# node_modules and a stray npm lockfile are easy to commit by accident.
+node_modules/
+build/
+# The repo builds from yarn.lock. npm install drops a competing lockfile --
+# never commit it (see docs 05-decisions.md D-2, D-7).
+package-lock.json
+.DS_Store
