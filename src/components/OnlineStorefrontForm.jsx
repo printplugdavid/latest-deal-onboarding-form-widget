@@ -21,6 +21,26 @@ const OnlineStorefrontForm = ({ index }) => {
     name: `products.${index}.areGraphicsPrintReady`,
   });
 
+  const logoPrintReady = useWatch({
+    control,
+    name: `products.${index}.logoPrintReady`,
+  });
+
+  const headerBannerPrintReady = useWatch({
+    control,
+    name: `products.${index}.headerBannerPrintReady`,
+  });
+
+  const productsCustomizable = useWatch({
+    control,
+    name: `products.${index}.productsCustomizable`,
+  });
+
+  const useCustomProductTitles = useWatch({
+    control,
+    name: `products.${index}.useCustomProductTitles`,
+  });
+
   const desiredLiveDate = useWatch({
     control,
     name: `products.${index}.desiredLiveDate`,
@@ -122,6 +142,32 @@ const OnlineStorefrontForm = ({ index }) => {
         )}
       />
 
+      {/* 4b. Display the contact block above ON the storefront? (E-22) -- this governs the three
+          storefront contact fields above, NOT the Deal's own contact at the top of the form. */}
+      <Controller
+        control={control}
+        name={`products.${index}.displayContactInfo`}
+        defaultValue=""
+        render={({ field }) => (
+          <Autocomplete
+            {...field}
+            options={["Yes", "No"]}
+            value={field.value || ""}
+            onChange={(_, newValue) => field.onChange(newValue)}
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                label="Display Contact Info on the Storefront?"
+                variant="outlined"
+                size="small"
+                fullWidth
+                sx={{ mb: "1rem", mt: "5px" }}
+              />
+            )}
+          />
+        )}
+      />
+
       {/* 5. Specific Products on Storefront (multi-line) */}
       <Controller
         control={control}
@@ -215,6 +261,75 @@ const OnlineStorefrontForm = ({ index }) => {
           />
         )}
       />
+
+
+      {/* 6b. Logo and header banner, asked separately (E-22). The generic question above cannot
+          express "logo yes, banner no", and both have to be print-ready or the job carries a
+          half-hour graphic design charge. Kept alongside the original rather than replacing it, so
+          no payload key or note label disappears (D-5). */}
+      <Controller
+        control={control}
+        name={`products.${index}.logoPrintReady`}
+        defaultValue=""
+        render={({ field }) => (
+          <Autocomplete
+            {...field}
+            options={["Yes", "No"]}
+            value={field.value || ""}
+            onChange={(_, newValue) => field.onChange(newValue)}
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                label="Is the Logo Print-Ready?"
+                variant="outlined"
+                size="small"
+                fullWidth
+                sx={{ mb: "1rem", mt: "5px" }}
+              />
+            )}
+          />
+        )}
+      />
+
+      <Controller
+        control={control}
+        name={`products.${index}.headerBannerPrintReady`}
+        defaultValue=""
+        render={({ field }) => (
+          <Autocomplete
+            {...field}
+            options={["Yes", "No"]}
+            value={field.value || ""}
+            onChange={(_, newValue) => field.onChange(newValue)}
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                label="Is the Header Banner Print-Ready?"
+                variant="outlined"
+                size="small"
+                fullWidth
+                sx={{ mb: "1rem", mt: "5px" }}
+              />
+            )}
+          />
+        )}
+      />
+
+      {(logoPrintReady === "No" || headerBannerPrintReady === "No") && (
+        <Controller
+          name={`products.${index}.halfHourGraphicDesignAcknowledged`}
+          control={control}
+          defaultValue={false}
+          render={({ field }) => (
+            <FormGroup>
+              <FormControlLabel
+                control={<Checkbox {...field} checked={!!field.value} />}
+                label="Client acknowledged a 1/2 hour graphic design charge (logo and/or banner not print-ready)"
+              />
+            </FormGroup>
+          )}
+        />
+      )}
 
       {areGraphicsPrintReady === "No" && (
         <Controller
@@ -420,6 +535,88 @@ const OnlineStorefrontForm = ({ index }) => {
           />
         )}
       />
+
+      {/* 10b. Which areas may be designed (E-22). Instruction for whoever BUILDS the store
+          (David, 2026-09-29) -- so it also prints on the storefront production card. */}
+      {productsCustomizable === "Yes" && (
+        <Controller
+          control={control}
+          name={`products.${index}.customizableAreas`}
+          defaultValue={[]}
+          render={({ field }) => (
+            <Autocomplete
+              {...field}
+              multiple
+              options={[
+                "Front Left Chest",
+                "Front Right Chest",
+                "Front Full",
+                "Back Full",
+                "Sleeve Left",
+                "Sleeve Right",
+              ]}
+              value={field.value || []}
+              onChange={(_, newValue) => field.onChange(newValue)}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  label="Which Areas Would They Like to Design?"
+                  variant="outlined"
+                  size="small"
+                  fullWidth
+                  sx={{ mb: "1rem", mt: "5px" }}
+                />
+              )}
+            />
+          )}
+        />
+      )}
+
+      {/* 10c. Custom product titles (E-22) -- same Yes/No -> multiline idiom as custom fields below. */}
+      <Controller
+        control={control}
+        name={`products.${index}.useCustomProductTitles`}
+        defaultValue=""
+        render={({ field }) => (
+          <Autocomplete
+            {...field}
+            options={["Yes", "No"]}
+            value={field.value || ""}
+            onChange={(_, newValue) => field.onChange(newValue)}
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                label="Custom Product Titles for the Storefront?"
+                variant="outlined"
+                size="small"
+                fullWidth
+                sx={{ mb: "1rem", mt: "5px" }}
+              />
+            )}
+          />
+        )}
+      />
+
+      {useCustomProductTitles === "Yes" && (
+        <Controller
+          control={control}
+          name={`products.${index}.customProductTitles`}
+          defaultValue=""
+          render={({ field }) => (
+            <TextField
+              multiline
+              rows={3}
+              size="small"
+              id="customProductTitles"
+              variant="outlined"
+              fullWidth
+              label="List the Custom Product Titles"
+              {...field}
+              sx={{ mb: "1rem", mt: "5px" }}
+            />
+          )}
+        />
+      )}
 
       {/* 11. Are There Any Custom Fields or Notes? (Yes → Please List Special Fields multiline) */}
       <Controller
