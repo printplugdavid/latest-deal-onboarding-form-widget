@@ -72,44 +72,57 @@ export function parseSizeText(text) {
   let group = "";
   let color = "";
 
-  String(text == null ? "" : text).split(/\r?\n/).forEach((line) => {
-    const t = line.trim();
-    if (!t) return;
+  const lines = String(text == null ? "" : text)
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .filter((l) => l !== "");
 
-    // "Hoodies:" / "BC3001 Unisex T- Shirts:" -- a style heading
-    if (/:\s*$/.test(t)) {
-      group = t.replace(/:\s*$/, "").trim();
-      color = "";
-      return;
-    }
-
-    // "1- XS" / "3 Small" / "12- Small"
+  // Does this line carry a count? Used both to classify it and to look ahead.
+  const countOf = (t) => {
     let m = t.match(COUNT_LINE);
     if (m) {
       const size = normalizeSize(m[2]);
-      if (size) {
-        rows.push({ group, color, size, count: parseInt(m[1], 10) });
-        return;
-      }
+      if (size) return { size, count: parseInt(m[1], 10) };
     }
-
-    // "XS x1" / "Small - 2"
     m = t.match(TRAILING_COUNT);
     if (m) {
       const size = normalizeSize(m[1]);
-      if (size) {
-        rows.push({ group, color, size, count: parseInt(m[2], 10) });
-        return;
-      }
+      if (size) return { size, count: parseInt(m[2], 10) };
     }
+    return null;
+  };
 
-    // No digits and not a heading -> a colour for the rows that follow.
-    if (!/\d/.test(t)) {
-      color = t;
+  lines.forEach((t, i) => {
+    const counted = countOf(t);
+    if (counted) {
+      rows.push({ group, color, size: counted.size, count: counted.count });
       return;
     }
 
-    unparsed.push(t);
+    /*
+     * ⚠️ A trailing colon does NOT reliably mean "style heading". Real production
+     * text (deal 5249739000125555192) contains BOTH "Hoodies:" -- a style -- and
+     * "Deadwood Tree Camo:" -- a colour. Agents punctuate inconsistently, which is
+     * precisely why this field needs structuring.
+     *
+     * The rule that separates them: a heading introduces a COLOUR, a colour
+     * introduces COUNTS. So look at what comes next.
+     */
+    if (/\d/.test(t) && !/:\s*$/.test(t)) {
+      unparsed.push(t);
+      return;
+    }
+
+    const label = t.replace(/:\s*$/, "").trim();
+    const next = lines[i + 1];
+    const nextIsCount = next ? !!countOf(next) : false;
+
+    if (nextIsCount) {
+      color = label;
+    } else {
+      group = label;
+      color = "";
+    }
   });
 
   return { rows, unparsed };
