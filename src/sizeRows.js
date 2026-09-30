@@ -29,7 +29,19 @@
 // forms speak the same vocabulary. OTHER lets an agent type anything we missed.
 export const SIZE_OPTIONS = [
   "XXS", "XS", "S", "M", "L", "XL", "2XL", "3XL", "4XL", "5XL", "OSFA",
+  // ⚠️ Youth sizes are NOT in the revision form's affected.js list, but they are
+  // all over real onboarding data -- "2- Youth Large" / "2- Youth XL" on deal
+  // 5249739000123007161. Without them every youth line would fall to `unparsed`.
+  // The two lists have deliberately diverged here; the revision form should catch
+  // up rather than this one being trimmed back. Recorded in docs/04 E-29.
+  "YXS", "YS", "YM", "YL", "YXL",
 ];
+
+// How a youth size reads on screen; the stored value stays the short form.
+export const SIZE_LABELS = {
+  YXS: "Youth XS", YS: "Youth S", YM: "Youth M", YL: "Youth L", YXL: "Youth XL",
+  OSFA: "OSFA (one size)",
+};
 export const OTHER_SIZE = "__other__";
 
 // What agents actually type, mapped to the canonical option. Lower-cased, trimmed,
@@ -46,6 +58,13 @@ const SIZE_ALIASES = {
   "4xl": "4XL", xxxxl: "4XL", "4x": "4XL",
   "5xl": "5XL", "5x": "5XL",
   osfa: "OSFA", os: "OSFA", onesize: "OSFA", onesizefitsall: "OSFA",
+  // Youth. Agents write "Youth Large", "YLarge", "YL", "Y-L".
+  yxs: "YXS", youthxs: "YXS", youthxsmall: "YXS", youthextrasmall: "YXS",
+  ys: "YS", youths: "YS", youthsmall: "YS", ysmall: "YS",
+  ym: "YM", youthm: "YM", youthmedium: "YM", ymedium: "YM", ymed: "YM",
+  yl: "YL", youthl: "YL", youthlarge: "YL", ylarge: "YL",
+  yxl: "YXL", youthxl: "YXL", youthxlarge: "YXL", youthextralarge: "YXL",
+  y2xl: "YXL",
 };
 
 /* "Small" -> "S", "2Xl" -> "2XL", "Mdeium" -> "M", "Tall 3" -> null (unrecognised) */

@@ -61,6 +61,18 @@ describe("normalizeSize — the spellings agents actually type", () => {
     expect(normalizeSize("One Size")).toBe("OSFA");
   });
 
+  test("⭐ youth sizes — all over real data, absent from the revision form's list", () => {
+    // Deal 5249739000123007161 read "2- Youth Large" / "2- Youth XL".
+    expect(normalizeSize("Youth Large")).toBe("YL");
+    expect(normalizeSize("Youth XL")).toBe("YXL");
+    expect(normalizeSize("youth small")).toBe("YS");
+    expect(normalizeSize("YL")).toBe("YL");
+    const { rows, unparsed } = parseSizeText("Black\n2- Youth Large\n2- Youth XL");
+    expect(unparsed).toEqual([]);
+    expect(rows.map((r) => r.size)).toEqual(["YL", "YXL"]);
+    expect(sumRows(rows)).toBe(4);
+  });
+
   test("returns null rather than guessing at something unknown", () => {
     expect(normalizeSize("Tall")).toBeNull();
     expect(normalizeSize("")).toBeNull();

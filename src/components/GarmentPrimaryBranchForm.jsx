@@ -16,6 +16,7 @@ import {
   useWatch,
 } from "react-hook-form";
 import GarmentSecondaryBranchForm from "./GarmentSecondaryBranchForm";
+import SizeRowsField from "./SizeRowsField";
 import { checkGarmentQuantity } from "../quantityCheck";
 
 const GarmentPrimaryBranchForm = ({
@@ -156,17 +157,8 @@ const GarmentPrimaryBranchForm = ({
         name={`products.${index}.primaryBranches.${branchIndex}.countColorSize`}
         defaultValue=""
         render={({ field }) => (
-          <TextField
-            multiline
-            rows={3}
-            size="small"
-            id="countColorSize"
-            variant="outlined"
-            fullWidth
-            label="Total Count, Colors & Sizes"
-            {...field}
-            sx={{ mb: "1rem", mt: "5px" }}
-          />
+          // E-29: structured rows in, the SAME string out. See SizeRowsField.jsx.
+          <SizeRowsField value={field.value} onChange={field.onChange} />
         )}
       />
 
