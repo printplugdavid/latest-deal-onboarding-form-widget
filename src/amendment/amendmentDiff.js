@@ -1,0 +1,222 @@
+/*
+ * amendmentDiff.js -- the pure half of the Amendment Form (E-24, D-24).
+ *
+ * The amendment view loads the Deal's newest onboarding-form.json back into the SAME react-hook-form
+ * shape the onboarding form submits (the JSON is `data` plus two `_` stamps -- App.jsx onSubmit), so
+ * the shared branch components render it without a mapping layer. This module does the three things
+ * around that which must not live in a component:
+ *
+ *   toFormValues   JSON -> form values. Strips the `_` stamps and turns the four date strings back into
+ *                  dayjs objects. ⚠️ @mui/x-date-pickers v8 calls value.isValid() -- a string value
+ *                  THROWS, so a plain reset(json) takes the view down on any deal with a date.
+ *   diffValues     what the agent changed, leaf by leaf, with empty/undefined/"" treated as equal so a
+ *                  Controller's defaultValue="" on a key the old payload never had is not a "change".
+ *   applyAppendRule   D-23: Vendors Used and Special Instructions never lose history. The amended value
+ *                  is the original plus a dated separator plus what was added.
+ *
+ * No Zoho, no React. Tested in amendmentDiff.test.js.
+ */
+import dayjs from "dayjs";
+
+// Every DatePicker-backed field in the onboarding form (App.jsx, GraphicForm, OnlineStorefrontForm).
+// If a new date field is added there, add it here or the amendment view will crash on prefill.
+export const DATE_FIELD = /(^|\.)(dueDate|dateNeededBy|storefrontLiveDate|storefrontEndDate)$/;
+
+// D-23: these accumulate. Matched at any depth (per-garment, per-product and the top-level box).
+export const APPEND_FIELD = /(^|\.)(vendorsUsed|specialInstructions)$/;
+
+// Not answers: the payload stamps, and the Autocomplete's own bookkeeping of which products exist.
+const SKIP_TOP = (key) => key.startsWith("_") || key === "productSelector";
+
+const isPlainObject = (v) =>
+  v != null && typeof v === "object" && !Array.isArray(v) && !dayjs.isDayjs(v) && !(v instanceof Date);
+
+// ---------------------------------------------------------------------------------------------------
+// JSON -> form values
+// ---------------------------------------------------------------------------------------------------
+
+function reviveDates(value, path) {
+  if (Array.isArray(value)) return value.map((v, i) => reviveDates(v, `${path}.${i}`));
+  if (isPlainObject(value)) {
+    const out = {};
+    for (const [k, v] of Object.entries(value)) out[k] = reviveDates(v, path ? `${path}.${k}` : k);
+    return out;
+  }
+  if (DATE_FIELD.test(path)) {
+    if (value == null || value === "") return null;
+    const d = dayjs(value);
+    return d.isValid() ? d : null;
+  }
+  return value;
+}
+
+export function toFormValues(json) {
+  const out = {};
+  for (const [k, v] of Object.entries(json || {})) {
+    if (k.startsWith("_")) continue;
+    out[k] = reviveDates(v, k);
+  }
+  return out;
+}
+
+// ---------------------------------------------------------------------------------------------------
+// Diff
+// ---------------------------------------------------------------------------------------------------
+
+export function normalizeLeaf(v) {
+  if (v == null) return "";
+  if (dayjs.isDayjs(v)) return v.isValid() ? v.format("YYYY-MM-DD") : "";
+  if (v instanceof Date) return isNaN(v) ? "" : dayjs(v).format("YYYY-MM-DD");
+  if (typeof v === "string") return v.trim();
+  return String(v);
+}
+
+// path -> normalised leaf. Empty arrays/objects contribute nothing, so "missing" and "empty" agree.
+export function flatten(value, path = "", out = new Map()) {
+  if (Array.isArray(value)) {
+    value.forEach((v, i) => flatten(v, path ? `${path}.${i}` : String(i), out));
+  } else if (isPlainObject(value)) {
+    for (const [k, v] of Object.entries(value)) {
+      if (!path && SKIP_TOP(k)) continue;
+      flatten(v, path ? `${path}.${k}` : k, out);
+    }
+  } else if (path) {
+    // Dates are compared as dates even if one side is still a string.
+    out.set(path, DATE_FIELD.test(path) && typeof value === "string" && value
+      ? normalizeLeaf(dayjs(value))
+      : normalizeLeaf(value));
+  }
+  return out;
+}
+
+export function diffValues(before, after) {
+  const a = flatten(before);
+  const b = flatten(after);
+  const paths = [...a.keys(), ...[...b.keys()].filter((p) => !a.has(p))];
+  const changes = [];
+  for (const path of paths) {
+    const was = a.get(path) ?? "";
+    const now = b.get(path) ?? "";
+    if (was !== now) changes.push({ path, before: was, after: now });
+  }
+  return changes;
+}
+
+// ---------------------------------------------------------------------------------------------------
+// D-23 append rule
+// ---------------------------------------------------------------------------------------------------
+
+export const amendSeparator = (date) => `--- amended ${date} ---`;
+
+/*
+ * Never destroy. The agent edits the prefilled text however they like; what is saved always keeps the
+ * original verbatim. If they typed after it, only the new part goes under the separator. If they
+ * rewrote or cleared it, the original stays and their version goes underneath.
+ */
+export function appendAmended(before, after, date) {
+  const was = normalizeLeaf(before);
+  const now = normalizeLeaf(after);
+  if (was === now) return before;
+  if (!was) return now;
+  const sep = amendSeparator(date);
+  if (!now) return `${was}\n${sep}\n(cleared in this amendment)`;
+  const added = now.startsWith(was) ? now.slice(was.length).trim() : now;
+  return `${was}\n${sep}\n${added}`;
+}
+
+function getPath(obj, path) {
+  return path.split(".").reduce((o, k) => (o == null ? undefined : o[k]), obj);
+}
+
+function setPath(obj, path, value) {
+  const keys = path.split(".");
+  let o = obj;
+  for (let i = 0; i < keys.length - 1; i++) {
+    if (o[keys[i]] == null) o[keys[i]] = /^\d+$/.test(keys[i + 1]) ? [] : {};
+    o = o[keys[i]];
+  }
+  o[keys[keys.length - 1]] = value;
+}
+
+const clone = (v) => {
+  if (Array.isArray(v)) return v.map(clone);
+  if (isPlainObject(v)) return Object.fromEntries(Object.entries(v).map(([k, x]) => [k, clone(x)]));
+  return v; // dayjs objects are immutable; leaves are copied by value
+};
+
+// The values that would be SAVED: `after`, with every changed append-field merged per D-23.
+export function applyAppendRule(before, after, date) {
+  const out = clone(after);
+  for (const { path } of diffValues(before, after)) {
+    if (!APPEND_FIELD.test(path)) continue;
+    setPath(out, path, appendAmended(getPath(before, path), getPath(after, path), date));
+  }
+  return out;
+}
+
+// ---------------------------------------------------------------------------------------------------
+// Human-readable labels, for the What Changed block
+// ---------------------------------------------------------------------------------------------------
+
+const ARRAY_LABELS = {
+  primaryBranches: "Garment",
+  secondaryBranches: "Graphic",
+  tartiaryBranches: "Placement",
+  branches: "Graphic",
+  gangGraphics: "Gang graphic",
+  garmentSkus: "SKU",
+};
+
+const FIELD_LABELS = {
+  countColorSize: "Total Count, Colors & Sizes",
+  garmentType: "Garment Type (Brand / Style)",
+  garmentQuantity: "Garment Quantity",
+  vendorsUsed: "Vendors Used",
+  specialInstructions: "Special Instructions / Considerations",
+  dueDate: "Due Date",
+  hardDueDate: "Hard Due Date",
+  numberOfColorsUsed: "Number of Colors",
+  quantityOrdered: "Quantity Ordered",
+  sku: "SKU",
+};
+
+export const humanize = (key) => {
+  const words = key.replace(/_/g, " ").replace(/([a-z0-9])([A-Z])/g, "$1 $2").toLowerCase();
+  return words.charAt(0).toUpperCase() + words.slice(1);
+};
+
+export function describePath(path, values) {
+  const parts = path.split(".");
+  const out = [];
+  for (let i = 0; i < parts.length; i++) {
+    const key = parts[i];
+    const next = parts[i + 1];
+    if (key === "products" && /^\d+$/.test(next || "")) {
+      const name = getPath(values, `products.${next}.productName`);
+      out.push(name ? String(name) : `Product ${Number(next) + 1}`);
+      i++;
+    } else if (ARRAY_LABELS[key] && /^\d+$/.test(next || "")) {
+      out.push(`${ARRAY_LABELS[key]} ${Number(next) + 1}`);
+      i++;
+    } else if (key === "contactInfo") {
+      out.push("Contact");
+    } else if (/^\d+$/.test(key)) {
+      out.push(`#${Number(key) + 1}`);
+    } else {
+      out.push(FIELD_LABELS[key] || humanize(key));
+    }
+  }
+  return out.join(" › ");
+}
+
+// Plain-text lines for the What Changed block. Multi-line values get their own was/now lines.
+export function summariseDiff(changes, values) {
+  const show = (v) => (v === "" ? "(empty)" : v);
+  return changes.map(({ path, before, after }) => {
+    const label = describePath(path, values);
+    if (before.includes("\n") || after.includes("\n")) {
+      return `${label}:\n  was: ${show(before).replace(/\n/g, "\n       ")}\n  now: ${show(after).replace(/\n/g, "\n       ")}`;
+    }
+    return `${label}: ${show(before)} → ${show(after)}`;
+  });
+}

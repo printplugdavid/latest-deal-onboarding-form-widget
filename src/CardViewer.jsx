@@ -30,6 +30,7 @@ import {
   Typography,
 } from "@mui/material";
 import { buildProductionCards } from "./productionCards";
+import { newestFirst, readFileText } from "./zohoFiles";
 
 const ZOHO = window.ZOHO;
 
@@ -49,34 +50,6 @@ const orderOf = (name) => {
   const i = CARD_ORDER.findIndex(([file]) => file === name);
   return i === -1 ? CARD_ORDER.length : i;
 };
-
-const newestFirst = (a, b) =>
-  new Date(b?.Created_Time || 0) - new Date(a?.Created_Time || 0);
-
-// getFile's return shape is not documented. The revision form gets a Blob for JSON, but accept
-// whatever arrives, and describe it so a failure is diagnosable from the screen.
-async function readFileText(fileId) {
-  const r = await ZOHO.CRM.API.getFile({ id: fileId });
-  let text = "";
-  try {
-    if (typeof r === "string") text = r;
-    else if (r && typeof r.text === "function") text = await r.text(); // Blob, File, Response
-    else if (r instanceof ArrayBuffer || ArrayBuffer.isView(r)) text = new TextDecoder().decode(r);
-    else if (r && typeof r === "object") {
-      const inner = r.data ?? r.response ?? r.body ?? r.content;
-      if (typeof inner === "string") text = inner;
-      else if (inner && typeof inner.text === "function") text = await inner.text();
-    }
-  } catch (e) {
-    /* leave text empty; the shape below still explains what came back */
-  }
-  const size = r?.size ?? r?.byteLength ?? r?.length;
-  const shape =
-    Object.prototype.toString.call(r).slice(8, -1) +
-    (r?.type ? ` ${r.type}` : "") +
-    (size != null ? `, ${size} bytes` : "");
-  return { text, shape };
-}
 
 // Deal field -> the count key buildProductionCards() reads. 1:1 with the updateRecord in App.jsx.
 const COUNT_FIELDS = {
