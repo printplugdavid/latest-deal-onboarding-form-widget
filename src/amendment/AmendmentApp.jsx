@@ -5,8 +5,9 @@
  * David's condition: prove prefill on real deals before any write path exists. The Save button is
  * disabled and there is no updateRecord / attachFile / addNotes call anywhere in this file. The write
  * path (new complete note + old one retitled SUPERSEDED, new onboarding-form.json, regenerated cards,
- * the 18 print fields, Onboarding_Update_Results) is stage 2 -- and it waits on David's answer to
- * "does submitting clear Onboarding_Needs_Updated?".
+ * the 18 print fields, Onboarding_Update_Results) is stage 2, after prefill is proven on real deals.
+ * ⛔ D-25: NEVER write Onboarding_Needs_Updated -- not to clear it, not to set it. It is the agents'
+ * own history of "an update was needed"; they clear and re-mark it by hand to re-do one.
  *
  * How prefill works: onboarding-form.json IS the react-hook-form `data` the onboarding form submitted
  * (plus two `_` stamps). So the newest JSON goes through toFormValues() and straight into reset(), and
