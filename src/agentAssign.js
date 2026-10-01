@@ -17,8 +17,8 @@
  *   - "Missing Product" the same (David's ruling, 2026-09-02): a lost garment
  *     cannot be pinned on anyone by formula. If there IS someone to blame, a
  *     human assigns it by hand rather than the form guessing.
- *   - "Misorder" is NOT a Revision_Agent flag any more (D-26, 2026-10-01) --
- *     see the second departure note below
+ *   - "Misorder" still names the producing agent, but the ORDERER now goes to
+ *     its own field (D-26, 2026-10-01) -- see the second departure note below
  *   - the first matching completed task wins (the Deluge breaks on first hit)
  *   - Outsourced always also adds Korie Byrd; Graphic Design always also adds
  *     Rivelino Seva, whether or not a task owner was found
@@ -37,16 +37,19 @@
  * Angela Zervudakis was credited on neither. See `orderTasksForTrace` below.
  * The Deluge still has this bug -- handoff in docs/23.
  *
- * ⚠️ SECOND DELIBERATE DEPARTURE (D-26, David 2026-10-01, reverses D-22): a
- * Misorder no longer puts ANYONE on Revision_Agent / Correction_Agent. An
- * ordering mistake is not a production mistake. Whoever owned the Order
- * Garments / Order Products task is returned separately as `orderingAgent`,
- * with `orderingIssue: true`, and the form writes those to the Deal's
- * Ordering_Issues (checkbox) and Ordering_Agent (picklist) instead.
- *   - Misorder alone            -> agents [], orderingAgent = the orderer
- *   - Misorder + a misprint     -> agents = the producer (for the misprint),
- *                                  orderingAgent = the orderer
- * The search for the orderer is unchanged; only where the name lands moved.
+ * ⚠️ SECOND DELIBERATE DEPARTURE (D-26, David 2026-10-01, reverses D-22):
+ * the ORDERER and the GRAPHIC DESIGNER no longer go on Revision_Agent /
+ * Correction_Agent. Each has its own Deal field. The producing agent is
+ * found and written exactly as before -- only these two names moved.
+ *   - "...(Misorder)"                       -> orderingAgent = owner of the
+ *        Order Garments / Order Products task   (Deal field Ordering_Agent)
+ *   - "Misprint (Wrong Graphic)" or
+ *     "Design Issues (Poor Graphics)"       -> graphicAgents = every distinct
+ *        owner of a GRAPHIC DESIGN task         (Deal field Graphic_Agent)
+ *     Wrong Graphic = the final assets were not organised well; Poor Graphics
+ *     = the graphic was not designed well. Both are the designer's.
+ * The form does NOT write Ordering_Issues: the category already says there was
+ * an ordering issue, and a non-empty Ordering_Agent is the durable record.
  * The Deluge still adds the orderer to Revision_Agent -- handoff in docs/32.
  */
 
@@ -101,7 +104,7 @@ function ownerNameOf(task, userNameById) {
  * tasks: [{ Subject, Owner: { id, name }, Status }] -- open AND completed,
  *        ordered by orderTasksForTrace (completed first).
  * Returns { agents, unmappedDepartments, misses, orderOwnerMissing, rejected,
- *           orderingIssue, orderingAgent }
+ *           orderingIssue, orderingAgent, graphicIssue, graphicAgents }
  */
 export function deriveAgents({
   categories = [],
@@ -109,10 +112,13 @@ export function deriveAgents({
   tasks = [],
   userNameById = {},
   allowedNames = null,
+  allowedOrderingNames = null,
+  allowedGraphicNames = null,
 }) {
   // ---- Step 1: what does the category tell us to look for? ----------------
   let needsProduceOrderOwner = false;
   let needsOrderProductsOwner = false;
+  let needsGraphicOwner = false;
   // True while every category chosen is one nobody can be fairly blamed for.
   let unattributableOnly = true;
 
@@ -122,13 +128,17 @@ export function deriveAgents({
       // Nobody is identified for these. A courier damaging a box, or a garment
       // going missing, is not something a completed task can pin on a person.
     } else if (s.includes("Misorder")) {
-      // D-26: an ordering fault. Nobody goes on the agent field for it; the
-      // orderer is found below and returned as orderingAgent instead.
+      // The producer is named as before. D-26: the ORDERER is found below and
+      // returned as orderingAgent instead of being added to `agents`.
+      needsProduceOrderOwner = true;
       needsOrderProductsOwner = true;
+      unattributableOnly = false;
     } else {
       needsProduceOrderOwner = true;
       unattributableOnly = false;
     }
+    // D-26: independent of the branch above -- a graphic fault also names the designer(s).
+    if (s.includes("Wrong Graphic") || s.includes("Poor Graphics")) needsGraphicOwner = true;
   });
 
   const agents = [];
@@ -195,6 +205,20 @@ export function deriveAgents({
     orderOwnerMissing = !found;
   }
 
+  // ---- Step 6 (D-26): whoever did the graphics ----------------------------
+  // Every distinct owner of a GRAPHIC DESIGN task -- the artwork/mock-up, the
+  // finalising, any mock-up revision. "The one(s) who did the graphics."
+  const graphicFound = [];
+  if (needsGraphicOwner) {
+    for (let i = 0; i < tasks.length; i++) {
+      const subject = String(tasks[i]?.Subject || "");
+      if (subject.includes("GRAPHIC DESIGN") && !RE_CORRECT.test(subject) && !RE_REPRODUCE.test(subject)) {
+        const name = ownerNameOf(tasks[i], userNameById);
+        if (name && graphicFound.indexOf(name) < 0) graphicFound.push(name);
+      }
+    }
+  }
+
   // A name that is not an option on the picklist would be rejected on write.
   const rejected = [];
   const kept = allowedNames
@@ -205,11 +229,21 @@ export function deriveAgents({
       })
     : agents;
 
-  // Ordering_Agent is a picklist too -- same guard against a name CRM would reject.
-  if (orderingAgent && allowedNames && allowedNames.indexOf(orderingAgent) < 0) {
+  // Ordering_Agent and Graphic_Agent are picklists with their OWN option lists
+  // (Ordering_Agent has no Yefri Rivera and does have Brad Byfield) -- same guard.
+  const orderList = allowedOrderingNames || allowedNames;
+  if (orderingAgent && orderList && orderList.indexOf(orderingAgent) < 0) {
     rejected.push(orderingAgent);
     orderingAgent = "";
   }
+  const graphicList = allowedGraphicNames || allowedNames;
+  const graphicAgents = graphicList
+    ? graphicFound.filter((n) => {
+        const ok = graphicList.indexOf(n) >= 0;
+        if (!ok) rejected.push(n);
+        return ok;
+      })
+    : graphicFound;
 
   return {
     agents: kept,
@@ -219,5 +253,7 @@ export function deriveAgents({
     rejected,
     orderingIssue: needsOrderProductsOwner, // true whenever a Misorder category is chosen
     orderingAgent, // "" when no Order Garments / Order Products owner was found
+    graphicIssue: needsGraphicOwner, // Wrong Graphic or Poor Graphics chosen
+    graphicAgents, // [] when no GRAPHIC DESIGN task owner was found
   };
 }

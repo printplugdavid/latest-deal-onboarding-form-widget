@@ -50,6 +50,7 @@ const REVISION_CATEGORIES = [
   "Misprint (Malfunction)",
   "Misprint (Wrong Size or Product)",
   "Misprint (Other)",
+  "Design Issues (Poor Graphics)",
   "Wrong Product Size (Misorder)",
   "Wrong Product Type (Misorder)",
   "Missing Product",
@@ -66,6 +67,7 @@ const CORRECTION_CATEGORIES = [
   "Misprint (Malfunction)",
   "Misprint (Wrong Size or Product)",
   "Misprint (Other)",
+  "Design Issues (Poor Graphics)",
   "Wrong Product Size (Misorder)",
   "Wrong Product Type (Misorder)",
   "Missing Product",
@@ -87,6 +89,31 @@ const AGENTS = [
   "Rivelino Seva",
   "Angela Zervudakis",
 ];
+
+// Ordering_Agent has its OWN option list -- measured 2026-10-01. It is not the nine above:
+// no Yefri Rivera or David Byrd, and it has Brad Byfield. A name not on it is dropped, not written.
+const ORDERING_AGENTS = [
+  "Korie Byrd",
+  "Desi Mastin",
+  "Drew Byrd",
+  "Ray Castaneda",
+  "Angela Zervudakis",
+  "David Rodriguez",
+  "Brad Byfield",
+  "Rivelino Seva",
+];
+// ⚠️ Graphic_Agent did NOT exist in CRM on 2026-10-01. Until its real option list is known this
+// assumes the same nine names; re-measure and replace before deploying (docs/04 E-32).
+const GRAPHIC_AGENTS = AGENTS;
+
+// Add to a multi-select without losing what is already there, or duplicating it.
+const union = (existing, add) => {
+  const out = Array.isArray(existing) ? existing.slice() : [];
+  (add || []).forEach((n) => {
+    if (n && out.indexOf(n) < 0) out.push(n);
+  });
+  return out;
+};
 
 const MAX_SLOTS = { Revision: 3, Correction: 2 };
 
@@ -326,6 +353,8 @@ export default function App() {
         departments,
         tasks: traceTasks,
         allowedNames: AGENTS,
+        allowedOrderingNames: ORDERING_AGENTS,
+        allowedGraphicNames: GRAPHIC_AGENTS,
       }),
     [categories, departments, traceTasks]
   );
@@ -513,10 +542,14 @@ export default function App() {
     L.push("Department: " + departments.join(", "));
     L.push("Category: " + categories.join(", "));
     L.push("Agent: " + (derived.agents.length ? derived.agents.join(", ") : "(none identified)"));
-    // D-26: a Misorder is an ordering fault -- it has its own line and its own Deal fields.
+    // D-26: the orderer and the designer(s) have their own lines and their own Deal fields.
     if (derived.orderingIssue) {
-      L.push("Ordering issue: Yes");
       L.push("Ordering agent: " + (derived.orderingAgent || "(none identified)"));
+    }
+    if (derived.graphicIssue) {
+      L.push(
+        "Graphic agent: " + (derived.graphicAgents.length ? derived.graphicAgents.join(", ") : "(none identified)")
+      );
     }
     L.push("Reason:");
     reason.trim().split("\n").forEach((line) => L.push("  " + line.trimEnd()));
@@ -579,19 +612,23 @@ export default function App() {
       // Accountability is traced, never chosen by the person filing the form.
       if (derived.agents.length) api[prefix + "_Agent"] = derived.agents;
 
-      // D-26 (2026-10-01): a Misorder flags the ORDERING fields instead of the agent field.
-      // Its own call, BEFORE the main write and with no triggers: (a) a value CRM rejects here
-      // -- or a field that is not on the layout yet -- can never take the print slots down with
-      // it, and (b) the fields are already in place when the main write fires the workflow.
-      // Ordering_Issues is only ever set true; the form never clears a flag a human set.
-      if (derived.orderingIssue) {
+      // D-26 (2026-10-01): the orderer goes to Ordering_Agent and the designer(s) to Graphic_Agent,
+      // not onto the agent field. Its own call, BEFORE the main write and with no triggers:
+      // (a) a value CRM rejects -- or a field not on the layout yet -- can never take the print
+      // slots down with it, and (b) the fields are in place when the main write fires the workflow.
+      // Both are multi-selects and both ACCUMULATE: a second event on the Deal adds to what is
+      // there, it never replaces it. Ordering_Issues is deliberately not written -- the category
+      // already says so, and a non-empty Ordering_Agent is the durable record.
+      const side = {};
+      if (derived.orderingAgent) side.Ordering_Agent = union(deal?.Ordering_Agent, [derived.orderingAgent]);
+      if (derived.graphicAgents.length) side.Graphic_Agent = union(deal?.Graphic_Agent, derived.graphicAgents);
+      if (Object.keys(side).length) {
         try {
-          const ord = { id: ctx.recordId, Ordering_Issues: true };
-          if (derived.orderingAgent) ord.Ordering_Agent = derived.orderingAgent;
-          const r = await ZOHO.CRM.API.updateRecord({ Entity: ctx.entity, APIData: ord, Trigger: [] });
-          if (r?.data?.[0]?.code !== "SUCCESS") console.log("Ordering fields not written:", r);
+          side.id = ctx.recordId;
+          const r = await ZOHO.CRM.API.updateRecord({ Entity: ctx.entity, APIData: side, Trigger: [] });
+          if (r?.data?.[0]?.code !== "SUCCESS") console.log("Ordering / graphic agent not written:", r);
         } catch (err) {
-          console.log("Ordering fields not written:", err);
+          console.log("Ordering / graphic agent not written:", err);
         }
       }
 

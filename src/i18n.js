@@ -243,6 +243,7 @@ const CATEGORY_ES = {
   "Misprint (Malfunction)": "Impresión defectuosa (Falla de máquina)",
   "Misprint (Wrong Size or Product)": "Impresión defectuosa (Talla o producto incorrecto)",
   "Misprint (Other)": "Impresión defectuosa (Otro)",
+  "Design Issues (Poor Graphics)": "Problemas de diseño (Gráficos deficientes)",
   "Wrong Product Size (Misorder)": "Talla incorrecta (Error de pedido)",
   "Wrong Product Type (Misorder)": "Producto incorrecto (Error de pedido)",
   "Missing Product": "Producto faltante",
