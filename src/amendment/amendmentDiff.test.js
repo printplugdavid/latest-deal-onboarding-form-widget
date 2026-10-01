@@ -384,3 +384,27 @@ describe("per-garment add / remove", () => {
     expect(summariseAmendmentWithGarments(before, after, [0], ["0.1"])).toEqual(["Product removed: T-Shirts (garment)"]);
   });
 });
+
+describe("buildCarriedNote (note-sourced deals)", () => {
+  const { buildCarriedNote } = require("./amendmentDiff");
+  const original = "CONTACT INFO\n---------------------------\n\nAccount Name: Old Deal\n\nPRODUCT INFORMATION";
+  test("the original note text follows the What Changed block, untouched", () => {
+    const n = buildCarriedNote({ originalText: original + "\n\n", lines: ["Qty: 24 → 36"], story: "More.", when: "2026-10-01 12:00", previousWhen: "Mar 3, 2026", countsUpdated: true });
+    expect(n.startsWith("ONBOARDING AMENDED 2026-10-01 12:00\n")).toBe(true);
+    expect(n).toContain("• Qty: 24 → 36");
+    expect(n).toContain("The print counts on the Deal were updated");
+    expect(n).toContain("The onboarding note of Mar 3, 2026 follows exactly as it was written.");
+    expect(n.endsWith(original)).toBe(true);
+  });
+  test("says so plainly when the counts were not touched", () => {
+    const n = buildCarriedNote({ originalText: original, lines: [], story: "", when: "w", countsUpdated: false });
+    expect(n).toContain("were NOT changed by this amendment");
+  });
+  test("a second amendment stacks on the first and the body is still found", () => {
+    const first = buildCarriedNote({ originalText: original, lines: ["a"], story: "s", when: "w1", countsUpdated: true });
+    const second = buildCarriedNote({ originalText: first, lines: ["b"], story: "t", when: "w2", countsUpdated: true });
+    expect(second.indexOf("ONBOARDING AMENDED w2")).toBe(0);
+    expect(second).toContain("ONBOARDING AMENDED w1");
+    expect(second.endsWith(original)).toBe(true);
+  });
+});
