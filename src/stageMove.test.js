@@ -33,8 +33,17 @@ describe("targetStage (D-27)", () => {
     });
   });
 
-  test("advertiser deals are left to a human", () => {
-    expect(targetStage("Revision", "ADVERTISER: Mock-Up Approved")).toEqual({ move: false, reason: "advertiser" });
+  test("an advertiser REVISION moves to ADVERTISER: Issues -- the value the workflow rule fires on", () => {
+    expect(targetStage("Revision", "ADVERTISER: Mock-Up Approved")).toEqual({ move: true, stage: "ADVERTISER: Issues" });
+    expect(targetStage("Revision", "ADVERTISER: Issues")).toEqual({
+      move: false,
+      reason: "already",
+      stage: "ADVERTISER: Issues",
+    });
+  });
+
+  test("an advertiser CORRECTION and the mixed school/advertiser stages are left to a human", () => {
+    expect(targetStage("Correction", "ADVERTISER: Mock-Up Approved")).toEqual({ move: false, reason: "advertiser" });
     expect(targetStage("Revision", "SCHOOL/ ADVERTISER: Converted")).toEqual({ move: false, reason: "advertiser" });
     expect(targetStage("Revision", "SCHOOL ADVERTISER - In Design")).toEqual({ move: false, reason: "advertiser" });
   });
