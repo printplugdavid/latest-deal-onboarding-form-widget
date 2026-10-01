@@ -45,6 +45,8 @@ import {
 } from "@mui/material";
 import { FormProvider, useFieldArray, useForm, useWatch } from "react-hook-form";
 import GarmentForm from "../components/GarmentForm";
+import GarmentPrimaryBranchForm from "../components/GarmentPrimaryBranchForm";
+import { GarmentSwapEditor, GraphicsEditor, QuantityEditor } from "./FocusedEditors";
 import NonGarmentForm from "../components/NonGarmentForm";
 import GraphicForm from "../components/GraphicForm";
 import OnlineStorefrontForm from "../components/OnlineStorefrontForm";
@@ -64,8 +66,8 @@ import {
   buildUpdateResultsEntry,
   describePath,
   diffValues,
-  effectiveValues,
-  summariseAmendment,
+  effectiveValuesWithGarments,
+  summariseAmendmentWithGarments,
   toFormValues,
 } from "./amendmentDiff";
 
@@ -178,13 +180,16 @@ const AmendmentApp = () => {
   const [productIdx, setProductIdx] = useState(null);
   const [story, setStory] = useState("");
   const [removed, setRemoved] = useState([]); // indices into products; see the header comment
+  const [removedGarments, setRemovedGarments] = useState([]); // "p.g" keys, same idea one level down
+  const [garmentIdx, setGarmentIdx] = useState(null);
+  const [showAll, setShowAll] = useState(false); // escape hatch: every field for the chosen garment
   const [saving, setSaving] = useState(false);
   const [outcome, setOutcome] = useState(null); // { done: [..], failed: [..] } after a save
   const ctx = useRef({ entity: null, recordId: null });
   const original = useRef(null);
 
   const methods = useForm();
-  const { control, reset, handleSubmit } = methods;
+  const { control, reset, handleSubmit, getValues, setValue } = methods;
   const current = useWatch({ control });
   const { append } = useFieldArray({ control, name: "products" });
 
@@ -226,8 +231,11 @@ const AmendmentApp = () => {
   const has = (key) => changed.includes(key);
 
   const lines = useMemo(
-    () => (original.current && current ? summariseAmendment(original.current, current, removed) : []),
-    [current, removed]
+    () =>
+      original.current && current
+        ? summariseAmendmentWithGarments(original.current, current, removed, removedGarments)
+        : [],
+    [current, removed, removedGarments]
   );
   // Indices here are the on-screen ones (nothing spliced), so the lookup uses the unfiltered merge.
   const merged = useMemo(
@@ -238,6 +246,8 @@ const AmendmentApp = () => {
     .filter((c) => APPEND_FIELD.test(c.path))
     .filter((c) => {
       const m = /^products\.(\d+)\./.exec(c.path);
+      const gm = /^products\.(\d+)\.primaryBranches\.(\d+)\./.exec(c.path);
+      if (gm && removedGarments.includes(gm[1] + "." + gm[2])) return false;
       return !m || !isRemoved(Number(m[1]));
     })
     .map((c) => ({
@@ -246,8 +256,11 @@ const AmendmentApp = () => {
     }));
   // What would actually be saved: removed products dropped, append rule applied.
   const saved = useMemo(
-    () => (original.current && current ? effectiveValues(original.current, current, removed, today()) : null),
-    [current, removed]
+    () =>
+      original.current && current
+        ? effectiveValuesWithGarments(original.current, current, removed, removedGarments, today())
+        : null,
+    [current, removed, removedGarments]
   );
   const before = useMemo(() => countRows(original.current?.products), [state.status]); // eslint-disable-line react-hooks/exhaustive-deps
   const after = countRows(saved?.products);
@@ -263,6 +276,31 @@ const AmendmentApp = () => {
   };
   const toggleRemoved = (i) =>
     setRemoved((r) => (r.includes(i) ? r.filter((x) => x !== i) : [...r, i]));
+
+  // ---- garments inside the chosen product ---------------------------------------------------------
+  const product = productIdx != null ? products[productIdx] : null;
+  const isGarmentProduct = product?.productType === "garment";
+  const garments = (isGarmentProduct && product?.primaryBranches) || [];
+  const originalGarmentCount =
+    (productIdx != null && original.current?.products?.[productIdx]?.primaryBranches?.length) || 0;
+  const gKey = (g) => productIdx + "." + g;
+  const garmentRemoved = (g) => removedGarments.includes(gKey(g));
+  const garmentIsNew = (g) => productIdx >= originalCount || g >= originalGarmentCount;
+  const toggleGarmentRemoved = (g) =>
+    setRemovedGarments((r) => (r.includes(gKey(g)) ? r.filter((x) => x !== gKey(g)) : [...r, gKey(g)]));
+  const addGarment = () => {
+    const path = `products.${productIdx}.primaryBranches`;
+    const cur = getValues(path) || [];
+    setValue(path, [...cur, { name: "" }], { shouldDirty: true });
+    setValue(`products.${productIdx}.numberOfGarmentTypes`, String(cur.length + 1), { shouldDirty: true });
+    setGarmentIdx(cur.length);
+  };
+  const garmentLabel = (gar, g) => {
+    const type = String(gar?.garmentType || "").split("\n")[0].trim();
+    const qty = gar?.garmentQuantity ? ` · ${gar.garmentQuantity} pcs` : "";
+    return `Garment ${g + 1}` + (type ? ` · ${type.slice(0, 40)}` : "") + qty;
+  };
+  const anyFieldTick = has("quantity") || has("garment") || has("graphic");
   const countLines = (before || [])
     .map(([label, was], i) => [label, was, after?.[i]?.[1]])
     .filter(([, was, now]) => was || now);
@@ -295,7 +333,7 @@ const AmendmentApp = () => {
       return;
     }
     if (!story.trim()) {
-      window.alert("Please say in your own words what happened (step 3) before saving.");
+      window.alert("Please say in your own words what happened (step 4) before saving.");
       return;
     }
     setSaving(true);
@@ -470,8 +508,8 @@ const AmendmentApp = () => {
       <Box sx={{ p: 3, fontFamily: "Roboto, sans-serif", color: "#1a1a1a", background: "#fff", minHeight: "100vh" }}>
         {header}
         <Alert severity="info" sx={{ mb: 2 }}>
-          Tick what changed, make the change, and say what happened. The panel at the bottom shows exactly
-          what will be recorded. Saving posts a new onboarding note, new production cards and new print counts —
+          Tick what changed, pick the product and garment, and only those fields open. Then say what happened.
+          The panel at the bottom shows exactly what will be recorded. Saving posts a new onboarding note, new production cards and new print counts —
           the original note is kept and marked superseded.
         </Alert>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
@@ -501,14 +539,18 @@ const AmendmentApp = () => {
         </FormGroup>
 
         <Typography fontWeight="bold" sx={{ mt: 2, mb: 1 }}>
-          2. Which product?
+          2. Which product? Then 3. which garment
         </Typography>
         {products.length ? (
           <ToggleButtonGroup
             exclusive
             size="small"
             value={productIdx}
-            onChange={(_, v) => setProductIdx(v)}
+            onChange={(_, v) => {
+              setProductIdx(v);
+              setGarmentIdx(null);
+              setShowAll(false);
+            }}
             sx={{ flexWrap: "wrap" }}
           >
             {products.map((p, i) => (
@@ -541,13 +583,13 @@ const AmendmentApp = () => {
           />
         )}
 
-        {/* Every product stays mounted-or-not by choice only; values for unmounted products stay in
-            the form (react-hook-form keeps them), so switching products never drops an edit. */}
-        {productIdx != null && products[productIdx] && (
+        {/* Values for anything not on screen stay in the form (react-hook-form keeps them), so
+            switching product or garment never drops an edit. */}
+        {product && (
           <Box sx={{ border: "1px solid #ccc", p: 2, my: 2 }}>
             <Box sx={{ mb: 2, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 2 }}>
               <Typography fontWeight="bold">
-                {products[productIdx].productName} ({products[productIdx].productType})
+                {product.productName} ({product.productType})
               </Typography>
               {(has("removed") || isRemoved(productIdx)) && (
                 <Button
@@ -557,17 +599,115 @@ const AmendmentApp = () => {
                   color={isRemoved(productIdx) ? "primary" : "error"}
                   onClick={() => toggleRemoved(productIdx)}
                 >
-                  {isRemoved(productIdx) ? "Undo remove" : "Remove this product"}
+                  {isRemoved(productIdx) ? "Undo remove" : "Remove this whole product"}
                 </Button>
               )}
             </Box>
+
             {isRemoved(productIdx) ? (
               <Alert severity="error">
-                {products[productIdx].productName} will be removed from this order. Its prints come off the
-                counts below.
+                {product.productName} will be removed from this order. Its prints come off the counts below.
               </Alert>
+            ) : !isGarmentProduct || productIdx >= originalCount ? (
+              // Non-garment products are short, and a brand-new product needs every answer.
+              anyFieldTick || productIdx >= originalCount ? (
+                <ProductEditor key={productIdx} index={productIdx} product={product} options={loaded.options} />
+              ) : (
+                <Typography variant="body2" color="text.secondary">
+                  Tick what changed in step 1 to open this product's fields.
+                </Typography>
+              )
             ) : (
-              <ProductEditor key={productIdx} index={productIdx} product={products[productIdx]} options={loaded.options} />
+              <>
+                <Typography variant="body2" fontWeight="bold" sx={{ mb: 1 }}>
+                  Which garment?
+                </Typography>
+                <ToggleButtonGroup
+                  exclusive
+                  size="small"
+                  value={garmentIdx}
+                  onChange={(_, v) => {
+                    setGarmentIdx(v);
+                    setShowAll(false);
+                  }}
+                  sx={{ flexWrap: "wrap" }}
+                >
+                  {garments.map((gar, g) => (
+                    <ToggleButton
+                      key={g}
+                      value={g}
+                      sx={{ textTransform: "none", textDecoration: garmentRemoved(g) ? "line-through" : "none" }}
+                    >
+                      {garmentLabel(gar, g)}
+                      {garmentIsNew(g) ? " · new" : ""}
+                      {garmentRemoved(g) ? " · removed" : ""}
+                    </ToggleButton>
+                  ))}
+                </ToggleButtonGroup>
+                {has("added") && (
+                  <Button type="button" size="small" variant="outlined" sx={{ ml: 1 }} onClick={addGarment}>
+                    + Add a garment
+                  </Button>
+                )}
+
+                {garmentIdx != null && garments[garmentIdx] && (
+                  <Box sx={{ mt: 2, pt: 1, borderTop: "1px solid #eee" }}>
+                    <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 2 }}>
+                      <Typography fontWeight="bold">{garmentLabel(garments[garmentIdx], garmentIdx)}</Typography>
+                      <Box sx={{ display: "flex", gap: 1 }}>
+                        {!garmentRemoved(garmentIdx) && !garmentIsNew(garmentIdx) && (
+                          <Button type="button" size="small" onClick={() => setShowAll((v) => !v)}>
+                            {showAll ? "Show only what changed" : "Show every field"}
+                          </Button>
+                        )}
+                        {(has("removed") || garmentRemoved(garmentIdx)) && (
+                          <Button
+                            type="button"
+                            size="small"
+                            variant="outlined"
+                            color={garmentRemoved(garmentIdx) ? "primary" : "error"}
+                            onClick={() => toggleGarmentRemoved(garmentIdx)}
+                          >
+                            {garmentRemoved(garmentIdx) ? "Undo remove" : "Remove this garment"}
+                          </Button>
+                        )}
+                      </Box>
+                    </Box>
+
+                    {garmentRemoved(garmentIdx) ? (
+                      <Alert severity="error" sx={{ mt: 1 }}>
+                        This garment will be removed from the order. Its prints come off the counts below.
+                      </Alert>
+                    ) : showAll || garmentIsNew(garmentIdx) ? (
+                      <GarmentPrimaryBranchForm
+                        key={`${productIdx}-${garmentIdx}-all`}
+                        index={productIdx}
+                        branchIndex={garmentIdx}
+                        options={loaded.options}
+                        productName={product.productName}
+                      />
+                    ) : anyFieldTick ? (
+                      <>
+                        {has("quantity") && <QuantityEditor key={`q-${productIdx}-${garmentIdx}`} p={productIdx} g={garmentIdx} />}
+                        {has("garment") && <GarmentSwapEditor key={`s-${productIdx}-${garmentIdx}`} p={productIdx} g={garmentIdx} />}
+                        {has("graphic") && (
+                          <GraphicsEditor
+                            key={`g-${productIdx}-${garmentIdx}`}
+                            p={productIdx}
+                            g={garmentIdx}
+                            options={loaded.options}
+                            productName={product.productName}
+                          />
+                        )}
+                      </>
+                    ) : (
+                      <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                        Tick what changed in step 1 (quantity, garment, or graphic) to open just those fields.
+                      </Typography>
+                    )}
+                  </Box>
+                )}
+              </>
             )}
           </Box>
         )}
@@ -591,7 +731,7 @@ const AmendmentApp = () => {
         )}
 
         <Typography fontWeight="bold" sx={{ mt: 2, mb: 1 }}>
-          3. In your own words, what happened?
+          4. In your own words, what happened?
         </Typography>
         <TextField
           multiline

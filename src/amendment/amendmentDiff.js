@@ -101,7 +101,11 @@ export function diffValues(before, after) {
   for (const path of paths) {
     const was = a.get(path) ?? "";
     const now = b.get(path) ?? "";
-    if (was !== now) changes.push({ path, before: was, after: now });
+    if (was === now) continue;
+    // A Yes/No question the old payload never carried mounts with its default "No". Unanswered
+    // and "No" are the same answer; a real change to "Yes" (or from "Yes") is still reported.
+    if (was === "" && now === "No") continue;
+    changes.push({ path, before: was, after: now });
   }
   return changes;
 }
@@ -333,3 +337,101 @@ export function appendUpdateResults(existing, entry, cap = 32000) {
 
 export const SUPERSEDED_TITLE = (date) => "DEAL ONBOARDING FORM (SUPERSEDED " + date + ")";
 export const LIVE_NOTE_TITLE = "DEAL ONBOARDING FORM";
+
+// ---------------------------------------------------------------------------------------------------
+// Per-garment add / remove
+// ---------------------------------------------------------------------------------------------------
+/*
+ * Same idea as whole products, one level down: a removed garment stays in its array while editing
+ * and its "p.g" key goes into `removedGarments`; an added garment is appended. These wrap the
+ * product-level functions so nothing above had to change.
+ */
+const garmentKeyOf = (path) => {
+  const m = /^products\.(\d+)\.primaryBranches\.(\d+)(\.|$)/.exec(path);
+  return m ? m[1] + "." + m[2] : "";
+};
+const garmentTag = (values, p, g) => {
+  const gar = getPath(values, `products.${p}.primaryBranches.${g}`) || {};
+  const product = getPath(values, `products.${p}.productName`) || `Product ${p + 1}`;
+  const bits = [String(gar.garmentType || "").split("\n")[0].trim(), gar.garmentQuantity ? gar.garmentQuantity + " pcs" : ""]
+    .filter(Boolean)
+    .join(", ");
+  return `${product} › Garment ${g + 1}` + (bits ? ` (${bits})` : "");
+};
+
+export function effectiveValuesWithGarments(before, after, removed, removedGarments, date) {
+  const gone = new Set(removedGarments || []);
+  // Filter garments on the still-indexed tree FIRST, then let the product-level filter run.
+  const staged = clone(after);
+  (staged.products || []).forEach((prod, p) => {
+    if (!Array.isArray(prod?.primaryBranches)) return;
+    const originalLen = (getPath(before, `products.${p}.primaryBranches`) || []).length;
+    const kept = prod.primaryBranches.filter((_, g) => !gone.has(p + "." + g));
+    if (kept.length !== prod.primaryBranches.length || kept.length !== originalLen) {
+      prod.numberOfGarmentTypes = String(kept.length);
+    }
+    prod.primaryBranches = kept;
+  });
+  // The append rule compares by index, so apply it BEFORE the garment arrays were shortened:
+  const merged = applyAppendRule(before, after, date);
+  (staged.products || []).forEach((prod, p) => {
+    if (!Array.isArray(prod?.primaryBranches)) return;
+    const src = getPath(merged, `products.${p}.primaryBranches`) || [];
+    prod.primaryBranches = src.filter((_, g) => !gone.has(p + "." + g));
+  });
+  ["specialInstructions"].forEach((k) => {
+    if (merged[k] !== undefined) staged[k] = merged[k];
+  });
+  (staged.products || []).forEach((prod, p) => {
+    ["vendorsUsed", "specialInstructions"].forEach((k) => {
+      const v = getPath(merged, `products.${p}.${k}`);
+      if (v !== undefined) prod[k] = v;
+    });
+  });
+  // Product-level removal + productSelector, with the append rule already applied above.
+  const goneProducts = new Set(removed || []);
+  const originalCount = (before?.products || []).length;
+  const touched = goneProducts.size > 0 || (staged.products || []).length !== originalCount;
+  staged.products = (staged.products || []).filter((_, i) => !goneProducts.has(i));
+  if (touched) staged.productSelector = staged.products.map((p) => `${p?.productName}#${p?.productType}`);
+  return staged;
+}
+
+export function summariseAmendmentWithGarments(before, after, removed, removedGarments) {
+  const goneProducts = new Set(removed || []);
+  const gone = new Set(removedGarments || []);
+  const lines = [];
+  const touchedProducts = new Set();
+
+  [...gone].sort().forEach((key) => {
+    const [p, g] = key.split(".").map(Number);
+    if (goneProducts.has(p)) return;
+    const originalLen = (getPath(before, `products.${p}.primaryBranches`) || []).length;
+    touchedProducts.add(p);
+    if (g < originalLen) lines.push("Garment removed: " + garmentTag(before, p, g));
+  });
+  (after?.products || []).forEach((prod, p) => {
+    if (goneProducts.has(p) || p >= (before?.products || []).length) return;
+    const originalLen = (getPath(before, `products.${p}.primaryBranches`) || []).length;
+    (prod?.primaryBranches || []).forEach((_, g) => {
+      if (g >= originalLen && !gone.has(p + "." + g)) {
+        touchedProducts.add(p);
+        lines.push("Garment added: " + garmentTag(after, p, g));
+      }
+    });
+  });
+
+  const base = summariseAmendment(before, after, removed);
+  const productLines = base.filter((l) => /^Product (added|removed): /.test(l));
+
+  const fieldChanges = diffValues(before, after).filter(({ path }) => {
+    const i = productIndexOf(path);
+    if (i !== -1 && goneProducts.has(i)) return false;
+    if (i >= (before?.products || []).length && /^products\.\d+\.(productName|productType)$/.test(path)) return false;
+    if (gone.has(garmentKeyOf(path))) return false; // a removed garment's fields are not news
+    // the count is restated by the added/removed lines
+    if (touchedProducts.has(i) && /^products\.\d+\.numberOfGarmentTypes$/.test(path)) return false;
+    return true;
+  });
+  return [...productLines, ...lines, ...summariseDiff(fieldChanges, after)];
+}
