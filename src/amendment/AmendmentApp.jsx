@@ -81,6 +81,12 @@ const stamp = (iso) => {
   return isNaN(d) ? "(date unknown)" : d.toLocaleString([], { dateStyle: "medium", timeStyle: "short" });
 };
 
+const JOB_LABELS = {
+  gangSheet: "· DTF Gang Sheet", dtg: "· DTG", dtf: "· DTF", htv: "· HTV", vinyl: "· Vinyl",
+  stickers: "· Stickers", decals: "· Decals", banners: "· Banners", posters: "· Posters",
+  magnets: "· Magnets", patches: "· Patches",
+};
+
 // The same headline numbers the onboarding form's preview shows, plus the per-job lines.
 function countRows(products) {
   let c;
@@ -95,7 +101,7 @@ function countRows(products) {
     ["Vinyl Department", c.VD],
     ["Outsourced items", c.outsourced],
   ];
-  for (const [k, v] of Object.entries(c.perJob || {})) rows.push([k, v]);
+  for (const [k, v] of Object.entries(c.perJob || {})) rows.push([JOB_LABELS[k] || k, v]);
   return rows;
 }
 

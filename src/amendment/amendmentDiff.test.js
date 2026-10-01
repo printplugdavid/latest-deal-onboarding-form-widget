@@ -80,6 +80,16 @@ describe("diffValues", () => {
     expect(diffValues(before, after)).toEqual([]);
   });
 
+  test("an unticked checkbox the payload never had is not a change; ticking it reads Yes", () => {
+    const before = toFormValues(payload());
+    const after = toFormValues(payload());
+    after.products[0].isOutsourced = false;
+    after.upchargedForRushTurnaround = false;
+    expect(diffValues(before, after)).toEqual([]);
+    after.upchargedForRushTurnaround = true;
+    expect(diffValues(before, after)).toEqual([{ path: "upchargedForRushTurnaround", before: "", after: "Yes" }]);
+  });
+
   test("numbers and numeric strings agree; whitespace is not a change", () => {
     const before = toFormValues(payload());
     const after = toFormValues(payload());

@@ -68,6 +68,10 @@ export function normalizeLeaf(v) {
   if (dayjs.isDayjs(v)) return v.isValid() ? v.format("YYYY-MM-DD") : "";
   if (v instanceof Date) return isNaN(v) ? "" : dayjs(v).format("YYYY-MM-DD");
   if (typeof v === "string") return v.trim();
+  // A checkbox the old payload never had mounts as `false`. Unticked and never-asked are the same
+  // answer; a tick reads as "Yes" in the What Changed lines.
+  if (v === false) return "";
+  if (v === true) return "Yes";
   return String(v);
 }
 
