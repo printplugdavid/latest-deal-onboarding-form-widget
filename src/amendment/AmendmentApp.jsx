@@ -1,7 +1,7 @@
 /*
  * AmendmentApp.jsx -- the Onboarding Amendment Form (E-24), loaded by ?view=amendment (index.js).
  *
- * ⚠️ STAGE 1 OF D-24: READ AND PREFILL ONLY. THIS VIEW WRITES NOTHING. ⚠️
+ * ⚠️ STAGE 1 OF D-24: READ, PREFILL AND EDIT ON SCREEN. THIS VIEW WRITES NOTHING. ⚠️
  * David's condition: prove prefill on real deals before any write path exists. The Save button is
  * disabled and there is no updateRecord / attachFile / addNotes call anywhere in this file. The write
  * path (new complete note + old one retitled SUPERSEDED, new onboarding-form.json, regenerated cards,
@@ -14,6 +14,10 @@
  * the onboarding form's own branch components render it -- imported, never copied (D-24), so any
  * improvement to them reaches this view for free.
  *
+ * Whole products are added and removed WITHOUT splicing the array while editing: a removed product
+ * stays in place with its index in `removed`, an added one is appended. That keeps the index-based
+ * diff honest and makes Undo free; effectiveValues() builds the real payload. See amendmentDiff.js.
+ *
  * Pre-JSON deals (~2,659, note only) are NOT prefilled here. The note parser lives on the
  * revision-form branch, which stays a separate codebase (D-19). The view says so rather than showing
  * blanks as if they were answers.
@@ -21,6 +25,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
+  Autocomplete,
   Box,
   Button,
   Checkbox,
@@ -32,7 +37,7 @@ import {
   ToggleButtonGroup,
   Typography,
 } from "@mui/material";
-import { FormProvider, useForm, useWatch } from "react-hook-form";
+import { FormProvider, useFieldArray, useForm, useWatch } from "react-hook-form";
 import GarmentForm from "../components/GarmentForm";
 import NonGarmentForm from "../components/NonGarmentForm";
 import GraphicForm from "../components/GraphicForm";
@@ -40,27 +45,31 @@ import OnlineStorefrontForm from "../components/OnlineStorefrontForm";
 import DtfGangSheetForm from "../components/DtfGangSheetForm";
 import { computePrints } from "../printMath";
 import { newestFirst, readFileText } from "../zohoFiles";
+import { AmendContact, AmendDates } from "./AmendSections";
 import {
   APPEND_FIELD,
   applyAppendRule,
   describePath,
   diffValues,
-  summariseDiff,
+  effectiveValues,
+  summariseAmendment,
   toFormValues,
 } from "./amendmentDiff";
 
 const ZOHO = window.ZOHO;
 
-// Step 0 (04 E-24 design). Only the ones this stage can actually amend are enabled.
+// Step 0 (04 E-24 design). The first three are edits inside a product; the rest open their own section.
 const WHAT_CHANGED = [
-  { key: "quantity", label: "Quantity / sizes", ready: true },
-  { key: "garment", label: "Garment swapped", ready: true },
-  { key: "graphic", label: "Graphic or placement", ready: true },
-  { key: "added", label: "Product added", ready: false },
-  { key: "removed", label: "Product removed", ready: false },
-  { key: "dates", label: "Dates", ready: false },
-  { key: "contact", label: "Contact / shipping", ready: false },
+  { key: "quantity", label: "Quantity / sizes" },
+  { key: "garment", label: "Garment swapped" },
+  { key: "graphic", label: "Graphic or placement" },
+  { key: "added", label: "Product added" },
+  { key: "removed", label: "Product removed" },
+  { key: "dates", label: "Dates" },
+  { key: "contact", label: "Contact / shipping" },
 ];
+
+const tagOf = (p) => `${p?.productName}#${p?.productType}`;
 
 const today = () => {
   const d = new Date();
@@ -142,11 +151,13 @@ const AmendmentApp = () => {
   const [changed, setChanged] = useState([]);
   const [productIdx, setProductIdx] = useState(null);
   const [story, setStory] = useState("");
+  const [removed, setRemoved] = useState([]); // indices into products; see the header comment
   const original = useRef(null);
 
   const methods = useForm();
   const { control, reset } = methods;
   const current = useWatch({ control });
+  const { append } = useFieldArray({ control, name: "products" });
 
   useEffect(() => {
     if (!ZOHO?.embeddedApp) {
@@ -179,25 +190,49 @@ const AmendmentApp = () => {
     ZOHO.embeddedApp.init();
   }, [reset]);
 
-  const products = original.current?.products || [];
+  const products = current?.products || [];
+  const originalCount = original.current?.products?.length || 0;
+  const isRemoved = (i) => removed.includes(i);
+  const has = (key) => changed.includes(key);
 
-  const changes = useMemo(
-    () => (original.current && current ? diffValues(original.current, current) : []),
-    [current]
+  const lines = useMemo(
+    () => (original.current && current ? summariseAmendment(original.current, current, removed) : []),
+    [current, removed]
   );
-  const lines = useMemo(() => summariseDiff(changes, current), [changes, current]);
-  const saved = useMemo(
+  // Indices here are the on-screen ones (nothing spliced), so the lookup uses the unfiltered merge.
+  const merged = useMemo(
     () => (original.current && current ? applyAppendRule(original.current, current, today()) : null),
     [current]
   );
-  const appendPreviews = changes
+  const appendPreviews = (original.current && current ? diffValues(original.current, current) : [])
     .filter((c) => APPEND_FIELD.test(c.path))
+    .filter((c) => {
+      const m = /^products\.(\d+)\./.exec(c.path);
+      return !m || !isRemoved(Number(m[1]));
+    })
     .map((c) => ({
       label: describePath(c.path, current),
-      value: c.path.split(".").reduce((o, k) => (o == null ? undefined : o[k]), saved),
+      value: c.path.split(".").reduce((o, k) => (o == null ? undefined : o[k]), merged),
     }));
+  // What would actually be saved: removed products dropped, append rule applied.
+  const saved = useMemo(
+    () => (original.current && current ? effectiveValues(original.current, current, removed, today()) : null),
+    [current, removed]
+  );
   const before = useMemo(() => countRows(original.current?.products), [state.status]); // eslint-disable-line react-hooks/exhaustive-deps
-  const after = countRows(current?.products);
+  const after = countRows(saved?.products);
+
+  // Products the deal could still gain: the org's list minus what is already on the form
+  // (a removed product is brought back with Undo, not re-added as a blank one).
+  const addable = (loaded?.options || []).filter((o) => !products.some((p) => tagOf(p) === o));
+  const addProduct = (combined) => {
+    if (!combined) return;
+    const [productName, productType] = combined.split("#");
+    append({ productName, productType });
+    setProductIdx(products.length);
+  };
+  const toggleRemoved = (i) =>
+    setRemoved((r) => (r.includes(i) ? r.filter((x) => x !== i) : [...r, i]));
   const countLines = (before || [])
     .map(([label, was], i) => [label, was, after?.[i]?.[1]])
     .filter(([, was, now]) => was || now);
@@ -252,8 +287,8 @@ const AmendmentApp = () => {
       <Box sx={{ p: 3, fontFamily: "Roboto, sans-serif", color: "#1a1a1a", background: "#fff", minHeight: "100vh" }}>
         {header}
         <Alert severity="warning" sx={{ mb: 2 }}>
-          <b>Test build: nothing here is saved yet.</b> This checks that the deal's onboarding loads back in
-          correctly. Change anything and the panel at the bottom shows what an amendment would record.
+          <b>Test build: nothing here is saved yet.</b> Tick what changed, make the change, and the panel at
+          the bottom shows what an amendment would record.
         </Alert>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
           Prefilled from the onboarding form submitted {stamp(loaded.jsonCreated)}
@@ -264,11 +299,10 @@ const AmendmentApp = () => {
           1. What changed?
         </Typography>
         <FormGroup row>
-          {WHAT_CHANGED.map(({ key, label, ready }) => (
+          {WHAT_CHANGED.map(({ key, label }) => (
             <FormControlLabel
               key={key}
-              disabled={!ready}
-              label={ready ? label : `${label} (not yet)`}
+              label={label}
               control={
                 <Checkbox
                   size="small"
@@ -294,8 +328,14 @@ const AmendmentApp = () => {
             sx={{ flexWrap: "wrap" }}
           >
             {products.map((p, i) => (
-              <ToggleButton key={i} value={i} sx={{ textTransform: "none" }}>
+              <ToggleButton
+                key={i}
+                value={i}
+                sx={{ textTransform: "none", textDecoration: isRemoved(i) ? "line-through" : "none" }}
+              >
                 {p?.productName || `Product ${i + 1}`} ({p?.productType || "?"})
+                {i >= originalCount ? " · new" : ""}
+                {isRemoved(i) ? " · removed" : ""}
               </ToggleButton>
             ))}
           </ToggleButtonGroup>
@@ -303,14 +343,66 @@ const AmendmentApp = () => {
           <Alert severity="info">This onboarding has no products.</Alert>
         )}
 
+        {has("added") && (
+          <Autocomplete
+            size="small"
+            sx={{ mt: 2, maxWidth: 420 }}
+            options={addable}
+            value={null}
+            blurOnSelect
+            getOptionLabel={(o) => o.split("#")[0]}
+            onChange={(_, v) => addProduct(v)}
+            noOptionsText="Every product type is already on this deal"
+            renderInput={(params) => <TextField {...params} label="Add a product" />}
+          />
+        )}
+
         {/* Every product stays mounted-or-not by choice only; values for unmounted products stay in
             the form (react-hook-form keeps them), so switching products never drops an edit. */}
         {productIdx != null && products[productIdx] && (
           <Box sx={{ border: "1px solid #ccc", p: 2, my: 2 }}>
+            <Box sx={{ mb: 2, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 2 }}>
+              <Typography fontWeight="bold">
+                {products[productIdx].productName} ({products[productIdx].productType})
+              </Typography>
+              {(has("removed") || isRemoved(productIdx)) && (
+                <Button
+                  type="button"
+                  size="small"
+                  variant="outlined"
+                  color={isRemoved(productIdx) ? "primary" : "error"}
+                  onClick={() => toggleRemoved(productIdx)}
+                >
+                  {isRemoved(productIdx) ? "Undo remove" : "Remove this product"}
+                </Button>
+              )}
+            </Box>
+            {isRemoved(productIdx) ? (
+              <Alert severity="error">
+                {products[productIdx].productName} will be removed from this order. Its prints come off the
+                counts below.
+              </Alert>
+            ) : (
+              <ProductEditor key={productIdx} index={productIdx} product={products[productIdx]} options={loaded.options} />
+            )}
+          </Box>
+        )}
+
+        {has("dates") && (
+          <Box sx={{ border: "1px solid #ccc", p: 2, my: 2 }}>
             <Typography fontWeight="bold" sx={{ mb: 2 }}>
-              {products[productIdx].productName} ({products[productIdx].productType})
+              Dates
             </Typography>
-            <ProductEditor key={productIdx} index={productIdx} product={products[productIdx]} options={loaded.options} />
+            <AmendDates />
+          </Box>
+        )}
+
+        {has("contact") && (
+          <Box sx={{ border: "1px solid #ccc", p: 2, my: 2 }}>
+            <Typography fontWeight="bold" sx={{ mb: 2 }}>
+              Contact / shipping
+            </Typography>
+            <AmendContact />
           </Box>
         )}
 

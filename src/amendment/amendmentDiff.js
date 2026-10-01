@@ -220,3 +220,54 @@ export function summariseDiff(changes, values) {
     return `${label}: ${show(before)} → ${show(after)}`;
   });
 }
+
+// ---------------------------------------------------------------------------------------------------
+// Whole-product add / remove
+// ---------------------------------------------------------------------------------------------------
+/*
+ * The diff above is by array index, so physically deleting product 0 would make every later product
+ * look rewritten. The view therefore never splices `products` while editing: a removed product stays
+ * in place and its index goes into `removed`; an added product is appended at the end. Indices stay
+ * stable, Undo is free, and the saved payload is built once, here.
+ */
+const productTag = (p, i) => `${p?.productName || `Product ${i + 1}`} (${p?.productType || "?"})`;
+const productIndexOf = (path) => {
+  const m = /^products\.(\d+)(\.|$)/.exec(path);
+  return m ? Number(m[1]) : -1;
+};
+
+// What gets SAVED: removed products dropped, productSelector rebuilt to match, append rule applied.
+export function effectiveValues(before, after, removed, date) {
+  const out = applyAppendRule(before, after, date);
+  const gone = new Set(removed || []);
+  const originalCount = (before?.products || []).length;
+  const products = (out.products || []).filter((_, i) => !gone.has(i));
+  const touched = gone.size > 0 || (out.products || []).length !== originalCount;
+  out.products = products;
+  if (touched) out.productSelector = products.map((p) => `${p?.productName}#${p?.productType}`);
+  return out;
+}
+
+// The What Changed lines, with whole-product adds/removes stated once instead of field by field.
+export function summariseAmendment(before, after, removed) {
+  const gone = new Set(removed || []);
+  const originalCount = (before?.products || []).length;
+  const afterProducts = after?.products || [];
+  const lines = [];
+
+  [...gone].sort((a, b) => a - b).forEach((i) => {
+    if (i < originalCount) lines.push(`Product removed: ${productTag(before.products[i], i)}`);
+  });
+  afterProducts.forEach((p, i) => {
+    if (i >= originalCount && !gone.has(i)) lines.push(`Product added: ${productTag(p, i)}`);
+  });
+
+  const fieldChanges = diffValues(before, after).filter(({ path }) => {
+    const i = productIndexOf(path);
+    if (i === -1) return true;
+    if (gone.has(i)) return false; // removed (or added then removed): its fields are not news
+    // the added line already names the product
+    return !(i >= originalCount && /^products\.\d+\.(productName|productType)$/.test(path));
+  });
+  return [...lines, ...summariseDiff(fieldChanges, after)];
+}

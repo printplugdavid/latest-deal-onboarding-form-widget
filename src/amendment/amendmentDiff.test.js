@@ -194,3 +194,63 @@ describe("labels", () => {
     expect(lines[1]).toBe("Special Instructions / Considerations:\n  was: (empty)\n  now: a\n       b");
   });
 });
+
+describe("whole-product add / remove", () => {
+  const { effectiveValues, summariseAmendment } = require("./amendmentDiff");
+  const D = "2026-10-01";
+
+  test("removing the FIRST product is one line, and later products are not reported as rewritten", () => {
+    const before = toFormValues(payload());
+    const after = toFormValues(payload());
+    expect(summariseAmendment(before, after, [0])).toEqual(["Product removed: T-Shirts (garment)"]);
+    const saved = effectiveValues(before, after, [0], D);
+    expect(saved.products.map((p) => p.productName)).toEqual(["Logo design"]);
+    expect(saved.productSelector).toEqual(["Logo design#graphic"]);
+  });
+
+  test("edits made to a product before removing it are not news", () => {
+    const before = toFormValues(payload());
+    const after = toFormValues(payload());
+    after.products[0].primaryBranches[0].garmentQuantity = "99";
+    expect(summariseAmendment(before, after, [0])).toEqual(["Product removed: T-Shirts (garment)"]);
+  });
+
+  test("an added product is named once, then its answers are listed", () => {
+    const before = toFormValues(payload());
+    const after = toFormValues(payload());
+    after.products.push({ productName: "Stickers", productType: "nongarment", quantityOrdered: "50" });
+    expect(summariseAmendment(before, after, [])).toEqual([
+      "Product added: Stickers (nongarment)",
+      "Stickers › Quantity Ordered: (empty) → 50",
+    ]);
+    const saved = effectiveValues(before, after, [], D);
+    expect(saved.productSelector).toEqual(["T-Shirts#garment", "Logo design#graphic", "Stickers#nongarment"]);
+  });
+
+  test("added then removed again leaves no trace", () => {
+    const before = toFormValues(payload());
+    const after = toFormValues(payload());
+    after.products.push({ productName: "Stickers", productType: "nongarment", quantityOrdered: "50" });
+    expect(summariseAmendment(before, after, [2])).toEqual([]);
+    expect(effectiveValues(before, after, [2], D).products).toHaveLength(2);
+  });
+
+  test("nothing added or removed: productSelector is left exactly as the payload had it", () => {
+    const before = toFormValues(payload());
+    const after = toFormValues(payload());
+    after.productSelector = ["T-Shirts#garment"];
+    after.dueDate = dayjs("2026-10-20");
+    const saved = effectiveValues(before, after, [], D);
+    expect(saved.productSelector).toEqual(["T-Shirts#garment"]);
+    expect(summariseAmendment(before, after, [])).toHaveLength(1);
+  });
+
+  test("the append rule still applies in the saved values", () => {
+    const before = toFormValues(payload());
+    const after = toFormValues(payload());
+    after.specialInstructions = "Rush\nNew address";
+    expect(effectiveValues(before, after, [], D).specialInstructions).toBe(
+      "Rush\n--- amended 2026-10-01 ---\nNew address"
+    );
+  });
+});
