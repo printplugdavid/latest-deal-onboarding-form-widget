@@ -1,13 +1,19 @@
 /*
  * AmendmentApp.jsx -- the Onboarding Amendment Form (E-24), loaded by ?view=amendment (index.js).
  *
- * ⚠️ STAGE 1 OF D-24: READ, PREFILL AND EDIT ON SCREEN. THIS VIEW WRITES NOTHING. ⚠️
- * David's condition: prove prefill on real deals before any write path exists. The Save button is
- * disabled and there is no updateRecord / attachFile / addNotes call anywhere in this file. The write
- * path (new complete note + old one retitled SUPERSEDED, new onboarding-form.json, regenerated cards,
- * the 18 print fields, Onboarding_Update_Results) is stage 2, after prefill is proven on real deals.
+ * WHAT SAVE WRITES, in this order -- each step in its own try/catch, and the order is chosen so a
+ * failure part-way leaves the Deal no worse than before (never-destroy, D-23):
+ *   1. a new onboarding-form.json          (create-only; consumers take the newest -- D-4)
+ *   2. regenerated production cards         (same generator the onboarding form runs)
+ *   3. a new, COMPLETE "DEAL ONBOARDING FORM" note with a What Changed block on top
+ *   4. the previous onboarding note(s) retitled "(SUPERSEDED <date>)" -- only after 3 succeeded
+ *   5. the 18 print-count fields, Order_Modified, and Onboarding_Update_Results (appended, dated)
+ * The note and the counts come from buildOnboardingNote() -- the SAME function the onboarding form
+ * submits with -- fed the amended product tree. An amendment recomputes everything; it never patches.
  * ⛔ D-25: NEVER write Onboarding_Needs_Updated -- not to clear it, not to set it. It is the agents'
  * own history of "an update was needed"; they clear and re-mark it by hand to re-do one.
+ * Step 5 passes Trigger: [] -- an amendment must not fire the stage / order-modified automations by
+ * itself. Re-stamping tasks already built from the old numbers is the Deluge thread's (docs/04 E-24).
  *
  * How prefill works: onboarding-form.json IS the react-hook-form `data` the onboarding form submitted
  * (plus two `_` stamps). So the newest JSON goes through toFormValues() and straight into reset(), and
@@ -44,11 +50,18 @@ import GraphicForm from "../components/GraphicForm";
 import OnlineStorefrontForm from "../components/OnlineStorefrontForm";
 import DtfGangSheetForm from "../components/DtfGangSheetForm";
 import { computePrints } from "../printMath";
+import { buildOnboardingNote } from "../onboardingNote";
+import { buildProductionCards } from "../productionCards";
 import { newestFirst, readFileText } from "../zohoFiles";
 import { AmendContact, AmendDates } from "./AmendSections";
 import {
   APPEND_FIELD,
+  LIVE_NOTE_TITLE,
+  SUPERSEDED_TITLE,
+  appendUpdateResults,
   applyAppendRule,
+  buildAmendmentNote,
+  buildUpdateResultsEntry,
   describePath,
   diffValues,
   effectiveValues,
@@ -75,6 +88,13 @@ const today = () => {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 };
+
+const nowStamp = () => {
+  const d = new Date();
+  return `${today()} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+};
+
+const ok = (r) => r?.data?.[0]?.code === "SUCCESS";
 
 const stamp = (iso) => {
   const d = new Date(iso);
@@ -158,10 +178,13 @@ const AmendmentApp = () => {
   const [productIdx, setProductIdx] = useState(null);
   const [story, setStory] = useState("");
   const [removed, setRemoved] = useState([]); // indices into products; see the header comment
+  const [saving, setSaving] = useState(false);
+  const [outcome, setOutcome] = useState(null); // { done: [..], failed: [..] } after a save
+  const ctx = useRef({ entity: null, recordId: null });
   const original = useRef(null);
 
   const methods = useForm();
-  const { control, reset } = methods;
+  const { control, reset, handleSubmit } = methods;
   const current = useWatch({ control });
   const { append } = useFieldArray({ control, name: "products" });
 
@@ -178,6 +201,7 @@ const AmendmentApp = () => {
       }
       const entity = data?.Entity;
       const recordId = data?.EntityId?.[0] ?? data?.EntityId;
+      ctx.current = { entity, recordId };
       try {
         const res = await loadDeal(entity, recordId);
         setLoaded(res);
@@ -243,6 +267,159 @@ const AmendmentApp = () => {
     .map(([label, was], i) => [label, was, after?.[i]?.[1]])
     .filter(([, was, now]) => was || now);
 
+  // RHF blocks submit silently when a mounted field fails validation; say which, as the onboarding
+  // form does. Only branches the agent actually opened are mounted, so old data they never touched
+  // cannot trip a rule that did not exist when the deal was onboarded.
+  const onInvalid = (formErrors) => {
+    const names = [];
+    const walk = (node) => {
+      if (!node || typeof node !== "object") return;
+      if (node.type && node.ref) {
+        names.push(node.ref.name || "");
+        return;
+      }
+      Object.values(node).forEach(walk);
+    };
+    walk(formErrors);
+    const list = [...new Set(names.filter(Boolean).map((n) => describePath(n, current)))];
+    window.alert(
+      "This amendment can't be saved yet — please fill in:" +
+        (list.length ? "\n\n• " + list.join("\n• ") : "\n\nthe highlighted field(s).")
+    );
+  };
+
+  const save = async () => {
+    if (saving) return;
+    if (!lines.length) {
+      window.alert("Nothing has changed yet — there is nothing to save.");
+      return;
+    }
+    if (!story.trim()) {
+      window.alert("Please say in your own words what happened (step 3) before saving.");
+      return;
+    }
+    setSaving(true);
+    const { entity, recordId } = ctx.current;
+    const when = nowStamp();
+    const done = [];
+    const failed = [];
+    const step = async (label, fn) => {
+      try {
+        await fn();
+        done.push(label);
+        return true;
+      } catch (e) {
+        console.log("Amendment step failed:", label, e);
+        failed.push(label);
+        return false;
+      }
+    };
+
+    // One source for everything written: the amended tree, through the onboarding form's own builder.
+    const { content, printFields, cardCounts } = buildOnboardingNote(saved);
+    const noteText = buildAmendmentNote({
+      content,
+      lines,
+      story,
+      when,
+      previousWhen: stamp(loaded.jsonCreated),
+    });
+
+    // 1. the new JSON -- create-only, newest wins (D-4). Same stamps as the onboarding form, plus
+    //    an _amendment record. `_` keys are ignored by every reader (toFormValues strips them).
+    await step("onboarding data", async () => {
+      const json = JSON.stringify({
+        ...saved,
+        _schemaVersion: 1,
+        _submittedAt: new Date().toISOString(),
+        _amendment: { amendedAt: when, changes: lines, story: story.trim(), supersedes: loaded.jsonCreated },
+      });
+      await ZOHO.CRM.API.attachFile({
+        Entity: entity,
+        RecordID: recordId,
+        File: { Name: "onboarding-form.json", Content: new Blob([json], { type: "application/json" }) },
+      });
+    });
+
+    // 2. regenerated cards
+    await step("production cards", async () => {
+      const cards = buildProductionCards(saved, cardCounts);
+      for (let c = 0; c < cards.length; c++) {
+        await ZOHO.CRM.API.attachFile({
+          Entity: entity,
+          RecordID: recordId,
+          File: { Name: cards[c].name, Content: new Blob([cards[c].html], { type: "text/html" }) },
+        });
+      }
+    });
+
+    // 3 + 4. the new note, and ONLY THEN retitle the old one(s). If the new note fails the old one
+    // keeps its live title; if the retitle fails there are two live-titled notes and the newest wins.
+    let newNoteId = null;
+    let priorNotes = [];
+    const noteOk = await step("onboarding note", async () => {
+      const prior = await ZOHO.CRM.API.getRelatedRecords({
+        Entity: entity,
+        RecordID: recordId,
+        RelatedList: "Notes",
+        page: 1,
+        per_page: 200,
+      });
+      const r = await ZOHO.CRM.API.addNotes({
+        Entity: entity,
+        RecordID: recordId,
+        Title: LIVE_NOTE_TITLE,
+        Content: noteText,
+      });
+      if (!ok(r)) throw new Error("addNotes: " + JSON.stringify(r?.data?.[0] || r));
+      newNoteId = r.data[0]?.details?.id;
+      priorNotes = (prior?.data || []).filter((n) => n?.Note_Title === LIVE_NOTE_TITLE);
+    });
+    if (noteOk) {
+      await step("marking the old note superseded", async () => {
+        const olds = priorNotes.filter((n) => String(n.id) !== String(newNoteId));
+        for (let i = 0; i < olds.length; i++) {
+          const r = await ZOHO.CRM.API.updateRecord({
+            Entity: "Notes",
+            APIData: { id: olds[i].id, Note_Title: SUPERSEDED_TITLE(today()) },
+            Trigger: [],
+          });
+          if (!ok(r)) throw new Error("retitle: " + JSON.stringify(r?.data?.[0] || r));
+        }
+      });
+    }
+
+    // 5. the Deal fields. ⛔ Onboarding_Needs_Updated is deliberately absent (D-25).
+    await step("print counts and update summary", async () => {
+      const r = await ZOHO.CRM.API.updateRecord({
+        Entity: entity,
+        APIData: {
+          id: recordId,
+          ...printFields,
+          Order_Modified: true,
+          Onboarding_Update_Results: appendUpdateResults(
+            loaded.deal?.Onboarding_Update_Results,
+            buildUpdateResultsEntry({ lines, story, when })
+          ),
+        },
+        Trigger: [],
+      });
+      if (!ok(r)) throw new Error("updateRecord: " + JSON.stringify(r?.data?.[0] || r));
+    });
+
+    setOutcome({ done, failed });
+    setSaving(false);
+    if (!failed.length) {
+      setTimeout(() => {
+        try {
+          ZOHO.CRM.UI.Popup.closeReload();
+        } catch (e) {
+          /* ignore */
+        }
+      }, 1200);
+    }
+  };
+
   if (state.status === "loading") {
     return (
       <Box sx={{ p: 4, display: "flex", gap: 2, alignItems: "center", fontFamily: "Roboto, sans-serif" }}>
@@ -292,9 +469,10 @@ const AmendmentApp = () => {
     <FormProvider {...methods}>
       <Box sx={{ p: 3, fontFamily: "Roboto, sans-serif", color: "#1a1a1a", background: "#fff", minHeight: "100vh" }}>
         {header}
-        <Alert severity="warning" sx={{ mb: 2 }}>
-          <b>Test build: nothing here is saved yet.</b> Tick what changed, make the change, and the panel at
-          the bottom shows what an amendment would record.
+        <Alert severity="info" sx={{ mb: 2 }}>
+          Tick what changed, make the change, and say what happened. The panel at the bottom shows exactly
+          what will be recorded. Saving posts a new onboarding note, new production cards and new print counts —
+          the original note is kept and marked superseded.
         </Alert>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
           Prefilled from the onboarding form submitted {stamp(loaded.jsonCreated)}
@@ -425,7 +603,7 @@ const AmendmentApp = () => {
         />
 
         <Box sx={{ mt: 3, p: 2, background: "#f6f6f6", border: "1px solid #ddd" }}>
-          <Typography fontWeight="bold">What this amendment would record</Typography>
+          <Typography fontWeight="bold">What this amendment will record</Typography>
           {lines.length ? (
             <Box component="pre" sx={{ whiteSpace: "pre-wrap", fontFamily: "inherit", fontSize: 14, m: 0, mt: 1 }}>
               {lines.map((l) => `• ${l}`).join("\n")}
@@ -468,13 +646,28 @@ const AmendmentApp = () => {
         </Box>
 
         <Box sx={{ mt: 3, display: "flex", alignItems: "center", gap: 2 }}>
-          <Button variant="contained" disabled>
-            Save amendment
+          <Button
+            variant="contained"
+            disabled={saving || !!outcome /* one attempt per open: a retry would post a second note and cards */}
+            onClick={handleSubmit(save, onInvalid)}
+          >
+            {saving ? "Saving…" : "Save amendment"}
           </Button>
-          <Typography variant="body2" color="text.secondary">
-            Saving is not switched on yet.
-          </Typography>
+          {saving && <CircularProgress size={18} />}
         </Box>
+
+        {outcome && !outcome.failed.length && (
+          <Alert severity="success" sx={{ mt: 2 }}>
+            Amendment saved: {outcome.done.join(", ")}.
+          </Alert>
+        )}
+        {outcome && outcome.failed.length > 0 && (
+          <Alert severity="error" sx={{ mt: 2 }}>
+            <b>Not everything saved.</b> Failed: {outcome.failed.join(", ")}.
+            {outcome.done.length ? ` Saved: ${outcome.done.join(", ")}.` : ""} Nothing was deleted. Please tell
+            David which deal this was before trying again — saving twice posts a second note and second cards.
+          </Alert>
+        )}
       </Box>
     </FormProvider>
   );

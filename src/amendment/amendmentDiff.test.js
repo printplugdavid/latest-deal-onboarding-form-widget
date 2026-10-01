@@ -264,3 +264,51 @@ describe("whole-product add / remove", () => {
     );
   });
 });
+
+describe("what Save writes", () => {
+  const {
+    appendUpdateResults,
+    buildAmendmentNote,
+    buildUpdateResultsEntry,
+    SUPERSEDED_TITLE,
+  } = require("./amendmentDiff");
+
+  test("the amended note is the What Changed block followed by the COMPLETE note, untouched", () => {
+    const content = "CONTACT INFO\n---------------------------\n\nAccount Name: Evergreen";
+    const note = buildAmendmentNote({
+      content,
+      lines: ["T-Shirts › Garment 1 › Garment Quantity: 24 → 36"],
+      story: "Client added 12.",
+      when: "2026-10-01 11:40",
+      previousWhen: "Sep 30, 2026",
+    });
+    expect(note.startsWith("ONBOARDING AMENDED 2026-10-01 11:40\n")).toBe(true);
+    expect(note).toContain("• T-Shirts › Garment 1 › Garment Quantity: 24 → 36");
+    expect(note).toContain("IN THE AGENT'S WORDS\nClient added 12.");
+    expect(note).toContain("replaces the onboarding note submitted Sep 30, 2026.");
+    expect(note.endsWith(content)).toBe(true); // every parser label is exactly where it was
+  });
+
+  test("the update-results entry is the auto diff, then the agent's words", () => {
+    expect(buildUpdateResultsEntry({ lines: ["a: 1 → 2"], story: " why ", when: "2026-10-01 11:40" })).toBe(
+      "--- amended 2026-10-01 11:40 ---\nWhat changed:\n• a: 1 → 2\nIn the agent's words:\nwhy"
+    );
+  });
+
+  test("update results append, never replace", () => {
+    expect(appendUpdateResults("", "E1")).toBe("E1");
+    expect(appendUpdateResults(null, "E1")).toBe("E1");
+    expect(appendUpdateResults("E1", "E2")).toBe("E1\n\nE2");
+  });
+
+  test("over the cap the OLDEST text is trimmed and marked; the newest entry survives whole", () => {
+    const out = appendUpdateResults("x".repeat(100), "NEWEST-ENTRY", 60);
+    expect(out.length).toBe(60);
+    expect(out.startsWith("[earlier history trimmed to fit]\n")).toBe(true);
+    expect(out.endsWith("NEWEST-ENTRY")).toBe(true);
+  });
+
+  test("superseded title carries the date", () => {
+    expect(SUPERSEDED_TITLE("2026-10-01")).toBe("DEAL ONBOARDING FORM (SUPERSEDED 2026-10-01)");
+  });
+});
