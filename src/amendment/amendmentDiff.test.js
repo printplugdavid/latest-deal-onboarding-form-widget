@@ -90,6 +90,15 @@ describe("diffValues", () => {
     expect(diffValues(before, after)).toEqual([{ path: "upchargedForRushTurnaround", before: "", after: "Yes" }]);
   });
 
+  test("a Yes/No default of No on a question the payload never had is not a change", () => {
+    const before = toFormValues(payload());
+    const after = toFormValues(payload());
+    after.products[0].primaryBranches[0].isUsedInOtherAppTypes = "No";
+    expect(diffValues(before, after)).toEqual([]);
+    after.products[0].primaryBranches[0].isUsedInOtherAppTypes = "Yes";
+    expect(diffValues(before, after)).toHaveLength(1);
+  });
+
   test("numbers and numeric strings agree; whitespace is not a change", () => {
     const before = toFormValues(payload());
     const after = toFormValues(payload());
@@ -310,5 +319,68 @@ describe("what Save writes", () => {
 
   test("superseded title carries the date", () => {
     expect(SUPERSEDED_TITLE("2026-10-01")).toBe("DEAL ONBOARDING FORM (SUPERSEDED 2026-10-01)");
+  });
+});
+
+describe("per-garment add / remove", () => {
+  const { effectiveValuesWithGarments, summariseAmendmentWithGarments } = require("./amendmentDiff");
+  const D = "2026-10-01";
+  const two = () => {
+    const p = payload();
+    p.products[0].numberOfGarmentTypes = "2";
+    p.products[0].primaryBranches.push({
+      garmentType: "Bella 3001",
+      garmentQuantity: "10",
+      countColorSize: "Red: M ×10",
+      vendorsUsed: "Sanmar",
+    });
+    return p;
+  };
+
+  test("removing the FIRST garment is one line; the second is not reported as rewritten", () => {
+    const before = toFormValues(two());
+    const after = toFormValues(two());
+    expect(summariseAmendmentWithGarments(before, after, [], ["0.0"])).toEqual([
+      "Garment removed: T-Shirts › Garment 1 (Gildan 64000, 24 pcs)",
+    ]);
+    const saved = effectiveValuesWithGarments(before, after, [], ["0.0"], D);
+    expect(saved.products[0].primaryBranches.map((g) => g.garmentType)).toEqual(["Bella 3001"]);
+    expect(saved.products[0].numberOfGarmentTypes).toBe("1");
+    expect(saved.products).toHaveLength(2);
+  });
+
+  test("an added garment is named once and its answers listed; the count line is not repeated", () => {
+    const before = toFormValues(payload());
+    const after = toFormValues(payload());
+    after.products[0].primaryBranches.push({ garmentType: "Hoodie", garmentQuantity: "6" });
+    after.products[0].numberOfGarmentTypes = "2";
+    const lines = summariseAmendmentWithGarments(before, after, [], []);
+    expect(lines[0]).toBe("Garment added: T-Shirts › Garment 2 (Hoodie, 6 pcs)");
+    expect(lines.some((l) => /Number of garment types/i.test(l))).toBe(false);
+    expect(effectiveValuesWithGarments(before, after, [], [], D).products[0].numberOfGarmentTypes).toBe("2");
+  });
+
+  test("the append rule survives a garment removal ahead of it", () => {
+    const before = toFormValues(two());
+    const after = toFormValues(two());
+    after.products[0].primaryBranches[1].vendorsUsed = "Sanmar\nAlphaBroder";
+    const saved = effectiveValuesWithGarments(before, after, [], ["0.0"], D);
+    expect(saved.products[0].primaryBranches[0].vendorsUsed).toBe("Sanmar\n--- amended 2026-10-01 ---\nAlphaBroder");
+  });
+
+  test("with nothing removed it matches the product-level functions exactly", () => {
+    const before = toFormValues(payload());
+    const after = toFormValues(payload());
+    after.products[0].primaryBranches[0].garmentQuantity = "36";
+    after.specialInstructions = "Rush\nmore";
+    const { effectiveValues, summariseAmendment } = require("./amendmentDiff");
+    expect(effectiveValuesWithGarments(before, after, [], [], D)).toEqual(effectiveValues(before, after, [], D));
+    expect(summariseAmendmentWithGarments(before, after, [], [])).toEqual(summariseAmendment(before, after, []));
+  });
+
+  test("removing a whole product swallows its garment removals", () => {
+    const before = toFormValues(two());
+    const after = toFormValues(two());
+    expect(summariseAmendmentWithGarments(before, after, [0], ["0.1"])).toEqual(["Product removed: T-Shirts (garment)"]);
   });
 });
