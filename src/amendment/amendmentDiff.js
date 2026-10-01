@@ -435,3 +435,31 @@ export function summariseAmendmentWithGarments(before, after, removed, removedGa
   });
   return [...productLines, ...lines, ...summariseDiff(fieldChanges, after)];
 }
+
+/*
+ * Note-sourced deals (E-34). The order was rebuilt from the note, which is lossy, so the parse is
+ * NEVER used to regenerate the note: the amended note is the What Changed block followed by the
+ * previous note's text, verbatim. A second amendment stacks a new block on top of the first.
+ */
+export function buildCarriedNote({ originalText, lines, story, when, previousWhen, countsUpdated }) {
+  const head = ["ONBOARDING AMENDED " + when, DIV, "", "WHAT CHANGED"]
+    .concat((lines || []).map((l) => "• " + String(l).split("\n").join(NL + "  ")))
+    .concat([
+      "",
+      "IN THE AGENT'S WORDS",
+      String(story || "").trim() || "(nothing written)",
+      "",
+      countsUpdated
+        ? "The print counts on the Deal were updated for this change."
+        : "The print counts on the Deal were NOT changed by this amendment -- update them by hand if the quantities changed.",
+      "Production tasks created before this amendment may still show the old numbers.",
+      "",
+      "The onboarding note" +
+        (previousWhen ? " of " + previousWhen : "") +
+        " follows exactly as it was written. Where it disagrees with WHAT CHANGED above, the change wins.",
+      DIV,
+      "",
+      "",
+    ]);
+  return head.join(NL) + String(originalText || "").trim();
+}

@@ -56,6 +56,7 @@ import { buildOnboardingNote } from "../onboardingNote";
 import { buildProductionCards } from "../productionCards";
 import { newestFirst, readFileText } from "../zohoFiles";
 import { AmendContact, AmendDates } from "./AmendSections";
+import { parseNoteToForm, toPlainText } from "./noteToForm";
 import {
   APPEND_FIELD,
   LIVE_NOTE_TITLE,
@@ -63,6 +64,7 @@ import {
   appendUpdateResults,
   applyAppendRule,
   buildAmendmentNote,
+  buildCarriedNote,
   buildUpdateResultsEntry,
   describePath,
   diffValues,
@@ -127,8 +129,15 @@ function countRows(products) {
   return rows;
 }
 
+// The three department totals a parse must reproduce before the form will touch the Deal's counts.
+const VERIFY_FIELDS = [
+  ["Screen_Print_Prints", "SD"],
+  ["Embroidery_Department_Prints", "ED"],
+  ["Vinyl_Department_Prints", "VD"],
+];
+
 async function loadDeal(entity, recordId) {
-  const [rec, att, vars] = await Promise.all([
+  const [rec, att, vars, notes] = await Promise.all([
     ZOHO.CRM.API.getRecord({ Entity: entity, RecordID: recordId, approved: "both" }),
     ZOHO.CRM.API.getRelatedRecords({
       Entity: entity,
@@ -140,25 +149,54 @@ async function loadDeal(entity, recordId) {
     Promise.resolve()
       .then(() => ZOHO.CRM.API.getOrgVariable("products"))
       .catch(() => null), // only feeds GarmentForm's option lists; never fatal
+    Promise.resolve()
+      .then(() =>
+        ZOHO.CRM.API.getRelatedRecords({ Entity: entity, RecordID: recordId, RelatedList: "Notes", page: 1, per_page: 200 })
+      )
+      .catch(() => null),
   ]);
   const deal = rec?.data?.[0] || {};
   const options = vars?.Success?.Content?.split(",") || [];
+  // The LIVE onboarding note: exact title, so superseded ones are never picked up.
+  const liveNote =
+    (notes?.data || []).filter((n) => n?.Note_Title === LIVE_NOTE_TITLE).sort(newestFirst)[0] || null;
 
   const jsons = (att?.data || [])
     .filter((a) => String(a?.File_Name || "").toLowerCase() === "onboarding-form.json")
     .sort(newestFirst);
-  if (!jsons.length) return { deal, options, json: null };
+  if (!jsons.length) {
+    // E-34: no saved answers -- rebuild the order from the note. Lossy, so everything downstream
+    // runs in "carry" mode (see the save).
+    if (!liveNote?.Note_Content) return { deal, options, json: null, liveNote: null };
+    const { values, warnings } = parseNoteToForm(liveNote.Note_Content, options);
+    return {
+      deal,
+      options,
+      json: values,
+      jsonCreated: liveNote.Created_Time,
+      olderCopies: 0,
+      liveNote,
+      fromNote: true,
+      carry: true,
+      warnings,
+    };
+  }
 
   const newest = jsons[0];
   if (!newest["$file_id"]) throw new Error("the newest onboarding-form.json has no $file_id");
   const { text, shape } = await readFileText(newest["$file_id"]);
   if (!text || !text.trim()) throw new Error(`onboarding-form.json read empty (${shape})`);
+  const json = JSON.parse(text);
   return {
     deal,
     options,
-    json: JSON.parse(text),
+    json,
     jsonCreated: newest.Created_Time,
     olderCopies: jsons.length - 1,
+    liveNote,
+    // A JSON this form wrote from a note-sourced amendment is still lossy: stay in carry mode.
+    carry: json?._source === "note",
+    warnings: [],
   };
 }
 
@@ -263,6 +301,22 @@ const AmendmentApp = () => {
     [current, removed, removedGarments]
   );
   const before = useMemo(() => countRows(original.current?.products), [state.status]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Carry mode only: may the form rewrite the Deal's print counts? Only if the order as PARSED
+  // reproduces the three department totals the Deal holds today. Otherwise the parse is missing
+  // something (a gang sheet, an unreadable quantity) and writing would replace real numbers.
+  const carry = !!loaded?.carry;
+  const countsVerified = useMemo(() => {
+    if (!carry) return true;
+    try {
+      const parsed = original.current?.products || [];
+      if (parsed.some((p) => p?._unparsed)) return false;
+      const c = computePrints(parsed);
+      return VERIFY_FIELDS.every(([f, k]) => Number(loaded?.deal?.[f] || 0) === Number(c[k] || 0));
+    } catch (e) {
+      return false;
+    }
+  }, [state.status]); // eslint-disable-line react-hooks/exhaustive-deps
   const after = countRows(saved?.products);
 
   // Products the deal could still gain: the org's list minus what is already on the form
@@ -355,13 +409,18 @@ const AmendmentApp = () => {
 
     // One source for everything written: the amended tree, through the onboarding form's own builder.
     const { content, printFields, cardCounts } = buildOnboardingNote(saved);
-    const noteText = buildAmendmentNote({
-      content,
-      lines,
-      story,
-      when,
-      previousWhen: stamp(loaded.jsonCreated),
-    });
+    // Carry mode keeps the previous note's text verbatim; otherwise the note is rebuilt complete.
+    const carriedFrom = carry ? loaded.liveNote?.Note_Content : null;
+    const noteText = carriedFrom
+      ? buildCarriedNote({
+          originalText: toPlainText(carriedFrom),
+          lines,
+          story,
+          when,
+          previousWhen: stamp(loaded.liveNote?.Created_Time || loaded.jsonCreated),
+          countsUpdated: countsVerified,
+        })
+      : buildAmendmentNote({ content, lines, story, when, previousWhen: stamp(loaded.jsonCreated) });
 
     // 1. the new JSON -- create-only, newest wins (D-4). Same stamps as the onboarding form, plus
     //    an _amendment record. `_` keys are ignored by every reader (toFormValues strips them).
@@ -370,6 +429,7 @@ const AmendmentApp = () => {
         ...saved,
         _schemaVersion: 1,
         _submittedAt: new Date().toISOString(),
+        ...(carry ? { _source: "note" } : {}),
         _amendment: { amendedAt: when, changes: lines, story: story.trim(), supersedes: loaded.jsonCreated },
       });
       await ZOHO.CRM.API.attachFile({
@@ -379,8 +439,9 @@ const AmendmentApp = () => {
       });
     });
 
-    // 2. regenerated cards
-    await step("production cards", async () => {
+    // 2. regenerated cards -- not in carry mode: a card built from a lossy parse would look
+    //    authoritative while missing answers, and these deals never had cards.
+    if (!carry) await step("production cards", async () => {
       const cards = buildProductionCards(saved, cardCounts);
       for (let c = 0; c < cards.length; c++) {
         await ZOHO.CRM.API.attachFile({
@@ -428,12 +489,12 @@ const AmendmentApp = () => {
     }
 
     // 5. the Deal fields. ⛔ Onboarding_Needs_Updated is deliberately absent (D-25).
-    await step("print counts and update summary", async () => {
+    await step(countsVerified ? "print counts and update summary" : "update summary (print counts left as they were)", async () => {
       const r = await ZOHO.CRM.API.updateRecord({
         Entity: entity,
         APIData: {
           id: recordId,
-          ...printFields,
+          ...(countsVerified ? printFields : {}),
           Order_Modified: true,
           Onboarding_Update_Results: appendUpdateResults(
             loaded.deal?.Onboarding_Update_Results,
@@ -495,9 +556,8 @@ const AmendmentApp = () => {
       <Box sx={{ p: 3, fontFamily: "Roboto, sans-serif" }}>
         {header}
         <Alert severity="info">
-          This deal has no <code>onboarding-form.json</code>, so there is nothing to prefill from. Either it was
-          onboarded before the form started saving one, or that save failed at submit. Amending a deal from its
-          note alone is not built yet.
+          This deal has no saved onboarding answers and no "DEAL ONBOARDING FORM" note, so there is nothing to
+          amend. Onboard the deal first.
         </Alert>
       </Box>
     );
@@ -509,11 +569,34 @@ const AmendmentApp = () => {
         {header}
         <Alert severity="info" sx={{ mb: 2 }}>
           Tick what changed, pick the product and garment, and only those fields open. Then say what happened.
-          The panel at the bottom shows exactly what will be recorded. Saving posts a new onboarding note, new production cards and new print counts —
-          the original note is kept and marked superseded.
+The panel at the bottom shows exactly what will be recorded. Saving posts a new onboarding note
+          {carry ? "" : ", new production cards"} and updates the print counts — the original note is kept and marked
+          superseded.
+          
         </Alert>
+        {carry && (
+          <Alert severity="warning" sx={{ mb: 2 }}>
+            <b>This deal was rebuilt from its onboarding note</b>, not from saved answers, so some fields may be
+            blank or incomplete — check what you open. The original note is kept word for word under your changes.{" "}
+            {countsVerified ? (
+              <>The note's numbers match the Deal's print counts, so the counts <b>will</b> be updated.</>
+            ) : (
+              <>
+                The note's numbers do <b>not</b> match the Deal's print counts, so the counts will <b>not</b> be
+                changed — update them by hand if quantities changed.
+              </>
+            )}
+            {(loaded.warnings || []).length > 0 && (
+              <Box component="ul" sx={{ m: 0, mt: 1, pl: 2 }}>
+                {loaded.warnings.map((w) => (
+                  <li key={w}>{w}</li>
+                ))}
+              </Box>
+            )}
+          </Alert>
+        )}
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          Prefilled from the onboarding form submitted {stamp(loaded.jsonCreated)}
+          Prefilled from the onboarding {loaded.fromNote ? "note" : "form"} submitted {stamp(loaded.jsonCreated)}
           {loaded.olderCopies ? ` (the newest of ${loaded.olderCopies + 1} copies on this deal)` : ""}.
         </Typography>
 
@@ -607,6 +690,11 @@ const AmendmentApp = () => {
             {isRemoved(productIdx) ? (
               <Alert severity="error">
                 {product.productName} will be removed from this order. Its prints come off the counts below.
+              </Alert>
+            ) : product._unparsed ? (
+              <Alert severity="info">
+                {product.productName} could not be rebuilt from the note, so its fields are not shown. It stays on
+                the order exactly as it was — describe any change to it in your own words in step 4.
               </Alert>
             ) : !isGarmentProduct || productIdx >= originalCount ? (
               // Non-garment products are short, and a brand-new product needs every answer.
