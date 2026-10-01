@@ -13,6 +13,7 @@ import { useEffect, useMemo, useState } from "react";
 import { departmentFor } from "./printMath";
 import { readPayload } from "./payload";
 import { deriveAgents, orderTasksForTrace } from "./agentAssign";
+import { targetStage } from "./stageMove";
 import {
   placementsOf,
   costItem,
@@ -102,9 +103,19 @@ const ORDERING_AGENTS = [
   "Brad Byfield",
   "Rivelino Seva",
 ];
-// ⚠️ Graphic_Agent did NOT exist in CRM on 2026-10-01. Until its real option list is known this
-// assumes the same nine names; re-measure and replace before deploying (docs/04 E-32).
-const GRAPHIC_AGENTS = AGENTS;
+// Graphic_Agent's own option list -- measured 2026-10-01 (field created 10:51 that day). The same
+// eight people as Ordering_Agent today, but kept as its own list: the two fields are edited
+// separately in CRM and will drift. No Yefri Rivera or David Byrd on either.
+const GRAPHIC_AGENTS = [
+  "Rivelino Seva",
+  "Desi Mastin",
+  "Korie Byrd",
+  "Ray Castaneda",
+  "Drew Byrd",
+  "David Rodriguez",
+  "Angela Zervudakis",
+  "Brad Byfield",
+];
 
 // Add to a multi-select without losing what is already there, or duplicating it.
 const union = (existing, add) => {
@@ -661,15 +672,48 @@ export default function App() {
         Content: buildNote(),
       });
 
-      setResult({ ok: true, message: t("ok.saved", { n: slot }) });
+      // D-27: move the Stage LAST -- every field and the note are already written, so the Deluge
+      // that fires on the stage change finds what it reads. Its own call, and a failure here never
+      // undoes the save: the agent is told to move the stage by hand instead.
+      let stageMsg = "";
+      let stageWarn = false;
+      const target = targetStage(formType, deal?.Stage);
+      if (target.move) {
+        try {
+          const st = await ZOHO.CRM.API.updateRecord({
+            Entity: ctx.entity,
+            APIData: { id: ctx.recordId, Stage: target.stage },
+            Trigger: ["workflow"],
+          });
+          if (st?.data?.[0]?.code === "SUCCESS") stageMsg = t("ok.stage", { stage: target.stage });
+          else {
+            stageWarn = true;
+            stageMsg = t("warn.stage", { stage: target.stage });
+            console.log("Stage not moved:", st);
+          }
+        } catch (err) {
+          stageWarn = true;
+          stageMsg = t("warn.stage", { stage: target.stage });
+          console.log("Stage not moved:", err);
+        }
+      } else if (target.reason === "already") {
+        stageWarn = true;
+        stageMsg = t("warn.stageAlready", { stage: target.stage });
+      } else if (target.reason === "advertiser") {
+        stageWarn = true;
+        stageMsg = t("warn.stageManual");
+      }
+
+      setResult({ ok: true, message: t("ok.saved", { n: slot }) + (stageMsg ? " " + stageMsg : "") });
       setSubmitting(false);
+      // A warning has to be readable before the popup closes on it.
       setTimeout(() => {
         try {
           ZOHO.CRM.UI.Popup.closeReload();
         } catch (e) {
           /* ignore */
         }
-      }, 900);
+      }, stageWarn ? 7000 : 900);
     } catch (err) {
       setResult({ ok: false, message: (err && err.message) || String(err) });
       setSubmitting(false);

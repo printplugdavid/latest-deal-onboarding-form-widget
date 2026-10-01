@@ -165,6 +165,19 @@ const STRINGS = {
     es: "Elija una nueva fecha de cierre y confirme que el cliente la ha aprobado.",
   },
   "ok.saved": { en: "Saved to slot {n}.", es: "Guardado en la casilla {n}." },
+  "ok.stage": { en: "Deal moved to \"{stage}\".", es: "El acuerdo pasó a \"{stage}\"." },
+  "warn.stage": {
+    en: "The deal stage could NOT be moved — please move it to \"{stage}\" by hand.",
+    es: "NO se pudo cambiar la etapa del acuerdo — cámbiela a \"{stage}\" manualmente.",
+  },
+  "warn.stageAlready": {
+    en: "The deal is already in \"{stage}\", so no new tasks were triggered — tell the production manager.",
+    es: "El acuerdo ya está en \"{stage}\", así que no se generaron tareas nuevas — avise al gerente de producción.",
+  },
+  "warn.stageManual": {
+    en: "Advertiser deal — please move the deal stage by hand.",
+    es: "Acuerdo de anunciante — cambie la etapa del acuerdo manualmente.",
+  },
   "err.nothing": { en: "Nothing was saved. ", es: "No se guardó nada. " },
 
   // ---- banners ----------------------------------------------------------
