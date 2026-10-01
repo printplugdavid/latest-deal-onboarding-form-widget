@@ -70,11 +70,12 @@ describe("deriveAgents — matches the Deluge", () => {
     expect(r.agents).toEqual(["Yefri Rivera"]);
   });
 
-  test("a Misorder also pulls in whoever ordered the garments", () => {
-    expect(run(["Wrong Product Size (Misorder)"], ["Screen Printing"]).agents).toEqual([
-      "Yefri Rivera",
-      "Ray Castaneda",
-    ]);
+  // D-26 (2026-10-01): this used to read ["Yefri Rivera", "Ray Castaneda"].
+  test("a Misorder still names the producer; the orderer is returned separately", () => {
+    const r = run(["Wrong Product Size (Misorder)"], ["Screen Printing"]);
+    expect(r.agents).toEqual(["Yefri Rivera"]);
+    expect(r.orderingIssue).toBe(true);
+    expect(r.orderingAgent).toBe("Ray Castaneda");
   });
 
   test("pre-rename 'Vinyl & Digital Print' resolves the same as 'Vinyl Department'", () => {
@@ -109,10 +110,12 @@ describe("deriveAgents — matches the Deluge", () => {
 
 describe("deriveAgents — what the Deluge swallowed", () => {
   test("ordering accountability comes from the category, not a department", () => {
-    // A Misorder already pulls in whoever ordered the garments, which is why an
-    // "Ordering" department was redundant and was removed from the form.
+    // A Misorder already identifies whoever ordered the garments, which is why an
+    // "Ordering" department was redundant and was removed from the form. Since
+    // D-26 that name lands on Ordering_Agent, not on the agent field.
     const r = run(["Wrong Product Type (Misorder)"], ["Screen Printing"]);
-    expect(r.agents).toEqual(["Yefri Rivera", "Ray Castaneda"]);
+    expect(r.agents).toEqual(["Yefri Rivera"]);
+    expect(r.orderingAgent).toBe("Ray Castaneda");
   });
 
   test("a genuinely unknown department is still reported", () => {
@@ -173,16 +176,17 @@ describe("orderTasksForTrace — open tasks must survive (D-21)", () => {
     ]);
   });
 
-  test("a Misorder names the producing agent AND whoever ordered", () => {
+  // D-22 put both on the agent field. D-26 (2026-10-01) moved the orderer to its own field.
+  test("a Misorder names the producer on the agent field and the orderer on orderingAgent", () => {
     // Honor Plumbing again: produce task open, Order Garments completed.
     const tasks = orderTasksForTrace(
       [task("ACCOUNT MANAGER: Order Garments & Materials", "Korie Byrd")],
       [open("EMBROIDERY: Produce Order / BORDADO: Orden de producción", "Angela Zervudakis")]
     );
-    expect(run(["Wrong Product Type (Misorder)"], ["Embroidery"], tasks).agents).toEqual([
-      "Angela Zervudakis",
-      "Korie Byrd",
-    ]);
+    const r = run(["Wrong Product Type (Misorder)"], ["Embroidery"], tasks);
+    expect(r.agents).toEqual(["Angela Zervudakis"]);
+    expect(r.orderingIssue).toBe(true);
+    expect(r.orderingAgent).toBe("Korie Byrd");
   });
 
   test("a COMPLETED task still wins over an open one for the same department", () => {
@@ -232,7 +236,8 @@ describe("orderTasksForTrace — open tasks must survive (D-21)", () => {
         ["Embroidery"],
         [task("ACCOUNT MANAGER: Order Garments & Materials", "Korie Byrd")]
       );
-      expect(r.agents).toEqual(["Korie Byrd"]);
+      expect(r.agents).toEqual([]);
+      expect(r.orderingAgent).toBe("Korie Byrd");
       expect(r.orderOwnerMissing).toBe(false);
     });
 
@@ -244,7 +249,7 @@ describe("orderTasksForTrace — open tasks must survive (D-21)", () => {
         ["Embroidery"],
         [task("ACCOUNT MANAGER: Pre-Order Garments", "Korie Byrd")]
       );
-      expect(r.agents).toEqual(["Korie Byrd"]);
+      expect(r.orderingAgent).toBe("Korie Byrd");
     });
 
     test("Reproduce and Correct Order are excluded from the producing trace", () => {
@@ -258,5 +263,100 @@ describe("orderTasksForTrace — open tasks must survive (D-21)", () => {
         expect(r.misses).toEqual(["Embroidery"]);
       }
     });
+  });
+});
+
+/*
+ * D-26 (David, 2026-10-01): "We are just moving them from Revision_Agent to
+ * Ordering_Agent basically. Same with the graphic design issue." The producer
+ * is traced exactly as before; the orderer and the designer get their own fields.
+ */
+describe("D-26 — the orderer and the designer have their own fields", () => {
+  const GTASKS = TASKS.concat([
+    task("GRAPHIC DESIGN: EMBROIDERY: Artwork & Mock-Up / DISEÑO GRÁFICO", "Rivelino Seva"),
+    task("GRAPHIC DESIGN: Finalize Graphics & Artwork", "Rivelino Seva"),
+    task("GRAPHIC DESIGN: Mock-Up Revision", "Desi Mastin"),
+  ]);
+
+  test("a plain misprint raises neither", () => {
+    const r = run(["Misprint (Wrong Colors)"], ["Screen Printing"], GTASKS);
+    expect(r.agents).toEqual(["Yefri Rivera"]);
+    expect(r.orderingIssue).toBe(false);
+    expect(r.orderingAgent).toBe("");
+    expect(r.graphicIssue).toBe(false);
+    expect(r.graphicAgents).toEqual([]);
+  });
+
+  test("Misorder with no order task: flagged, orderer left empty, producer still named", () => {
+    const r = run(["Wrong Product Type (Misorder)"], ["Embroidery"], [
+      task("EMBROIDERY: Produce Order", "Angela Zervudakis"),
+    ]);
+    expect(r.orderingIssue).toBe(true);
+    expect(r.orderingAgent).toBe("");
+    expect(r.orderOwnerMissing).toBe(true);
+    expect(r.agents).toEqual(["Angela Zervudakis"]);
+  });
+
+  test("an OUTSOURCED: Order Products owner counts as the orderer", () => {
+    const r = run(["Wrong Product Type (Misorder)"], ["Outsourced"], [
+      task("OUTSOURCED: Order Products", "Korie Byrd"),
+    ]);
+    expect(r.orderingAgent).toBe("Korie Byrd");
+  });
+
+  test("the orderer is checked against Ordering_Agent's OWN option list", () => {
+    // Live 2026-10-01: Ordering_Agent has Brad Byfield and has no Yefri Rivera.
+    const ordering = ["Korie Byrd", "Brad Byfield"];
+    const ok = deriveAgents({
+      categories: ["Wrong Product Type (Misorder)"],
+      departments: ["Embroidery"],
+      tasks: [task("ACCOUNT MANAGER: Order Garments & Materials", "Brad Byfield")],
+      allowedNames: NAMES,
+      allowedOrderingNames: ordering,
+    });
+    expect(ok.orderingAgent).toBe("Brad Byfield");
+    const no = deriveAgents({
+      categories: ["Wrong Product Type (Misorder)"],
+      departments: ["Embroidery"],
+      tasks: [task("ACCOUNT MANAGER: Order Garments & Materials", "Yefri Rivera")],
+      allowedNames: NAMES,
+      allowedOrderingNames: ordering,
+    });
+    expect(no.orderingAgent).toBe("");
+    expect(no.rejected).toEqual(["Yefri Rivera"]);
+  });
+
+  test("Wrong Graphic names every designer once, and still names the producer", () => {
+    const r = run(["Misprint (Wrong Graphic)"], ["Screen Printing"], GTASKS);
+    expect(r.graphicIssue).toBe(true);
+    expect(r.graphicAgents).toEqual(["Rivelino Seva", "Desi Mastin"]);
+    expect(r.agents).toEqual(["Yefri Rivera"]);
+    expect(r.orderingIssue).toBe(false);
+  });
+
+  test("Design Issues (Poor Graphics) names the designers", () => {
+    const r = run(["Design Issues (Poor Graphics)"], ["Embroidery"], GTASKS);
+    expect(r.graphicIssue).toBe(true);
+    expect(r.graphicAgents).toEqual(["Rivelino Seva", "Desi Mastin"]);
+  });
+
+  test("a graphic fault with no GRAPHIC DESIGN task: flagged, nobody named", () => {
+    const r = run(["Design Issues (Poor Graphics)"], ["Embroidery"]);
+    expect(r.graphicIssue).toBe(true);
+    expect(r.graphicAgents).toEqual([]);
+  });
+
+  test("a Misorder and a graphic fault together fill all three", () => {
+    const r = run(["Wrong Product Type (Misorder)", "Misprint (Wrong Graphic)"], ["Screen Printing"], GTASKS);
+    expect(r.agents).toEqual(["Yefri Rivera"]);
+    expect(r.orderingAgent).toBe("Ray Castaneda");
+    expect(r.graphicAgents).toEqual(["Rivelino Seva", "Desi Mastin"]);
+  });
+
+  test("Missing Product alone still flags nothing at all", () => {
+    const r = run(["Missing Product"], ["Screen Printing"], GTASKS);
+    expect(r.agents).toEqual([]);
+    expect(r.orderingIssue).toBe(false);
+    expect(r.graphicIssue).toBe(false);
   });
 });

@@ -13,6 +13,7 @@ import { useEffect, useMemo, useState } from "react";
 import { departmentFor } from "./printMath";
 import { readPayload } from "./payload";
 import { deriveAgents, orderTasksForTrace } from "./agentAssign";
+import { targetStage } from "./stageMove";
 import {
   placementsOf,
   costItem,
@@ -50,6 +51,7 @@ const REVISION_CATEGORIES = [
   "Misprint (Malfunction)",
   "Misprint (Wrong Size or Product)",
   "Misprint (Other)",
+  "Design Issues (Poor Graphics)",
   "Wrong Product Size (Misorder)",
   "Wrong Product Type (Misorder)",
   "Missing Product",
@@ -66,6 +68,7 @@ const CORRECTION_CATEGORIES = [
   "Misprint (Malfunction)",
   "Misprint (Wrong Size or Product)",
   "Misprint (Other)",
+  "Design Issues (Poor Graphics)",
   "Wrong Product Size (Misorder)",
   "Wrong Product Type (Misorder)",
   "Missing Product",
@@ -87,6 +90,41 @@ const AGENTS = [
   "Rivelino Seva",
   "Angela Zervudakis",
 ];
+
+// Ordering_Agent has its OWN option list -- measured 2026-10-01. It is not the nine above:
+// no Yefri Rivera or David Byrd, and it has Brad Byfield. A name not on it is dropped, not written.
+const ORDERING_AGENTS = [
+  "Korie Byrd",
+  "Desi Mastin",
+  "Drew Byrd",
+  "Ray Castaneda",
+  "Angela Zervudakis",
+  "David Rodriguez",
+  "Brad Byfield",
+  "Rivelino Seva",
+];
+// Graphic_Agent's own option list -- measured 2026-10-01 (field created 10:51 that day). The same
+// eight people as Ordering_Agent today, but kept as its own list: the two fields are edited
+// separately in CRM and will drift. No Yefri Rivera or David Byrd on either.
+const GRAPHIC_AGENTS = [
+  "Rivelino Seva",
+  "Desi Mastin",
+  "Korie Byrd",
+  "Ray Castaneda",
+  "Drew Byrd",
+  "David Rodriguez",
+  "Angela Zervudakis",
+  "Brad Byfield",
+];
+
+// Add to a multi-select without losing what is already there, or duplicating it.
+const union = (existing, add) => {
+  const out = Array.isArray(existing) ? existing.slice() : [];
+  (add || []).forEach((n) => {
+    if (n && out.indexOf(n) < 0) out.push(n);
+  });
+  return out;
+};
 
 const MAX_SLOTS = { Revision: 3, Correction: 2 };
 
@@ -326,6 +364,8 @@ export default function App() {
         departments,
         tasks: traceTasks,
         allowedNames: AGENTS,
+        allowedOrderingNames: ORDERING_AGENTS,
+        allowedGraphicNames: GRAPHIC_AGENTS,
       }),
     [categories, departments, traceTasks]
   );
@@ -513,6 +553,15 @@ export default function App() {
     L.push("Department: " + departments.join(", "));
     L.push("Category: " + categories.join(", "));
     L.push("Agent: " + (derived.agents.length ? derived.agents.join(", ") : "(none identified)"));
+    // D-26: the orderer and the designer(s) have their own lines and their own Deal fields.
+    if (derived.orderingIssue) {
+      L.push("Ordering agent: " + (derived.orderingAgent || "(none identified)"));
+    }
+    if (derived.graphicIssue) {
+      L.push(
+        "Graphic agent: " + (derived.graphicAgents.length ? derived.graphicAgents.join(", ") : "(none identified)")
+      );
+    }
     L.push("Reason:");
     reason.trim().split("\n").forEach((line) => L.push("  " + line.trimEnd()));
 
@@ -574,6 +623,26 @@ export default function App() {
       // Accountability is traced, never chosen by the person filing the form.
       if (derived.agents.length) api[prefix + "_Agent"] = derived.agents;
 
+      // D-26 (2026-10-01): the orderer goes to Ordering_Agent and the designer(s) to Graphic_Agent,
+      // not onto the agent field. Its own call, BEFORE the main write and with no triggers:
+      // (a) a value CRM rejects -- or a field not on the layout yet -- can never take the print
+      // slots down with it, and (b) the fields are in place when the main write fires the workflow.
+      // Both are multi-selects and both ACCUMULATE: a second event on the Deal adds to what is
+      // there, it never replaces it. Ordering_Issues is deliberately not written -- the category
+      // already says so, and a non-empty Ordering_Agent is the durable record.
+      const side = {};
+      if (derived.orderingAgent) side.Ordering_Agent = union(deal?.Ordering_Agent, [derived.orderingAgent]);
+      if (derived.graphicAgents.length) side.Graphic_Agent = union(deal?.Graphic_Agent, derived.graphicAgents);
+      if (Object.keys(side).length) {
+        try {
+          side.id = ctx.recordId;
+          const r = await ZOHO.CRM.API.updateRecord({ Entity: ctx.entity, APIData: side, Trigger: [] });
+          if (r?.data?.[0]?.code !== "SUCCESS") console.log("Ordering / graphic agent not written:", r);
+        } catch (err) {
+          console.log("Ordering / graphic agent not written:", err);
+        }
+      }
+
       if (formType === "Revision") {
         api.Revision_Category = categories; // multi-select
         api.Order_Needs_Revision_Date_Time = now;
@@ -603,15 +672,48 @@ export default function App() {
         Content: buildNote(),
       });
 
-      setResult({ ok: true, message: t("ok.saved", { n: slot }) });
+      // D-27: move the Stage LAST -- every field and the note are already written, so the Deluge
+      // that fires on the stage change finds what it reads. Its own call, and a failure here never
+      // undoes the save: the agent is told to move the stage by hand instead.
+      let stageMsg = "";
+      let stageWarn = false;
+      const target = targetStage(formType, deal?.Stage);
+      if (target.move) {
+        try {
+          const st = await ZOHO.CRM.API.updateRecord({
+            Entity: ctx.entity,
+            APIData: { id: ctx.recordId, Stage: target.stage },
+            Trigger: ["workflow"],
+          });
+          if (st?.data?.[0]?.code === "SUCCESS") stageMsg = t("ok.stage", { stage: target.stage });
+          else {
+            stageWarn = true;
+            stageMsg = t("warn.stage", { stage: target.stage });
+            console.log("Stage not moved:", st);
+          }
+        } catch (err) {
+          stageWarn = true;
+          stageMsg = t("warn.stage", { stage: target.stage });
+          console.log("Stage not moved:", err);
+        }
+      } else if (target.reason === "already") {
+        stageWarn = true;
+        stageMsg = t("warn.stageAlready", { stage: target.stage });
+      } else if (target.reason === "advertiser") {
+        stageWarn = true;
+        stageMsg = t("warn.stageManual");
+      }
+
+      setResult({ ok: true, message: t("ok.saved", { n: slot }) + (stageMsg ? " " + stageMsg : "") });
       setSubmitting(false);
+      // A warning has to be readable before the popup closes on it.
       setTimeout(() => {
         try {
           ZOHO.CRM.UI.Popup.closeReload();
         } catch (e) {
           /* ignore */
         }
-      }, 900);
+      }, stageWarn ? 7000 : 900);
     } catch (err) {
       setResult({ ok: false, message: (err && err.message) || String(err) });
       setSubmitting(false);
