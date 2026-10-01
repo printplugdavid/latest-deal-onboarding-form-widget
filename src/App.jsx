@@ -513,6 +513,11 @@ export default function App() {
     L.push("Department: " + departments.join(", "));
     L.push("Category: " + categories.join(", "));
     L.push("Agent: " + (derived.agents.length ? derived.agents.join(", ") : "(none identified)"));
+    // D-26: a Misorder is an ordering fault -- it has its own line and its own Deal fields.
+    if (derived.orderingIssue) {
+      L.push("Ordering issue: Yes");
+      L.push("Ordering agent: " + (derived.orderingAgent || "(none identified)"));
+    }
     L.push("Reason:");
     reason.trim().split("\n").forEach((line) => L.push("  " + line.trimEnd()));
 
@@ -573,6 +578,22 @@ export default function App() {
 
       // Accountability is traced, never chosen by the person filing the form.
       if (derived.agents.length) api[prefix + "_Agent"] = derived.agents;
+
+      // D-26 (2026-10-01): a Misorder flags the ORDERING fields instead of the agent field.
+      // Its own call, BEFORE the main write and with no triggers: (a) a value CRM rejects here
+      // -- or a field that is not on the layout yet -- can never take the print slots down with
+      // it, and (b) the fields are already in place when the main write fires the workflow.
+      // Ordering_Issues is only ever set true; the form never clears a flag a human set.
+      if (derived.orderingIssue) {
+        try {
+          const ord = { id: ctx.recordId, Ordering_Issues: true };
+          if (derived.orderingAgent) ord.Ordering_Agent = derived.orderingAgent;
+          const r = await ZOHO.CRM.API.updateRecord({ Entity: ctx.entity, APIData: ord, Trigger: [] });
+          if (r?.data?.[0]?.code !== "SUCCESS") console.log("Ordering fields not written:", r);
+        } catch (err) {
+          console.log("Ordering fields not written:", err);
+        }
+      }
 
       if (formType === "Revision") {
         api.Revision_Category = categories; // multi-select

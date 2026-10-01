@@ -17,7 +17,8 @@
  *   - "Missing Product" the same (David's ruling, 2026-09-02): a lost garment
  *     cannot be pinned on anyone by formula. If there IS someone to blame, a
  *     human assigns it by hand rather than the form guessing.
- *   - "Misorder" additionally pulls in whoever ordered the garments
+ *   - "Misorder" is NOT a Revision_Agent flag any more (D-26, 2026-10-01) --
+ *     see the second departure note below
  *   - the first matching completed task wins (the Deluge breaks on first hit)
  *   - Outsourced always also adds Korie Byrd; Graphic Design always also adds
  *     Rivelino Seva, whether or not a task owner was found
@@ -35,6 +36,18 @@
  * revision was filed) and Honor Plumbing `5249739000123698131` (still open).
  * Angela Zervudakis was credited on neither. See `orderTasksForTrace` below.
  * The Deluge still has this bug -- handoff in docs/23.
+ *
+ * ⚠️ SECOND DELIBERATE DEPARTURE (D-26, David 2026-10-01, reverses D-22): a
+ * Misorder no longer puts ANYONE on Revision_Agent / Correction_Agent. An
+ * ordering mistake is not a production mistake. Whoever owned the Order
+ * Garments / Order Products task is returned separately as `orderingAgent`,
+ * with `orderingIssue: true`, and the form writes those to the Deal's
+ * Ordering_Issues (checkbox) and Ordering_Agent (picklist) instead.
+ *   - Misorder alone            -> agents [], orderingAgent = the orderer
+ *   - Misorder + a misprint     -> agents = the producer (for the misprint),
+ *                                  orderingAgent = the orderer
+ * The search for the orderer is unchanged; only where the name lands moved.
+ * The Deluge still adds the orderer to Revision_Agent -- handoff in docs/32.
  */
 
 // dept -> the keyword that appears in that department's task subjects
@@ -87,7 +100,8 @@ function ownerNameOf(task, userNameById) {
 /*
  * tasks: [{ Subject, Owner: { id, name }, Status }] -- open AND completed,
  *        ordered by orderTasksForTrace (completed first).
- * Returns { agents, unmappedDepartments, misses, orderOwnerMissing }
+ * Returns { agents, unmappedDepartments, misses, orderOwnerMissing, rejected,
+ *           orderingIssue, orderingAgent }
  */
 export function deriveAgents({
   categories = [],
@@ -108,9 +122,9 @@ export function deriveAgents({
       // Nobody is identified for these. A courier damaging a box, or a garment
       // going missing, is not something a completed task can pin on a person.
     } else if (s.includes("Misorder")) {
-      needsProduceOrderOwner = true;
+      // D-26: an ordering fault. Nobody goes on the agent field for it; the
+      // orderer is found below and returned as orderingAgent instead.
       needsOrderProductsOwner = true;
-      unattributableOnly = false;
     } else {
       needsProduceOrderOwner = true;
       unattributableOnly = false;
@@ -158,7 +172,9 @@ export function deriveAgents({
   }
 
   // ---- Step 5: whoever ordered the garments, for Misorder -----------------
+  // D-26: returned as orderingAgent, NOT added to `agents`.
   let orderOwnerMissing = false;
+  let orderingAgent = "";
   if (needsOrderProductsOwner) {
     let found = false;
     for (let i = 0; i < tasks.length; i++) {
@@ -170,7 +186,7 @@ export function deriveAgents({
       ) {
         const name = ownerNameOf(tasks[i], userNameById);
         if (name) {
-          add(name);
+          orderingAgent = name;
           found = true;
           break;
         }
@@ -189,5 +205,19 @@ export function deriveAgents({
       })
     : agents;
 
-  return { agents: kept, unmappedDepartments, misses, orderOwnerMissing, rejected };
+  // Ordering_Agent is a picklist too -- same guard against a name CRM would reject.
+  if (orderingAgent && allowedNames && allowedNames.indexOf(orderingAgent) < 0) {
+    rejected.push(orderingAgent);
+    orderingAgent = "";
+  }
+
+  return {
+    agents: kept,
+    unmappedDepartments,
+    misses,
+    orderOwnerMissing,
+    rejected,
+    orderingIssue: needsOrderProductsOwner, // true whenever a Misorder category is chosen
+    orderingAgent, // "" when no Order Garments / Order Products owner was found
+  };
 }
