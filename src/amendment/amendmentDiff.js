@@ -275,3 +275,61 @@ export function summariseAmendment(before, after, removed) {
   });
   return [...lines, ...summariseDiff(fieldChanges, after)];
 }
+
+// ---------------------------------------------------------------------------------------------------
+// What Save writes (stage 2)
+// ---------------------------------------------------------------------------------------------------
+
+const NL = String.fromCharCode(10); // hard rule 5: never a literal "\n" in note text
+const DIV = "---------------------------";
+
+/*
+ * The amended note is a COMPLETE DEAL ONBOARDING FORM note with a What Changed block on top.
+ * Complete, not a delta: consumers take the NEWEST onboarding note (D-4), so only a full note makes
+ * "newest wins" correct. The block sits ABOVE "CONTACT INFO", so every label the revision form's
+ * noteParser reads is exactly where it always was.
+ */
+export function buildAmendmentNote({ content, lines, story, when, previousWhen }) {
+  const head = [
+    "ONBOARDING AMENDED " + when,
+    DIV,
+    "",
+    "WHAT CHANGED",
+  ]
+    .concat((lines || []).map((l) => "• " + String(l).split("\n").join(NL + "  ")))
+    .concat([
+      "",
+      "IN THE AGENT'S WORDS",
+      String(story || "").trim() || "(nothing written)",
+      "",
+      "This note replaces the onboarding note" + (previousWhen ? " submitted " + previousWhen : "") + ".",
+      "Production tasks created before this amendment may still show the old numbers --",
+      "the production card viewer and the print counts on the Deal are current.",
+      "",
+      "",
+    ]);
+  return head.join(NL) + content;
+}
+
+// The entry appended to Onboarding_Update_Results: the auto diff, then the agent's own words.
+export function buildUpdateResultsEntry({ lines, story, when }) {
+  return ["--- amended " + when + " ---", "What changed:"]
+    .concat((lines || []).map((l) => "• " + l))
+    .concat(["In the agent's words:", String(story || "").trim() || "(nothing written)"])
+    .join(NL);
+}
+
+/*
+ * Append, never replace (D-23). The field holds 32,000 characters; if the history would overflow,
+ * the OLDEST text is trimmed from the top and marked, so the newest amendment is always intact.
+ */
+export function appendUpdateResults(existing, entry, cap = 32000) {
+  const was = String(existing == null ? "" : existing).trim();
+  const out = was ? was + NL + NL + entry : entry;
+  if (out.length <= cap) return out;
+  const mark = "[earlier history trimmed to fit]" + NL;
+  return mark + out.slice(out.length - (cap - mark.length));
+}
+
+export const SUPERSEDED_TITLE = (date) => "DEAL ONBOARDING FORM (SUPERSEDED " + date + ")";
+export const LIVE_NOTE_TITLE = "DEAL ONBOARDING FORM";
