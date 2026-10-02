@@ -129,7 +129,7 @@ const STRINGS = {
   },
   "gs.details": { en: "Sheet Details (optional)", es: "Detalles de la hoja (opcional)" },
   "gs.detailsPh": {
-    en: "e.g. which graphics were wrong, wrong sheet size, colour off",
+    en: "e.g. which graphics were wrong, wrong sheet size, color off",
     es: "p. ej. cuáles gráficos salieron mal, tamaño de hoja incorrecto, color desviado",
   },
 
