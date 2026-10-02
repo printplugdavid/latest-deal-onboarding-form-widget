@@ -100,6 +100,11 @@ const STRINGS = {
     en: "All {n} graphic(s) on this garment will be reprinted.",
     es: "Se reimprimirán los {n} gráfico(s) de esta prenda.",
   },
+  "g.graphics": { en: "Graphics on these garments", es: "Gráficos en estas prendas" },
+  "g.graphicsHint": {
+    en: "{n} of {of} graphic(s) will be reprinted on each garment. Untick any graphic these garments do NOT have. If different garments carry different graphics, add one affected item per graphic.",
+    es: "Se reimprimirán {n} de {of} gráfico(s) en cada prenda. Desmarque los gráficos que estas prendas NO llevan. Si distintas prendas llevan gráficos distintos, agregue un artículo afectado por cada gráfico.",
+  },
   "g.add": { en: "+ Add an affected item", es: "+ Agregar un artículo afectado" },
   "g.addMore": { en: "+ Add another affected item", es: "+ Agregar otro artículo afectado" },
   "g.noGarments": {

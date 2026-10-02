@@ -414,3 +414,74 @@ describe("gang sheet costing", () => {
     expect(isGangSheet(PRODUCTS[0])).toBe(false);
   });
 });
+
+/*
+ * E-37 (2026-10-02): Flute Summit Deal 2, verbatim shape. Twelve different garments were onboarded
+ * as ONE garment type with seven graphics, one logo per garment. A 5-garment revision came out as
+ * 5 x 7 x 2 = 70. Each garment really carries one graphic.
+ */
+describe("E-37 — a revision can say which graphics the affected garments carry", () => {
+  const { costItem, embroiderySizes } = require("./affected");
+  const graphic = (d) => ({
+    graphicDescription: d,
+    numberOfColorsUsed: "1",
+    underbase: "Single-pass",
+    numberOfPlacements: "1",
+    tartiaryBranches: [{ placementLocation: "Chest", placementSize: "Large" }],
+  });
+  const flute = [
+    {
+      productName: "Direct-to-Film",
+      productType: "garment",
+      numberOfGarmentTypes: "1",
+      primaryBranches: [
+        {
+          garmentType: "DT6100 / DT6104 / DT6106 / PC340 / PC54LS / CAR78TH / 996Y",
+          garmentQuantity: "12",
+          numberOfGraphics: "7",
+          secondaryBranches: ["Logo #1", "Logo #2", "Logo #3", "Logo #5", "Logo #6", "Logo #7", "Logo #8"].map(graphic),
+        },
+      ],
+    },
+  ];
+  const item = (extra) => ({ productIndex: 0, garmentIndex: 0, placementKeys: [], affected: "", sizes: [], details: "", ...extra });
+
+  test("default (no graphicKeys) is unchanged: every graphic reprints — the 70 David saw", () => {
+    expect(costItem(flute, item({ affected: "5" }), "Revision").VD).toBe(70);
+    expect(costItem(flute, item({ affected: "5", graphicKeys: null }), "Revision").VD).toBe(70);
+  });
+
+  test("all seven ticked explicitly is the same 70", () => {
+    expect(costItem(flute, item({ affected: "5", graphicKeys: [0, 1, 2, 3, 4, 5, 6] }), "Revision").VD).toBe(70);
+  });
+
+  test("one graphic on five garments is 5 actual, 10 with the press", () => {
+    const r = costItem(flute, item({ affected: "5", graphicKeys: [5] }), "Revision");
+    expect(r.actual.VD).toBe(5);
+    expect(r.VD).toBe(10);
+  });
+
+  test("the real revision, as three items: Logo #7 x2, Logo #8 x1, Logo #1 x2 = 10", () => {
+    const parts = [
+      item({ affected: "2", graphicKeys: [5] }),
+      item({ affected: "1", graphicKeys: [6] }),
+      item({ affected: "2", graphicKeys: [0] }),
+    ];
+    expect(parts.reduce((n, it) => n + costItem(flute, it, "Revision").VD, 0)).toBe(10);
+  });
+
+  test("every graphic unticked reprints nothing", () => {
+    expect(costItem(flute, item({ affected: "5", graphicKeys: [] }), "Revision").VD).toBe(0);
+  });
+
+  test("graphicKeys is ignored on a Correction — placements decide there", () => {
+    const r = costItem(flute, item({ affected: "5", graphicKeys: [5], placementKeys: ["0:0", "1:0"] }), "Correction");
+    expect(r.actual.VD).toBe(10); // 5 garments x 2 ticked placements
+  });
+
+  test("embroidery size breakdown follows the ticked graphics", () => {
+    const emb = [{ ...flute[0], productName: "Embroidery" }];
+    expect(embroiderySizes(emb, item({ affected: "5" }), "Revision").Large).toBe(35);
+    expect(embroiderySizes(emb, item({ affected: "5", graphicKeys: [5] }), "Revision").Large).toBe(5);
+  });
+});
