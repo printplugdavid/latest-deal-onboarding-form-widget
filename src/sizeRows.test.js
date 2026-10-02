@@ -4,10 +4,13 @@
  * That deal is why this module exists: its note carries the sizes-vs-total warning
  * twice, and one line reads "12- Small" where every sibling reads "1-".
  */
-import { parseSizeText, formatSizeRows, sumRows, normalizeSize, SIZE_OPTIONS } from "./sizeRows";
+import {
+  parseSizeText, formatSizeRows, sumRows, normalizeSize, SIZE_OPTIONS,
+  countColorBlocks, setColorCount, insertSizeBelow, isBlankRow,
+} from "./sizeRows";
 import { sumSizeCounts } from "./quantityCheck";
 
-// Garment 1, abridged to three colour blocks but otherwise verbatim -- trailing
+// Garment 1, abridged to three color blocks but otherwise verbatim -- trailing
 // spaces, "1- medium" lower case and the "Mdeium" typo are all real.
 const REAL_GARMENT_1 = `Hoodies:
 Snow Camo 
@@ -84,11 +87,11 @@ describe("parseSizeText — real production text", () => {
   const { rows, unparsed } = parseSizeText(REAL_GARMENT_1);
 
   test("every size line is captured", () => {
-    expect(rows).toHaveLength(21);          // 3 colours x 7 sizes
+    expect(rows).toHaveLength(21);          // 3 colors x 7 sizes
     expect(unparsed).toEqual([]);
   });
 
-  test("⭐ COLOUR is preserved — losing it would be a regression", () => {
+  test("⭐ COLOR is preserved — losing it would be a regression", () => {
     expect([...new Set(rows.map((r) => r.color))]).toEqual([
       "Snow Camo",
       "Maroon",
@@ -106,7 +109,7 @@ describe("parseSizeText — real production text", () => {
     expect(maroon.every((r) => r.count === 1)).toBe(true);
   });
 
-  test("a heading ending in ':' does not become a colour", () => {
+  test("a heading ending in ':' does not become a color", () => {
     expect(rows.some((r) => r.color === "Hoodies")).toBe(false);
   });
 
@@ -173,5 +176,72 @@ describe("⭐ THE CONTRACT — serialising must not change what downstream reads
     expect(sumRows(null)).toBe(0);
     expect(parseSizeText(null).rows).toEqual([]);
     expect(parseSizeText("").rows).toEqual([]);
+  });
+});
+
+describe("E-36 -- how many colors, then that many lines", () => {
+  const filled = [
+    { group: "", color: "Black", size: "S", count: 2 },
+    { group: "", color: "Black", size: "M", count: 3 },
+    { group: "", color: "Red", size: "L", count: 1 },
+  ];
+
+  test("counts runs of one color as one block; each blank line is its own", () => {
+    expect(countColorBlocks([])).toBe(0);
+    expect(countColorBlocks(filled)).toBe(2);
+    const blank = { group: "", color: "", size: "", count: "" };
+    expect(countColorBlocks([...filled, blank, blank])).toBe(4);
+    expect(isBlankRow({ group: "Hoodies", color: "", size: "", count: "" })).toBe(true);
+    expect(isBlankRow({ color: "", size: "", count: 0 })).toBe(false);
+  });
+
+  test("from empty: 3 colors lays out 3 blank lines, and the saved string is unchanged", () => {
+    const r = setColorCount([], 3);
+    expect(r.rows).toHaveLength(3);
+    expect(r.blocks).toBe(3);
+    expect(formatSizeRows(r.rows)).toBe("");
+    expect(sumRows(r.rows)).toBe(0);
+  });
+
+  test("growing keeps every existing row and does not change the saved string", () => {
+    const before = formatSizeRows(filled);
+    const r = setColorCount(filled, 5);
+    expect(r.rows.slice(0, 3)).toEqual(filled);
+    expect(r.rows).toHaveLength(6);
+    expect(formatSizeRows(r.rows)).toBe(before);
+  });
+
+  test("shrinking removes only untouched lines, never one with something typed", () => {
+    const grown = setColorCount(filled, 5).rows;
+    const back = setColorCount(grown, 2);
+    expect(back.rows).toEqual(filled);
+    const refused = setColorCount(filled, 1);
+    expect(refused.rows).toEqual(filled);
+    expect(refused.blocks).toBe(2); // > 1: the caller says the typed lines were kept
+    const typed = [...filled, { group: "", color: "Navy", size: "", count: "" }];
+    expect(setColorCount(typed, 0).rows).toEqual(typed);
+  });
+
+  test("blank, junk and huge numbers are safe", () => {
+    expect(setColorCount(filled, "").rows).toEqual(filled);
+    expect(setColorCount(filled, "abc").rows).toEqual(filled);
+    expect(setColorCount(filled, -4).rows).toEqual(filled);
+    expect(setColorCount([], 9999).rows).toHaveLength(50);
+  });
+
+  test("new lines inherit the style heading so the saved string keeps one heading", () => {
+    const styled = [{ group: "Hoodies", color: "Maroon", size: "S", count: 1 }];
+    const r = setColorCount(styled, 2).rows;
+    r[1] = { ...r[1], color: "Navy", size: "M", count: 2 };
+    expect(formatSizeRows(r)).toBe("Hoodies:\nMaroon\n1- S\nNavy\n2- M");
+  });
+
+  test("another size for a color goes directly under it, same color", () => {
+    const r = insertSizeBelow(filled, 1);
+    expect(r).toHaveLength(4);
+    expect(r[2]).toEqual({ group: "", color: "Black", size: "", count: "" });
+    expect(r[3]).toEqual(filled[2]);
+    expect(formatSizeRows(r)).toBe(formatSizeRows(filled));
+    expect(countColorBlocks(r)).toBe(2);
   });
 });
