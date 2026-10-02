@@ -135,6 +135,18 @@ export function syntheticProducts(products, item, formType) {
       .map((g, gi) => (perGraphic[gi] ? { ...g, numberOfPlacements: String(perGraphic[gi]) } : null))
       .filter(Boolean);
     if (!graphics.length) return [];
+  } else if (Array.isArray(item.graphicKeys)) {
+    /*
+     * E-37 (2026-10-02). A revision reprints every graphic on the garment -- unless the agent
+     * says which ones these garments actually carry. Needed when an order was onboarded with
+     * several different garments lumped into ONE garment type: Flute Summit Deal 2 had 12
+     * garments and 7 graphics, one logo per garment, and a 5-garment revision came out as
+     * 5 x 7 x 2 = 70 prints instead of 10. `graphicKeys` undefined/null = all (the default,
+     * and exactly the old behaviour); an array = only those graphic indexes.
+     */
+    const keep = item.graphicKeys.map(Number);
+    graphics = graphics.filter((_, gi) => keep.indexOf(gi) >= 0);
+    if (!graphics.length) return [];
   }
 
   return [
@@ -191,9 +203,13 @@ export function embroiderySizes(products, item, formType) {
 
   // A revision reprints every placement; a correction only the ticked ones.
   const picked = formType === "Correction" ? item.placementKeys || [] : null;
+  // E-37: on a revision, only the graphics the agent kept ticked (null = all).
+  const keptGraphics =
+    formType !== "Correction" && Array.isArray(item.graphicKeys) ? item.graphicKeys.map(Number) : null;
 
   placementsOf(branch).forEach((x) => {
     if (picked && picked.indexOf(x.key) < 0) return;
+    if (keptGraphics && keptGraphics.indexOf(x.gi) < 0) return;
     if (!graphicPrints(x.graphic)) return;
     const size = String(x.placement?.placementSize || "").trim();
     if (size === "Small" || size === "Medium" || size === "Large") out[size] += qty;

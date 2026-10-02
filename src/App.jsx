@@ -347,6 +347,8 @@ export default function App() {
       if (!gang) {
         if (item.garmentIndex === "") return;
         if (formType === "Correction" && !(item.placementKeys || []).length) return;
+        // E-37: a revision with every graphic unticked reprints nothing.
+        if (formType === "Revision" && Array.isArray(item.graphicKeys) && !item.graphicKeys.length) return;
       }
       const r = costItem(products, item, formType);
       sum.SD += r.SD;
@@ -515,8 +517,18 @@ export default function App() {
           }
         });
       } else {
-        const g = (b?.secondaryBranches || []).length;
-        L.push("  Reprint: all " + g + " graphic" + (g === 1 ? "" : "s"));
+        const allG = b?.secondaryBranches || [];
+        const g = allG.length;
+        if (Array.isArray(item.graphicKeys) && item.graphicKeys.length < g) {
+          // E-37: only some of the garment's graphics are on the affected garments.
+          L.push("  Reprint: " + item.graphicKeys.length + " of " + g + " graphics on this garment type:");
+          item.graphicKeys
+            .slice()
+            .sort((x, y) => x - y)
+            .forEach((gi) => L.push("    " + graphicLabel(allG[gi], gi)));
+        } else {
+          L.push("  Reprint: all " + g + " graphic" + (g === 1 ? "" : "s"));
+        }
       }
 
       const det = String(item.details || "").trim();
@@ -925,6 +937,7 @@ export default function App() {
                     productIndex: e.target.value === "" ? "" : Number(e.target.value),
                     garmentIndex: "",
                     placementKeys: [],
+                    graphicKeys: null,
                     sizes: [],
                   })
                 }
@@ -947,6 +960,7 @@ export default function App() {
                       patchItem(i, {
                         garmentIndex: e.target.value === "" ? "" : Number(e.target.value),
                         placementKeys: [],
+                        graphicKeys: null,
                       })
                     }
                     style={S.select}
@@ -998,8 +1012,45 @@ export default function App() {
                 </>
               )}
 
-              {formType === "Revision" && !gang && item.garmentIndex !== "" && (
+              {formType === "Revision" && !gang && item.garmentIndex !== "" && graphics.length <= 1 && (
                 <p style={S.hint}>{t("g.allGraphics", { n: graphics.length })}</p>
+              )}
+
+              {/* E-37: more than one graphic on this garment type -- let the agent say which ones these
+                  garments actually carry. All ticked = the old behaviour, so nothing changes unless
+                  they untick. graphicKeys null means "all". */}
+              {formType === "Revision" && !gang && item.garmentIndex !== "" && graphics.length > 1 && (
+                <>
+                  <Label>{t("g.graphics")}</Label>
+                  <div style={S.placeList}>
+                    {graphics.map((g, gi) => {
+                      const keys = Array.isArray(item.graphicKeys) ? item.graphicKeys : graphics.map((_, k) => k);
+                      const on = keys.indexOf(gi) >= 0;
+                      return (
+                        <label key={gi} style={on ? S.placeRowOn : S.placeRow}>
+                          <input
+                            type="checkbox"
+                            checked={on}
+                            onChange={() =>
+                              patchItem(i, {
+                                graphicKeys: on ? keys.filter((k) => k !== gi) : keys.concat(gi),
+                              })
+                            }
+                          />
+                          <span>
+                            <b>{graphicLabel(g, gi)}</b>
+                          </span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                  <p style={S.hint}>
+                    {t("g.graphicsHint", {
+                      n: Array.isArray(item.graphicKeys) ? item.graphicKeys.length : graphics.length,
+                      of: graphics.length,
+                    })}
+                  </p>
+                </>
               )}
 
               {!gang && item.garmentIndex !== "" && (
