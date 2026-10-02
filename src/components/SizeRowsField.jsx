@@ -8,7 +8,7 @@
  * this by storing an array -- that is a breaking change to the contract in docs/06,
  * which the revision form parses for ~2,659 note-only deals.
  *
- * Why it exists: one free-text box was carrying style, colour, size and count. On
+ * Why it exists: one free-text box was carrying style, color, size and count. On
  * 2026-09-30 a live order's note read "12- Small" where every sibling read "1-",
  * and 840 prints were computed from a quantity the form had already flagged as
  * inconsistent (docs/03 2026-09-30 (5)).
@@ -26,8 +26,12 @@ import {
 import {
   SIZE_OPTIONS,
   SIZE_LABELS,
+  MAX_COLOR_LINES,
+  countColorBlocks,
   formatSizeRows,
+  insertSizeBelow,
   parseSizeText,
+  setColorCount,
   sumRows,
 } from "../sizeRows";
 
@@ -43,6 +47,9 @@ const SizeRowsField = ({ value, onChange, label = "Total Count, Colors & Sizes" 
   // Lines the parser could not classify. Kept verbatim so opening an old deal can
   // never silently drop what an agent wrote.
   const [extra, setExtra] = useState("");
+  // E-36: "How many colors?" -- what the rep typed, and whether typed lines were kept.
+  const [colorCount, setColorCountText] = useState("");
+  const [keptTyped, setKeptTyped] = useState(false);
   const lastOut = useRef(null);
 
   // Re-read only when the string changed underneath us (async prefill, form reset).
@@ -76,6 +83,28 @@ const SizeRowsField = ({ value, onChange, label = "Total Count, Colors & Sizes" 
     push(next, extra);
   };
 
+  // E-36: one line under row i for another size of the same color.
+  const addSizeBelow = (i) => {
+    const next = insertSizeBelow(rows, i);
+    setRows(next);
+    push(next, extra);
+  };
+
+  // E-36: lay out one line per color. Only ever adds blank lines or removes
+  // untouched ones, so the saved string cannot change here (see sizeRows.js).
+  const applyColorCount = (text) => {
+    setColorCountText(text);
+    if (String(text).trim() === "" || isNaN(parseInt(text, 10))) {
+      setKeptTyped(false);
+      return;
+    }
+    const want = Math.max(0, Math.min(MAX_COLOR_LINES, parseInt(text, 10)));
+    const res = setColorCount(rows, want);
+    setKeptTyped(res.blocks > want);
+    setRows(res.rows);
+    push(res.rows, extra);
+  };
+
   const removeRow = (i) => {
     const next = rows.filter((_, n) => n !== i);
     setRows(next);
@@ -90,9 +119,25 @@ const SizeRowsField = ({ value, onChange, label = "Total Count, Colors & Sizes" 
         {label}
       </Typography>
 
-      {rows.length === 0 && (
-        <Typography sx={{ fontSize: "0.85rem", color: "#666", mb: "0.5rem" }}>
-          No sizes listed yet — add a row for each colour and size.
+      <Box sx={{ display: "flex", alignItems: "center", gap: "0.75rem", mb: "0.75rem" }}>
+        <TextField
+          size="small"
+          type="number"
+          label="How many colors?"
+          value={colorCount}
+          onChange={(e) => applyColorCount(e.target.value)}
+          inputProps={{ min: 0, max: MAX_COLOR_LINES, "aria-label": "How many colors" }}
+          sx={{ flex: "0 0 11rem" }}
+        />
+        <Typography sx={{ fontSize: "0.85rem", color: "#666" }}>
+          {rows.length === 0
+            ? "Enter the number of colors to get a line for each, or add rows one at a time."
+            : `${countColorBlocks(rows)} color line${countColorBlocks(rows) === 1 ? "" : "s"} below. Use ＋ on a line to add another size of that color.`}
+        </Typography>
+      </Box>
+      {keptTyped && (
+        <Typography sx={{ fontSize: "0.85rem", color: "#b26a00", mb: "0.5rem" }}>
+          Lines with something typed in them were kept. Remove any you do not need with ✕.
         </Typography>
       )}
 
@@ -131,6 +176,15 @@ const SizeRowsField = ({ value, onChange, label = "Total Count, Colors & Sizes" 
             inputProps={{ min: 0 }}
             sx={{ flex: "0 0 6rem" }}
           />
+          <Tooltip title="Add another size of this color">
+            <IconButton
+              aria-label="Add another size of this color"
+              onClick={() => addSizeBelow(i)}
+              sx={{ mt: "2px" }}
+            >
+              ＋
+            </IconButton>
+          </Tooltip>
           <Tooltip title="Remove this row">
             <IconButton
               aria-label="Remove this size row"

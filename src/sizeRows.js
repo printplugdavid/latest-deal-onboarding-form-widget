@@ -1,7 +1,7 @@
 /*
  * sizeRows.js -- structured size entry for "Total Count, Colors & Sizes".
  *
- * That field is ONE free-text box carrying FOUR dimensions -- style, colour, size
+ * That field is ONE free-text box carrying FOUR dimensions -- style, color, size
  * and count -- which is why agents mistype it. A real production note reads:
  *
  *     Hoodies:
@@ -121,10 +121,10 @@ export function parseSizeText(text) {
     /*
      * ⚠️ A trailing colon does NOT reliably mean "style heading". Real production
      * text (deal 5249739000125555192) contains BOTH "Hoodies:" -- a style -- and
-     * "Deadwood Tree Camo:" -- a colour. Agents punctuate inconsistently, which is
+     * "Deadwood Tree Camo:" -- a color. Agents punctuate inconsistently, which is
      * precisely why this field needs structuring.
      *
-     * The rule that separates them: a heading introduces a COLOUR, a colour
+     * The rule that separates them: a heading introduces a COLOR, a color
      * introduces COUNTS. So look at what comes next.
      */
     if (/\d/.test(t) && !/:\s*$/.test(t)) {
@@ -153,8 +153,8 @@ export function parseSizeText(text) {
  * ⚠️ Chosen so quantityCheck.sumSizeCounts() reaches the SAME total:
  *   - counts are written as a leading "<n>- ", the dominant shape in live notes;
  *   - size names starting with a digit (2XL) are stripped by its SIZE_TOKEN rule;
- *   - ⚠️ a colour containing a bare number would be summed as a count, so colours
- *     are emitted on their own line exactly as today. Digits in a colour name are a
+ *   - ⚠️ a color containing a bare number would be summed as a count, so colors
+ *     are emitted on their own line exactly as today. Digits in a color name are a
  *     pre-existing hazard in that parser, NOT introduced here -- and for structured
  *     submissions the sum is taken from the rows, never from re-parsing this string.
  */
@@ -186,4 +186,65 @@ export function formatSizeRows(rows) {
 /* The true total, straight from the rows -- no parsing, so no parse bugs. */
 export function sumRows(rows) {
   return (rows || []).reduce((n, r) => n + (r && r.size ? Number(r.count) || 0 : 0), 0);
+}
+
+/*
+ * E-36 -- "How many colors?" first, then that many lines.
+ *
+ * A "color block" is what the rep thinks of as one color: a run of consecutive rows
+ * sharing a style + color. An untouched blank line is its own block (it is a color
+ * waiting to be typed).
+ *
+ * ⚠️ Blank lines never reach the saved string -- formatSizeRows() skips any row with
+ * no size -- so laying lines out ahead of time cannot change `countColorSize`.
+ */
+const hasCount = (r) => r.count === 0 || (r.count !== "" && r.count != null);
+export const isBlankRow = (r) => !r || (!r.color && !r.size && !hasCount(r));
+
+export function countColorBlocks(rows) {
+  let blocks = 0;
+  let prev = null; // key of the previous non-blank row; null after a blank line
+  (rows || []).forEach((r) => {
+    if (isBlankRow(r)) {
+      blocks += 1;
+      prev = null;
+      return;
+    }
+    const key = (r.group || "") + "\u0000" + (r.color || "");
+    if (key !== prev) blocks += 1;
+    prev = key;
+  });
+  return blocks;
+}
+
+export const MAX_COLOR_LINES = 50;
+
+/*
+ * Grow or shrink to `n` color blocks. Growing appends blank lines (inheriting the
+ * last row's style heading). Shrinking removes ONLY untouched blank lines from the
+ * end -- a line with anything typed in it is never dropped; the caller is told via
+ * `blocks > n` so it can say so.
+ */
+export function setColorCount(rows, n) {
+  const want = Math.max(0, Math.min(MAX_COLOR_LINES, parseInt(n, 10) || 0));
+  const next = (rows || []).slice();
+  let blocks = countColorBlocks(next);
+  while (blocks < want) {
+    const last = next[next.length - 1];
+    next.push({ group: (last && last.group) || "", color: "", size: "", count: "" });
+    blocks += 1;
+  }
+  while (blocks > want && next.length && isBlankRow(next[next.length - 1])) {
+    next.pop();
+    blocks -= 1;
+  }
+  return { rows: next, blocks };
+}
+
+/* A new size line directly under row `i`, for the same style + color. */
+export function insertSizeBelow(rows, i) {
+  const src = (rows || [])[i] || {};
+  const next = (rows || []).slice();
+  next.splice(i + 1, 0, { group: src.group || "", color: src.color || "", size: "", count: "" });
+  return next;
 }
