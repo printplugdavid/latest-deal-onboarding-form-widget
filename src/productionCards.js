@@ -75,7 +75,10 @@ function buildProductionCards(data, counts) {
   const meta = { account: data?.contactInfo?.Account_Name, deal: data?.contactInfo?.Deal_Name, rush: data?.upchargedForRushTurnaround === true, due: data?.hardDueDate === "Yes" ? pcDate(data?.dueDate) : "" };
   const byCard = {}; products.forEach((p) => { const r = pcRoute(p); if (!r) return; (byCard[r.card] = byCard[r.card] || []).push({ p, r }); });
   const files = [];
-  const strip = (cm, deptTotal, extra) => `<div class="strip"><div class="stripline"><span class="acct">${pcEsc(meta.account || "—")}</span><span class="deal">${pcEsc(meta.deal || "")}</span>${meta.rush ? `<span class="rush">RUSH</span>` : ""}</div><div class="stripmeta"><span class="dept">${pcEsc(cm.title)}</span>${deptTotal != null ? `<span class="pc">Print Count: <b>${deptTotal}</b></span>` : ""}<span class="due">Due: <b>${pcHas(meta.due) ? pcEsc(meta.due) : "See Closing Date on Deal"}</b></span></div></div>${extra || ""}`;
+  // E-38: the Account's standing notes, on EVERY card (nothing says which department a note is
+  // about). Absent or blank -> not rendered, so cards without notes are exactly what they were.
+  const cnotes = pcHas(data?.customerNotes) ? `<div class="gsummary" style="background:#fff4e5;border-bottom:1px solid #ffd8a8"><b>Customer Notes (every deal for this account):</b><br>${pcEsc(String(data.customerNotes).trim()).replace(/\r?\n/g, "<br>")}</div>` : "";
+  const strip = (cm, deptTotal, extra) => `<div class="strip"><div class="stripline"><span class="acct">${pcEsc(meta.account || "—")}</span><span class="deal">${pcEsc(meta.deal || "")}</span>${meta.rush ? `<span class="rush">RUSH</span>` : ""}</div><div class="stripmeta"><span class="dept">${pcEsc(cm.title)}</span>${deptTotal != null ? `<span class="pc">Print Count: <b>${deptTotal}</b></span>` : ""}<span class="due">Due: <b>${pcHas(meta.due) ? pcEsc(meta.due) : "See Closing Date on Deal"}</b></span></div></div>${cnotes}${extra || ""}`;
   const presentDepts = [...new Set(Object.keys(byCard).map((c) => PC_META[c].dept))]; presentDepts.push("Graphics");
   const footer = (dept) => { const o = presentDepts.filter((d) => d !== dept); return o.length ? `<div class="cfooter">Other departments on this deal: <b>${pcEsc(o.join(", "))}</b></div>` : ""; };
   for (const cardKey of Object.keys(byCard)) {

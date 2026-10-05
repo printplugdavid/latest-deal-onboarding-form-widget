@@ -7,6 +7,7 @@ import {
   FormGroup,
   FormLabel,
   TextField,
+  Tooltip,
   Typography,
   Alert,
   CircularProgress,
@@ -25,6 +26,15 @@ import { gangSheetPrints } from "./gangSheet";
 import { checkGarmentQuantity } from "./quantityCheck";
 import { computePrints } from "./printMath";
 import { buildOnboardingNote } from "./onboardingNote";
+import {
+  CUSTOMER_NOTES_QUESTION,
+  CUSTOMER_NOTES_TOOLTIP,
+  CUSTOMER_NOTES_LIMIT,
+  loadAccountNotes,
+  overLimitBy,
+  saveCustomerNotes,
+  todayStamp,
+} from "./customerNotes";
 import { DatePicker, LocalizationProvider } from "@mui/x-date-pickers";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import dayjs from "dayjs";
@@ -36,6 +46,7 @@ function App() {
   const [entity, setEntity] = useState(null); // keeps the module
   const [entityId, setEntityId] = useState(null); // keeps the module id
   const [recordData, setRecordData] = useState(null); // holds record response
+  const [accountNotes, setAccountNotes] = useState(""); // E-38: Account's Customer Notes at open
 
   const [options, setOptions] = useState(null);
 
@@ -67,6 +78,8 @@ function App() {
           RecordID: entityId,
         });
         setRecordData(recordResp?.data?.[0]);
+        // E-38: the Account's standing Customer Notes, shown read-only. Never blocks the form.
+        loadAccountNotes(recordResp?.data?.[0]).then((a) => setAccountNotes(a?.notes || ""));
 
         const variableResp = await ZOHO.CRM.API.getOrgVariable("products");
         let optionsList = variableResp?.Success?.Content?.split(",");
@@ -128,6 +141,11 @@ function App() {
     name: `howDidYouHearAboutUs`,
   });
 
+  const hasCustomerNotes = useWatch({
+    control,
+    name: `hasCustomerNotes`,
+  });
+
 
   // react-hook-form refuses to run onSubmit when validation fails, and this form renders no
   // error summary anywhere - so a required field would look like a dead Submit button. This
@@ -166,6 +184,25 @@ function App() {
     // builder (src/onboardingNote.js) -- the Amendment Form calls the same function, so an amended
     // order's note can never drift from a fresh onboarding's. Moved verbatim 2026-10-01 (E-24).
     const { content, printFields, cardCounts } = buildOnboardingNote(data);
+
+    // E-38: append the rep's answer to the Account's Customer Notes and make this Deal's field
+    // match. saveCustomerNotes() never throws and makes its own calls, so it cannot block the
+    // counts, the JSON, the cards or the note. `data` itself is not changed (D-5); the copy below
+    // only adds the text the production cards print.
+    let cardData = data;
+    try {
+      const cn = await saveCustomerNotes({
+        entity,
+        recordId: entityId,
+        deal: recordData,
+        entry: data?.hasCustomerNotes === "Yes" ? data?.customerNotesNew : "",
+        dateStr: todayStamp(),
+      });
+      if (cn.combined) cardData = { ...data, customerNotes: cn.combined };
+      if (cn.problem) window.alert("Customer Notes: " + cn.problem + ". The rest of the form is being saved as normal.");
+    } catch (err) {
+      console.log("Customer notes step failed - skipping:", err);
+    }
     
     // go for API call
     // Attempt to update Deal print count fields — silent fallback if fields don't exist yet
@@ -187,7 +224,7 @@ function App() {
       // gangsheet product type (D-13); history and the per-version shape live in docs/06.
       // The stamp is added to the attached copy only -- `data` itself is never retyped (D-5).
       const onboardingJson = JSON.stringify({
-        ...data,
+        ...cardData,
         _schemaVersion: 1,
         _submittedAt: new Date().toISOString(),
       });
@@ -207,7 +244,7 @@ function App() {
     // Generate per-department production cards and attach each to the Deal (create-only,
     // human-readable job sheets). Own try/catch so a failure never blocks the note or counts.
     try {
-      const productionCards = buildProductionCards(data, cardCounts);
+      const productionCards = buildProductionCards(cardData, cardCounts);
       for (let c = 0; c < productionCards.length; c++) {
         try {
           const cardBlob = new Blob([productionCards[c].html], { type: "text/html" });
@@ -686,6 +723,75 @@ function App() {
                 />
               )}
             />
+
+            {/* E-38: standing notes for the ACCOUNT. The answer is appended to the Account's Customer
+                Notes (never replaces them) and shows on every future deal for this customer. */}
+            {accountNotes !== "" && (
+              <Box sx={{ mb: "1rem", p: 1.5, bgcolor: "#fff4e5", border: "1px solid #ffd8a8", borderRadius: 1 }}>
+                <Typography sx={{ fontWeight: 600, fontSize: "0.9rem", mb: 0.5 }}>
+                  Customer Notes already on this account
+                </Typography>
+                <Typography sx={{ fontSize: "0.9rem", whiteSpace: "pre-wrap" }}>{accountNotes}</Typography>
+              </Box>
+            )}
+
+            <Controller
+              control={control}
+              name="hasCustomerNotes"
+              defaultValue={"No"}
+              render={({ field }) => (
+                <Autocomplete
+                  {...field}
+                  id="hasCustomerNotes"
+                  size="small"
+                  options={["Yes", "No"]}
+                  getOptionLabel={(option) => option}
+                  onChange={(_, data) => field.onChange(data)}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      sx={{ mb: "0.8rem", mt: "5px" }}
+                      label="Details to consider for ALL future deals in this account?"
+                      helperText={CUSTOMER_NOTES_QUESTION}
+                    />
+                  )}
+                />
+              )}
+            />
+
+            {hasCustomerNotes === "Yes" && (
+              <Controller
+                control={control}
+                name="customerNotesNew"
+                defaultValue=""
+                rules={{
+                  validate: (value) => {
+                    const over = overLimitBy(accountNotes, value, todayStamp());
+                    return (
+                      over === 0 ||
+                      `Too long by ${over} characters - the account's Customer Notes field holds ${CUSTOMER_NOTES_LIMIT}. Shorten this, or tidy the old notes on the Account page.`
+                    );
+                  },
+                }}
+                render={({ field, fieldState }) => (
+                  <Tooltip title={CUSTOMER_NOTES_TOOLTIP} placement="top-start" arrow>
+                    <TextField
+                      multiline
+                      rows={3}
+                      size="small"
+                      id="customerNotesNew"
+                      variant="outlined"
+                      fullWidth
+                      label="Customer Notes to add to this account"
+                      error={!!fieldState.error}
+                      helperText={fieldState.error?.message || CUSTOMER_NOTES_TOOLTIP}
+                      {...field}
+                      sx={{ mb: "1rem", mt: "5px" }}
+                    />
+                  </Tooltip>
+                )}
+              />
+            )}
 
             <Controller
               control={control}

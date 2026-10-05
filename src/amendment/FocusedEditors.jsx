@@ -9,7 +9,7 @@
  * field" in AmendmentApp mounts the whole GarmentPrimaryBranchForm as the escape hatch.
  */
 import React from "react";
-import { Alert, Box, TextField, Typography } from "@mui/material";
+import { Alert, Box, Button, TextField, Typography } from "@mui/material";
 import { Controller, useFormContext, useWatch } from "react-hook-form";
 import SizeRowsField from "../components/SizeRowsField";
 import GarmentSecondaryBranchForm from "../components/GarmentSecondaryBranchForm";
@@ -94,27 +94,61 @@ export const GarmentSwapEditor = ({ p, g }) => {
   );
 };
 
+/*
+ * Adding a placement or a graphic (David, 2026-10-05: "the Amendment Form does not have
+ * functionality to add placements to garments?"). It always could -- raising "Number of Placements"
+ * inside a graphic adds a row -- but nothing said so, and a whole new graphic needed "Show every
+ * field". These buttons do the same thing the number boxes do, in plain sight:
+ *   - a placement: bump that graphic's numberOfPlacements; the mounted GarmentSecondaryBranchForm
+ *     reacts exactly as if the agent had typed the number (it owns the placement rows).
+ *   - a graphic: GarmentPrimaryBranchForm is NOT mounted here, so its numberOfGraphics watcher is
+ *     not running -- append the row and set the count together, as addGarment() does one level up.
+ */
 export const GraphicsEditor = ({ p, g, options, productName }) => {
-  const { control } = useFormContext();
+  const { control, getValues, setValue } = useFormContext();
   const graphics = useWatch({ control, name: `${base(p, g)}.secondaryBranches` }) || [];
+  const placementCount = (s) => {
+    const gr = getValues(`${base(p, g)}.secondaryBranches.${s}`) || {};
+    const typed = parseInt(gr.numberOfPlacements, 10);
+    return isNaN(typed) ? (gr.tartiaryBranches || []).length : typed;
+  };
+  const addPlacement = (s) =>
+    setValue(`${base(p, g)}.secondaryBranches.${s}.numberOfPlacements`, String(placementCount(s) + 1), {
+      shouldDirty: true,
+    });
+  const addGraphic = () => {
+    const path = `${base(p, g)}.secondaryBranches`;
+    const cur = getValues(path) || [];
+    setValue(path, [...cur, { name: "" }], { shouldDirty: true });
+    setValue(`${base(p, g)}.numberOfGraphics`, String(cur.length + 1), { shouldDirty: true });
+  };
   return (
     <Box>
       <Heading>Graphics and placements</Heading>
       {graphics.length === 0 && (
-        <Typography variant="body2" color="text.secondary">
-          This garment has no graphics recorded. Use "Show every field" to add one.
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+          This garment has no graphics recorded yet.
         </Typography>
       )}
       {graphics.map((_, s) => (
-        <GarmentSecondaryBranchForm
-          key={`${p}-${g}-${s}`}
-          index={p}
-          branchIndex={g}
-          secBranchIndex={s}
-          options={options}
-          productName={productName}
-        />
+        <Box key={`${p}-${g}-${s}`} sx={{ overflow: "auto", mb: 1 }}>
+          <GarmentSecondaryBranchForm
+            index={p}
+            branchIndex={g}
+            secBranchIndex={s}
+            options={options}
+            productName={productName}
+          />
+          <Box sx={{ clear: "both", textAlign: "right" }}>
+            <Button size="small" variant="outlined" onClick={() => addPlacement(s)}>
+              + Add a placement to graphic {s + 1}
+            </Button>
+          </Box>
+        </Box>
       ))}
+      <Button size="small" variant="outlined" onClick={addGraphic} sx={{ mt: 1 }}>
+        + Add a graphic to this garment
+      </Button>
     </Box>
   );
 };
