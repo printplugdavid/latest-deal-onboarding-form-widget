@@ -387,15 +387,17 @@ const AmendmentApp = () => {
   // cannot trip a rule that did not exist when the deal was onboarded.
   const onInvalid = (formErrors) => {
     const names = [];
-    const walk = (node) => {
+    // The error tree mirrors the field path, so the path names the field even when the input's
+    // ref carries no name (an Autocomplete -- e.g. a new placement's required "Placement Size").
+    const walk = (node, path) => {
       if (!node || typeof node !== "object") return;
       if (node.type && node.ref) {
-        names.push(node.ref.name || "");
+        names.push(node.ref.name || path);
         return;
       }
-      Object.values(node).forEach(walk);
+      Object.entries(node).forEach(([k, v]) => walk(v, path ? path + "." + k : k));
     };
-    walk(formErrors);
+    walk(formErrors, "");
     const list = [...new Set(names.filter(Boolean).map((n) => describePath(n, current)))];
     window.alert(
       "This amendment can't be saved yet — please fill in:" +
