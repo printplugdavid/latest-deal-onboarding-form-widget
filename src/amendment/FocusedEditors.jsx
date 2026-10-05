@@ -119,12 +119,19 @@ export const GraphicsEditor = ({ p, g, options, productName }) => {
   const addGraphic = () => {
     const path = `${base(p, g)}.secondaryBranches`;
     const cur = getValues(path) || [];
-    setValue(path, [...cur, { name: "" }], { shouldDirty: true });
+    // A new graphic starts with ONE placement row open: "another print somewhere else on this
+    // garment" is a graphic plus where it goes, and an empty graphic with no placement counts 0.
+    setValue(path, [...cur, { name: "", numberOfPlacements: "1" }], { shouldDirty: true });
     setValue(`${base(p, g)}.numberOfGraphics`, String(cur.length + 1), { shouldDirty: true });
   };
   return (
     <Box>
       <Heading>Graphics and placements</Heading>
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+        A different design going somewhere else on this garment (a new back print, a sleeve logo)? Use{" "}
+        <b>Add another print to this garment</b> at the bottom. The same design in one more spot? Use{" "}
+        <b>Same graphic, another placement</b> under that graphic.
+      </Typography>
       {graphics.length === 0 && (
         <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
           This garment has no graphics recorded yet.
@@ -141,13 +148,13 @@ export const GraphicsEditor = ({ p, g, options, productName }) => {
           />
           <Box sx={{ clear: "both", textAlign: "right" }}>
             <Button size="small" variant="outlined" onClick={() => addPlacement(s)}>
-              + Add a placement to graphic {s + 1}
+              + Same graphic, another placement (graphic {s + 1})
             </Button>
           </Box>
         </Box>
       ))}
-      <Button size="small" variant="outlined" onClick={addGraphic} sx={{ mt: 1 }}>
-        + Add a graphic to this garment
+      <Button size="small" variant="contained" onClick={addGraphic} sx={{ mt: 1 }}>
+        + Add another print to this garment (new graphic + placement)
       </Button>
     </Box>
   );
