@@ -41,6 +41,7 @@ import {
   TextField,
   ToggleButton,
   ToggleButtonGroup,
+  Tooltip,
   Typography,
 } from "@mui/material";
 import { FormProvider, useFieldArray, useForm, useWatch } from "react-hook-form";
@@ -54,6 +55,15 @@ import DtfGangSheetForm from "../components/DtfGangSheetForm";
 import { computePrints } from "../printMath";
 import { buildOnboardingNote } from "../onboardingNote";
 import { buildProductionCards } from "../productionCards";
+import {
+  CUSTOMER_NOTES_QUESTION,
+  CUSTOMER_NOTES_TOOLTIP,
+  CUSTOMER_NOTES_LIMIT,
+  loadAccountNotes,
+  overLimitBy,
+  saveCustomerNotes,
+  todayStamp,
+} from "../customerNotes";
 import { newestFirst, readFileText } from "../zohoFiles";
 import { AmendContact, AmendDates } from "./AmendSections";
 import { parseNoteToForm, toPlainText } from "./noteToForm";
@@ -84,6 +94,7 @@ const WHAT_CHANGED = [
   { key: "removed", label: "Product removed" },
   { key: "dates", label: "Dates" },
   { key: "contact", label: "Contact / shipping" },
+  { key: "custnotes", label: "Customer notes (for the account)" },
 ];
 
 const tagOf = (p) => `${p?.productName}#${p?.productType}`;
@@ -217,6 +228,8 @@ const AmendmentApp = () => {
   const [changed, setChanged] = useState([]);
   const [productIdx, setProductIdx] = useState(null);
   const [story, setStory] = useState("");
+  const [custNote, setCustNote] = useState(""); // E-38: a note to ADD to the Account's Customer Notes
+  const [accountNotes, setAccountNotes] = useState(""); // E-38: what the Account holds at open
   const [removed, setRemoved] = useState([]); // indices into products; see the header comment
   const [removedGarments, setRemovedGarments] = useState([]); // "p.g" keys, same idea one level down
   const [garmentIdx, setGarmentIdx] = useState(null);
@@ -248,6 +261,7 @@ const AmendmentApp = () => {
       try {
         const res = await loadDeal(entity, recordId);
         setLoaded(res);
+        loadAccountNotes(res?.deal).then((a) => setAccountNotes(a?.notes || "")); // E-38, never fatal
         if (!res.json) {
           setState({ status: "nojson" });
           return;
@@ -268,12 +282,21 @@ const AmendmentApp = () => {
   const isRemoved = (i) => removed.includes(i);
   const has = (key) => changed.includes(key);
 
-  const lines = useMemo(
+  const fieldLines = useMemo(
     () =>
       original.current && current
         ? summariseAmendmentWithGarments(original.current, current, removed, removedGarments)
         : [],
     [current, removed, removedGarments]
+  );
+  // E-38: a customer note is a change in its own right -- it can be the only thing amended.
+  const custNoteOver = overLimitBy(accountNotes, custNote, todayStamp());
+  const lines = useMemo(
+    () =>
+      custNote.trim()
+        ? [...fieldLines, "Customer note added to the account (shows on every future deal): " + custNote.trim()]
+        : fieldLines,
+    [fieldLines, custNote]
   );
   // Indices here are the on-screen ones (nothing spliced), so the lookup uses the unfiltered merge.
   const merged = useMemo(
@@ -390,6 +413,12 @@ const AmendmentApp = () => {
       window.alert("Please say in your own words what happened (step 4) before saving.");
       return;
     }
+    if (custNote.trim() && custNoteOver > 0) {
+      window.alert(
+        `The customer note is too long by ${custNoteOver} characters - the account's Customer Notes field holds ${CUSTOMER_NOTES_LIMIT}. Shorten it, or tidy the old notes on the Account page.`
+      );
+      return;
+    }
     setSaving(true);
     const { entity, recordId } = ctx.current;
     const when = nowStamp();
@@ -406,6 +435,21 @@ const AmendmentApp = () => {
         return false;
       }
     };
+
+    // E-38 first: append the customer note to the Account and make the Deal match, so the cards and
+    // the JSON below carry the result. Runs even with no new note, to refresh what the cards print.
+    let cardSource = saved;
+    await step(custNote.trim() ? "customer note (Account + Deal)" : "customer notes on the cards", async () => {
+      const cn = await saveCustomerNotes({
+        entity,
+        recordId,
+        deal: loaded.deal,
+        entry: custNote,
+        dateStr: today(),
+      });
+      if (cn.combined) cardSource = { ...saved, customerNotes: cn.combined };
+      if (custNote.trim() && cn.problem) throw new Error(cn.problem);
+    });
 
     // One source for everything written: the amended tree, through the onboarding form's own builder.
     const { content, printFields, cardCounts } = buildOnboardingNote(saved);
@@ -426,7 +470,7 @@ const AmendmentApp = () => {
     //    an _amendment record. `_` keys are ignored by every reader (toFormValues strips them).
     await step("onboarding data", async () => {
       const json = JSON.stringify({
-        ...saved,
+        ...cardSource,
         _schemaVersion: 1,
         _submittedAt: new Date().toISOString(),
         ...(carry ? { _source: "note" } : {}),
@@ -442,7 +486,7 @@ const AmendmentApp = () => {
     // 2. regenerated cards -- not in carry mode: a card built from a lossy parse would look
     //    authoritative while missing answers, and these deals never had cards.
     if (!carry) await step("production cards", async () => {
-      const cards = buildProductionCards(saved, cardCounts);
+      const cards = buildProductionCards(cardSource, cardCounts);
       for (let c = 0; c < cards.length; c++) {
         await ZOHO.CRM.API.attachFile({
           Entity: entity,
@@ -815,6 +859,46 @@ The panel at the bottom shows exactly what will be recorded. Saving posts a new 
               Contact / shipping
             </Typography>
             <AmendContact />
+          </Box>
+        )}
+
+        {has("custnotes") && (
+          <Box sx={{ border: "1px solid #ccc", p: 2, my: 2 }}>
+            <Typography fontWeight="bold" sx={{ mb: 1 }}>
+              Customer notes (for the account)
+            </Typography>
+            <Typography variant="body2" sx={{ mb: 1 }}>
+              {CUSTOMER_NOTES_QUESTION}
+            </Typography>
+            {accountNotes !== "" ? (
+              <Box sx={{ mb: 2, p: 1.5, bgcolor: "#fff4e5", border: "1px solid #ffd8a8", borderRadius: 1 }}>
+                <Typography sx={{ fontWeight: 600, fontSize: "0.9rem", mb: 0.5 }}>
+                  Already on this account (kept as it is)
+                </Typography>
+                <Typography sx={{ fontSize: "0.9rem", whiteSpace: "pre-wrap" }}>{accountNotes}</Typography>
+              </Box>
+            ) : (
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                This account has no Customer Notes yet.
+              </Typography>
+            )}
+            <Tooltip title={CUSTOMER_NOTES_TOOLTIP} placement="top-start" arrow>
+              <TextField
+                multiline
+                minRows={3}
+                fullWidth
+                size="small"
+                label="Customer Notes to add to this account"
+                value={custNote}
+                onChange={(e) => setCustNote(e.target.value)}
+                error={custNoteOver > 0}
+                helperText={
+                  custNoteOver > 0
+                    ? `Too long by ${custNoteOver} characters - the field holds ${CUSTOMER_NOTES_LIMIT}.`
+                    : CUSTOMER_NOTES_TOOLTIP
+                }
+              />
+            </Tooltip>
           </Box>
         )}
 
