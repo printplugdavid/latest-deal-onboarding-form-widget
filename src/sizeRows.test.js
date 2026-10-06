@@ -245,3 +245,47 @@ describe("E-36 -- how many colors, then that many lines", () => {
     expect(countColorBlocks(r)).toBe(2);
   });
 });
+
+describe("E-45 -- tall sizes", () => {
+  const TALL = ["LT", "XLT", "2XLT", "3XLT", "4XLT"];
+  test("are offered, and every size is still offered once", () => {
+    TALL.forEach((t) => expect(SIZE_OPTIONS).toContain(t));
+    expect(new Set(SIZE_OPTIONS).size).toBe(SIZE_OPTIONS.length);
+    ["XXS", "XS", "S", "M", "L", "XL", "2XL", "3XL", "4XL", "5XL", "OSFA", "YXS", "YS", "YM", "YL", "YXL"].forEach((s) =>
+      expect(SIZE_OPTIONS).toContain(s)
+    );
+  });
+  test("what reps type is recognized -- and regular sizes are not mistaken for tall", () => {
+    expect(normalizeSize("LT")).toBe("LT");
+    expect(normalizeSize("Large Tall")).toBe("LT");
+    expect(normalizeSize("XL Tall")).toBe("XLT");
+    expect(normalizeSize("2xlt")).toBe("2XLT");
+    expect(normalizeSize("2X Tall")).toBe("2XLT");
+    expect(normalizeSize("XXXLT")).toBe("3XLT");
+    expect(normalizeSize("4XLT")).toBe("4XLT");
+    expect(normalizeSize("L")).toBe("L");
+    expect(normalizeSize("XL")).toBe("XL");
+    expect(normalizeSize("2XL")).toBe("2XL");
+    expect(normalizeSize("Tall")).toBe(null);
+  });
+  test("rows round-trip through the saved text, and the total is the row total", () => {
+    const rows = [
+      { group: "", color: "Navy", size: "LT", count: 3 },
+      { group: "", color: "Navy", size: "2XLT", count: 3 },
+      { group: "", color: "Navy", size: "4XLT", count: 1 },
+      { group: "", color: "Navy", size: "2XL", count: 2 },
+    ];
+    const text = formatSizeRows(rows);
+    expect(text).toBe("Navy\n3- LT\n3- 2XLT\n1- 4XLT\n2- 2XL");
+    expect(parseSizeText(text).rows).toEqual(rows);
+    expect(parseSizeText(text).unparsed).toEqual([]);
+    // ⚠️ the sizes-vs-total check must not count the 2 and the 4 in "2XLT" / "4XLT" as garments
+    expect(sumSizeCounts(text).sum).toBe(9);
+    expect(sumRows(rows)).toBe(9);
+  });
+  test("the sizes check still strips ordinary digit sizes and still counts real numbers", () => {
+    expect(sumSizeCounts("Black 5- Small, 5- Medium, 7- Large, 6- XL, 1- 4XL").sum).toBe(24);
+    expect(sumSizeCounts("2- 3XLT, 1- 3XL, 4- XLT").sum).toBe(7);
+    expect(sumSizeCounts("12 Large Tall").sum).toBe(12);
+  });
+});

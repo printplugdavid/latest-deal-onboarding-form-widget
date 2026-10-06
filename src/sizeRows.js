@@ -28,7 +28,10 @@
 // The sizes offered as choices. Matches the revision form's affected.js so the two
 // forms speak the same vocabulary. OTHER lets an agent type anything we missed.
 export const SIZE_OPTIONS = [
-  "XXS", "XS", "S", "M", "L", "XL", "2XL", "3XL", "4XL", "5XL", "OSFA",
+  "XXS", "XS", "S", "M", "L", "XL", "2XL", "3XL", "4XL", "5XL",
+  // Tall sizes (E-45, sales request 2026-10-06). Like youth, NOT in the revision form's list.
+  "LT", "XLT", "2XLT", "3XLT", "4XLT",
+  "OSFA",
   // ⚠️ Youth sizes are NOT in the revision form's affected.js list, but they are
   // all over real onboarding data -- "2- Youth Large" / "2- Youth XL" on deal
   // 5249739000123007161. Without them every youth line would fall to `unparsed`.
@@ -41,6 +44,7 @@ export const SIZE_OPTIONS = [
 export const SIZE_LABELS = {
   YXS: "Youth XS", YS: "Youth S", YM: "Youth M", YL: "Youth L", YXL: "Youth XL",
   OSFA: "OSFA (one size)",
+  LT: "LT (Large Tall)", XLT: "XLT (XL Tall)", "2XLT": "2XLT (2XL Tall)", "3XLT": "3XLT (3XL Tall)", "4XLT": "4XLT (4XL Tall)",
 };
 export const OTHER_SIZE = "__other__";
 
@@ -65,6 +69,12 @@ const SIZE_ALIASES = {
   yl: "YL", youthl: "YL", youthlarge: "YL", ylarge: "YL",
   yxl: "YXL", youthxl: "YXL", youthxlarge: "YXL", youthextralarge: "YXL",
   y2xl: "YXL",
+  // Tall. Agents write "LT", "Large Tall", "Tall Large", "XL Tall", "2XLT", "2X Tall", "XXLT".
+  lt: "LT", largetall: "LT", ltall: "LT", talllarge: "LT", talll: "LT",
+  xlt: "XLT", xltall: "XLT", xlargetall: "XLT", extralargetall: "XLT", tallxl: "XLT",
+  "2xlt": "2XLT", "2xltall": "2XLT", "2xtall": "2XLT", xxlt: "2XLT", xxltall: "2XLT", tall2xl: "2XLT",
+  "3xlt": "3XLT", "3xltall": "3XLT", "3xtall": "3XLT", xxxlt: "3XLT", xxxltall: "3XLT", tall3xl: "3XLT",
+  "4xlt": "4XLT", "4xltall": "4XLT", "4xtall": "4XLT", xxxxlt: "4XLT", tall4xl: "4XLT",
 };
 
 /* "Small" -> "S", "2Xl" -> "2XL", "Mdeium" -> "M", "Tall 3" -> null (unrecognised) */
