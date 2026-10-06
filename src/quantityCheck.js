@@ -13,8 +13,9 @@
  * onSubmit prints the same finding in the note.
  */
 
-// Size names that start with a digit -- 2XL, 3X, 4 XL. Those digits are not quantities.
-const SIZE_TOKEN = /\b\d+\s*X+\s*L?\b/gi;
+// Size names that start with a digit -- 2XL, 3X, 4 XL, and the tall ones 2XLT / 3XLT / 4XLT
+// (E-45). Those digits are not quantities. ⚠️ Without the optional T, "3- 2XLT" summed to 5.
+const SIZE_TOKEN = /\b\d+\s*X+\s*L?\s*T?\b/gi;
 // A number that is a measurement, not a count: 3.5", 12”, 6 inch, 10 inches.
 const MEASUREMENT = /\b\d+(\.\d+)?\s*(?:"|”|''|'|in\b|inch\w*)/gi;
 const DECIMAL = /\b\d+\.\d+\b/g;
