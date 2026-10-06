@@ -13,6 +13,7 @@ import { Alert, Box, Button, TextField, Typography } from "@mui/material";
 import { Controller, useFormContext, useWatch } from "react-hook-form";
 import SizeRowsField from "../components/SizeRowsField";
 import GarmentSecondaryBranchForm from "../components/GarmentSecondaryBranchForm";
+import LumpedGuard from "../components/LumpedGuard";
 import { checkGarmentQuantity } from "../quantityCheck";
 
 const base = (p, g) => `products.${p}.primaryBranches.${g}`;
@@ -118,6 +119,7 @@ export const GraphicsEditor = ({ p, g, options, productName }) => {
   return (
     <Box>
       <Heading>Graphics and placements</Heading>
+      <LumpedGuard index={p} branchIndex={g} />
       <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
         A different design going somewhere else on this garment (a new back print, a sleeve logo)? Use{" "}
         <b>Add another print to this garment</b> at the bottom. The same design in one more spot? Use{" "}

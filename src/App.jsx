@@ -26,6 +26,7 @@ import { gangSheetPrints } from "./gangSheet";
 import { checkGarmentQuantity } from "./quantityCheck";
 import { computePrints } from "./printMath";
 import { buildOnboardingNote } from "./onboardingNote";
+import { lumpedConcerns, LUMPED_QUESTION } from "./lumpedOrder";
 import {
   CUSTOMER_NOTES_QUESTION,
   CUSTOMER_NOTES_TOOLTIP,
@@ -172,6 +173,21 @@ function App() {
   };
 
   const onSubmit = async (data) => {
+    // E-42: a garment type that looks like several (styles/colors + graphics) and was not answered
+    // "Yes" gets one last question. Cancel returns to the form; OK submits exactly as entered.
+    const lumped = lumpedConcerns(data?.products);
+    if (lumped.length) {
+      const lines = lumped.map(
+        (c) => "- " + c.label + (c.answer === "No" ? " (you answered No)" : " (not answered)") + ": " + c.explanation
+      );
+      const go = window.confirm(
+        "Check before submitting - the print count may be too high:\n\n" +
+          lines.join("\n") +
+          "\n\n\"" + LUMPED_QUESTION + "\" If not, press Cancel and split it into separate garment types." +
+          "\n\nOK = submit as entered.   Cancel = go back."
+      );
+      if (!go) return;
+    }
     setLoading(true);
     console.log("Collected Form Data:", data);
 

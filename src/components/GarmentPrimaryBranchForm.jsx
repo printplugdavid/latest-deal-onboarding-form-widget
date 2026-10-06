@@ -18,6 +18,7 @@ import {
 import GarmentSecondaryBranchForm from "./GarmentSecondaryBranchForm";
 import SizeRowsField from "./SizeRowsField";
 import { checkGarmentQuantity } from "../quantityCheck";
+import LumpedGuard from "./LumpedGuard";
 
 const GarmentPrimaryBranchForm = ({
   index,
@@ -250,6 +251,9 @@ const GarmentPrimaryBranchForm = ({
           />
         )}
       />
+
+      {/* E-42: several styles/colors AND several graphics -> ask if every graphic is on every garment. */}
+      <LumpedGuard index={index} branchIndex={branchIndex} />
 
       {secondaryBranches?.map((_, secBranchIndex) => (
         <GarmentSecondaryBranchForm

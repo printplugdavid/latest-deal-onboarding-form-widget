@@ -186,6 +186,7 @@ const FIELD_LABELS = {
   numberOfColorsUsed: "Number of Colors",
   quantityOrdered: "Quantity Ordered",
   sku: "SKU",
+  everyGraphicOnEveryGarment: "Every graphic goes on every garment",
 };
 
 export const humanize = (key) => {
