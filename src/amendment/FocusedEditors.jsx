@@ -99,23 +99,14 @@ export const GarmentSwapEditor = ({ p, g }) => {
  * functionality to add placements to garments?"). It always could -- raising "Number of Placements"
  * inside a graphic adds a row -- but nothing said so, and a whole new graphic needed "Show every
  * field". These buttons do the same thing the number boxes do, in plain sight:
- *   - a placement: bump that graphic's numberOfPlacements; the mounted GarmentSecondaryBranchForm
- *     reacts exactly as if the agent had typed the number (it owns the placement rows).
+ *   - a placement: since E-40 the "+ Add placement" button lives inside the graphic itself
+ *     (GarmentSecondaryBranchForm), shared with the onboarding form.
  *   - a graphic: GarmentPrimaryBranchForm is NOT mounted here, so its numberOfGraphics watcher is
  *     not running -- append the row and set the count together, as addGarment() does one level up.
  */
 export const GraphicsEditor = ({ p, g, options, productName }) => {
   const { control, getValues, setValue } = useFormContext();
   const graphics = useWatch({ control, name: `${base(p, g)}.secondaryBranches` }) || [];
-  const placementCount = (s) => {
-    const gr = getValues(`${base(p, g)}.secondaryBranches.${s}`) || {};
-    const typed = parseInt(gr.numberOfPlacements, 10);
-    return isNaN(typed) ? (gr.tartiaryBranches || []).length : typed;
-  };
-  const addPlacement = (s) =>
-    setValue(`${base(p, g)}.secondaryBranches.${s}.numberOfPlacements`, String(placementCount(s) + 1), {
-      shouldDirty: true,
-    });
   const addGraphic = () => {
     const path = `${base(p, g)}.secondaryBranches`;
     const cur = getValues(path) || [];
@@ -130,7 +121,7 @@ export const GraphicsEditor = ({ p, g, options, productName }) => {
       <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
         A different design going somewhere else on this garment (a new back print, a sleeve logo)? Use{" "}
         <b>Add another print to this garment</b> at the bottom. The same design in one more spot? Use{" "}
-        <b>Same graphic, another placement</b> under that graphic.
+        <b>+ Add placement</b> inside that graphic.
       </Typography>
       {graphics.length === 0 && (
         <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
@@ -146,11 +137,6 @@ export const GraphicsEditor = ({ p, g, options, productName }) => {
             options={options}
             productName={productName}
           />
-          <Box sx={{ clear: "both", textAlign: "right" }}>
-            <Button size="small" variant="outlined" onClick={() => addPlacement(s)}>
-              + Same graphic, another placement (graphic {s + 1})
-            </Button>
-          </Box>
         </Box>
       ))}
       <Button size="small" variant="contained" onClick={addGraphic} sx={{ mt: 1 }}>

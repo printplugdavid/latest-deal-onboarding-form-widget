@@ -1,6 +1,32 @@
-import { Autocomplete, Box, TextField, Typography } from "@mui/material";
+import { Autocomplete, Box, IconButton, TextField, Tooltip } from "@mui/material";
 import React from "react";
-import { Controller, useFormContext, useWatch } from "react-hook-form";
+import { Controller, useFormContext } from "react-hook-form";
+
+/*
+ * One placement = ONE ROW (E-40, 2026-10-06): location · dimensions · size · remove -- laid out
+ * like the color / size rows, instead of three stacked full-width boxes per placement.
+ *
+ * ⚠️ LAYOUT ONLY. The three answers are saved under exactly the same names as before
+ * (placementLocation, sizeAndDimensions, placementSize), so the note, the JSON, the production
+ * cards, printMath and both note parsers see what they have always seen.
+ *
+ * Location offers the common spots but stays free text: anything typed is kept as typed.
+ */
+export const PLACEMENT_LOCATIONS = [
+  "Left Chest",
+  "Right Chest",
+  "Center Chest",
+  "Full Front",
+  "Full Back",
+  "Upper Back / Nape",
+  "Lower Back",
+  "Left Sleeve",
+  "Right Sleeve",
+  "Front of Hat",
+  "Left Side of Hat",
+  "Right Side of Hat",
+  "Back of Hat",
+];
 
 const GarmentTartiaryBranch = ({
   index,
@@ -9,62 +35,74 @@ const GarmentTartiaryBranch = ({
   tarBranchIndex,
   options,
   productName,
+  onRemove,
 }) => {
   const { control } = useFormContext();
+  const base = `products.${index}.primaryBranches.${branchIndex}.secondaryBranches.${secBranchIndex}.tartiaryBranches.${tarBranchIndex}`;
 
   return (
-    <Box sx={{ width: "95%", mb: 2, float: "right" }}>
-      <Typography
-        variant="p"
-        sx={{
-          pb: "1rem",
-          fontSize: "0.9rem",
-          fontWeight: "bold",
-          display: "block",
-        }}
-      >
-        {`Placement ${tarBranchIndex + 1}`}
-      </Typography>
-
+    <Box
+      sx={{
+        width: "95%",
+        ml: "auto",
+        mb: "0.6rem",
+        display: "flex",
+        gap: "0.5rem",
+        alignItems: "flex-start",
+      }}
+    >
       <Controller
         control={control}
-        name={`products.${index}.primaryBranches.${branchIndex}.secondaryBranches.${secBranchIndex}.tartiaryBranches.${tarBranchIndex}.placementLocation`}
+        name={`${base}.placementLocation`}
         defaultValue=""
         render={({ field }) => (
-          <TextField
-            size="small"
-            id="placementLocation"
-            variant="outlined"
-            fullWidth
-            label="Placement Location"
-            {...field}
-            sx={{ mb: "1rem", mt: "5px" }}
+          <Autocomplete
+            freeSolo
+            options={PLACEMENT_LOCATIONS}
+            value={field.value || ""}
+            onChange={(_, newValue) => field.onChange(newValue || "")}
+            onInputChange={(_, newValue, reason) => {
+              // "reset" is MUI echoing the current value back (on mount, after a pick) -- not the
+              // agent typing. Ignoring it means opening a deal can never register as a change.
+              if (reason !== "reset") field.onChange(newValue || "");
+            }}
+            sx={{ flex: "2 1 0", minWidth: 0 }}
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                id="placementLocation"
+                size="small"
+                variant="outlined"
+                label={`Placement ${tarBranchIndex + 1} - Location`}
+                inputRef={field.ref}
+              />
+            )}
           />
         )}
       />
 
       <Controller
         control={control}
-        name={`products.${index}.primaryBranches.${branchIndex}.secondaryBranches.${secBranchIndex}.tartiaryBranches.${tarBranchIndex}.sizeAndDimensions`}
+        name={`${base}.sizeAndDimensions`}
         defaultValue=""
         render={({ field }) => (
           <TextField
             multiline
-            rows={3}
+            minRows={1}
+            maxRows={4}
             size="small"
             id="sizeAndDimensions"
             variant="outlined"
-            fullWidth
             label="Size & Dimensions"
             {...field}
-            sx={{ mb: "1rem", mt: "5px" }}
+            sx={{ flex: "2 1 0", minWidth: 0 }}
           />
         )}
       />
 
       <Controller
         control={control}
-        name={`products.${index}.primaryBranches.${branchIndex}.secondaryBranches.${secBranchIndex}.tartiaryBranches.${tarBranchIndex}.placementSize`}
+        name={`${base}.placementSize`}
         defaultValue=""
         rules={{
           // Required on Embroidery only: the size drives the Small/Medium/Large Deal fields,
@@ -78,6 +116,7 @@ const GarmentTartiaryBranch = ({
             options={["Small", "Medium", "Large"]}
             value={field.value || ""}
             onChange={(_, newValue) => field.onChange(newValue)}
+            sx={{ flex: "0 0 10.5rem" }}
             renderInput={(params) => (
               <TextField
                 {...params}
@@ -91,12 +130,23 @@ const GarmentTartiaryBranch = ({
                 fullWidth
                 error={!!fieldState.error}
                 helperText={fieldState.error?.message}
-                sx={{ mb: "1rem", mt: "5px" }}
               />
             )}
           />
         )}
       />
+
+      {onRemove && (
+        <Tooltip title="Remove this placement">
+          <IconButton
+            aria-label={`Remove placement ${tarBranchIndex + 1}`}
+            onClick={() => onRemove(tarBranchIndex)}
+            sx={{ mt: "2px" }}
+          >
+            ✕
+          </IconButton>
+        </Tooltip>
+      )}
     </Box>
   );
 };

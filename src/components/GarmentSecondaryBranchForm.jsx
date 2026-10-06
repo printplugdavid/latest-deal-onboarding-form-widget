@@ -1,13 +1,14 @@
 import {
   Autocomplete,
   Box,
+  Button,
   Checkbox,
   FormControlLabel,
   FormGroup,
   TextField,
   Typography,
 } from "@mui/material";
-import React, { useEffect } from "react";
+import React, { useEffect, useRef } from "react";
 import {
   Controller,
   useFieldArray,
@@ -23,7 +24,7 @@ const GarmentSecondaryBranchForm = ({
   options,
   productName,
 }) => {
-  const { control } = useFormContext();
+  const { control, setValue } = useFormContext();
 
   const colorChange = useWatch({
     control,
@@ -49,7 +50,26 @@ const GarmentSecondaryBranchForm = ({
     name: `products.${index}.primaryBranches.${branchIndex}.secondaryBranches.${secBranchIndex}.tartiaryBranches`,
   });
 
+  // E-40: "How many placements?" drives the rows (type 3 -> three lines); the + and X buttons
+  // change the rows and set the number to match. When X removes a row from the MIDDLE, the
+  // number-follows-rows sync below must not also trim the last row -- hence the one-shot skip.
+  const skipSyncFor = useRef(null);
+  const placementsPath = `products.${index}.primaryBranches.${branchIndex}.secondaryBranches.${secBranchIndex}.numberOfPlacements`;
+  const addPlacementRow = () =>
+    setValue(placementsPath, String(tartiaryBranches.length + 1), { shouldDirty: true });
+  const removePlacementRow = (i) => {
+    const next = String(tartiaryBranches.length - 1);
+    skipSyncFor.current = next;
+    remove(i);
+    setValue(placementsPath, next, { shouldDirty: true });
+  };
+
   useEffect(() => {
+    if (skipSyncFor.current !== null && String(numberOfPlacements) === skipSyncFor.current) {
+      skipSyncFor.current = null;
+      return;
+    }
+    skipSyncFor.current = null;
     const num = parseInt(numberOfPlacements);
     if (!isNaN(num) && num >= 0) {
       const currentLength = tartiaryBranches.length;
@@ -333,7 +353,7 @@ const GarmentSecondaryBranchForm = ({
             variant="outlined"
             size="small"
             fullWidth
-            label="Number of Placements"
+            label="How many placements?"
             type="number"
             error={!!fieldState.error}
             helperText={fieldState.error?.message}
@@ -351,8 +371,15 @@ const GarmentSecondaryBranchForm = ({
           tarBranchIndex={tarBranchIndex}
           options={options}
           productName={productName}
+          onRemove={removePlacementRow}
         />
       ))}
+
+      <Box sx={{ width: "95%", ml: "auto", mb: "0.5rem" }}>
+        <Button size="small" variant="outlined" onClick={addPlacementRow}>
+          + Add placement
+        </Button>
+      </Box>
     </Box>
   );
 };
