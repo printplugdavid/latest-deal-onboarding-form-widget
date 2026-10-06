@@ -59,11 +59,14 @@ const GarmentTartiaryBranch = ({
           <Autocomplete
             freeSolo
             options={PLACEMENT_LOCATIONS}
-            value={field.value || ""}
+            // The TEXT BOX is what is saved (inputValue), so anything typed is kept as typed and the
+            // box always shows the form's value. MUI's own "selected option" is left to MUI: tying
+            // it to every keystroke makes the list stop filtering as the agent types.
+            inputValue={field.value || ""}
             onChange={(_, newValue) => field.onChange(newValue || "")}
             onInputChange={(_, newValue, reason) => {
-              // "reset" is MUI echoing the current value back (on mount, after a pick) -- not the
-              // agent typing. Ignoring it means opening a deal can never register as a change.
+              // "reset" is MUI echoing a value back (on mount, after a pick) -- not the agent
+              // typing. Ignoring it means opening a deal can never register as a change.
               if (reason !== "reset") field.onChange(newValue || "");
             }}
             sx={{ flex: "2 1 0", minWidth: 0 }}
