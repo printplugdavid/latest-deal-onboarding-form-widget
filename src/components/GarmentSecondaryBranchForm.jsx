@@ -362,9 +362,11 @@ const GarmentSecondaryBranchForm = ({
         )}
       />
 
-      {tartiaryBranches?.map((_, tarBranchIndex) => (
+      {/* Keyed by the field array's own id, not the position: removing a row from the middle
+          must not leave the next row showing the removed row's text (E-40). */}
+      {tartiaryBranches?.map((placementField, tarBranchIndex) => (
         <GarmentTartiaryBranch
-          key={`${index}-${branchIndex}-${secBranchIndex}-${tarBranchIndex}`}
+          key={placementField.id}
           index={index}
           branchIndex={branchIndex}
           secBranchIndex={secBranchIndex}
