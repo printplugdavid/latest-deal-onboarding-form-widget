@@ -19,6 +19,11 @@ const SIZE_TOKEN = /\b\d+\s*X+\s*L?\s*T?\b/gi;
 // A number that is a measurement, not a count: 3.5", 12”, 6 inch, 10 inches.
 const MEASUREMENT = /\b\d+(\.\d+)?\s*(?:"|”|''|'|in\b|inch\w*)/gi;
 const DECIMAL = /\b\d+\.\d+\b/g;
+// A subtotal the rep typed for their own reference -- "(200 total)", "30 total", "12 pcs total",
+// "Total: 30", "total of 30" (E-44). It restates the sizes; adding it doubles the sum. Seen on Ammo
+// Squared Deal 12: "Military Green (200 total)" made the check say 400 against a quantity of 200.
+const SUBTOTAL_AFTER = /\b\d+\s*(?:pcs?\.?|pieces|garments|shirts|hats)?\s*(?:in\s+)?total\b/gi;
+const SUBTOTAL_BEFORE = /\btotal\s*(?:of|is)?\s*[:=-]?\s*\d+\b/gi;
 
 /*
  * Sum the counts in a free-text size breakdown.
@@ -28,7 +33,12 @@ const DECIMAL = /\b\d+\.\d+\b/g;
  */
 export function sumSizeCounts(text) {
   const raw = String(text == null ? "" : text);
-  const cleaned = raw.replace(MEASUREMENT, " ").replace(SIZE_TOKEN, " ").replace(DECIMAL, " ");
+  const cleaned = raw
+    .replace(MEASUREMENT, " ")
+    .replace(SUBTOTAL_AFTER, " ")
+    .replace(SUBTOTAL_BEFORE, " ")
+    .replace(SIZE_TOKEN, " ")
+    .replace(DECIMAL, " ");
   const numbers = (cleaned.match(/\b\d+\b/g) || []).map((n) => parseInt(n, 10)).filter((n) => n > 0);
   const sum = numbers.reduce((a, b) => a + b, 0);
   return { sum, numbers, parsed: numbers.length > 0 };

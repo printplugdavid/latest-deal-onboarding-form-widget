@@ -15,6 +15,7 @@
 import { computePrints } from "./printMath";
 import { gangSheetPrints } from "./gangSheet";
 import { checkGarmentQuantity } from "./quantityCheck";
+import { LUMPED_FIELD, LUMPED_NOTE_LINE, lumpedSignals } from "./lumpedOrder";
 
 /* eslint-disable no-unused-vars */
   const customDate = (date) => {
@@ -191,6 +192,11 @@ export function buildOnboardingNote(data) {
                   checkGarmentQuantity(branch?.countColorSize, branch?.garmentQuantity).message +
                   newLine +
                   newLine
+                : "") +
+              // E-42: only when the rep answered No and submitted anyway. Yes / unanswered print
+              // nothing, so an ordinary note is exactly what it was.
+              (branch?.[LUMPED_FIELD] === "No" && lumpedSignals(branch).suspect
+                ? LUMPED_NOTE_LINE + newLine + newLine
                 : "") +
               "Graphic & Placement Information" +
               newLine +
