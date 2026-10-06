@@ -16,6 +16,7 @@ import {
   useWatch,
 } from "react-hook-form";
 import GarmentTartiaryBranch from "./GarmentTartiaryBranch";
+import ColorsUsedField from "./ColorsUsedField";
 
 const GarmentSecondaryBranchForm = ({
   index,
@@ -258,15 +259,12 @@ const GarmentSecondaryBranchForm = ({
         name={`products.${index}.primaryBranches.${branchIndex}.secondaryBranches.${secBranchIndex}.colorsUsed`}
         defaultValue=""
         render={({ field }) => (
-          <TextField
-            multiline
-            rows={3}
-            size="small"
-            id="colorsUsed"
-            variant="outlined"
-            fullWidth
+          // E-41: the same box, plus the shop's color chart for products that have one.
+          <ColorsUsedField
+            field={field}
+            productIndex={index}
+            countName={`products.${index}.primaryBranches.${branchIndex}.secondaryBranches.${secBranchIndex}.numberOfColorsUsed`}
             label="Colors Used (Threads / PANTONES)"
-            {...field}
             sx={{ mb: "1rem", mt: "5px" }}
           />
         )}
