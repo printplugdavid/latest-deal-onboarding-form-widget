@@ -13,6 +13,7 @@ import {
   useFieldArray,
   useWatch,
 } from "react-hook-form";
+import ColorsUsedField from "./ColorsUsedField";
 
 const NonGarmentForm = ({ index }) => {
   const { control } = useFormContext();
@@ -161,15 +162,12 @@ const NonGarmentForm = ({ index }) => {
             name={`products.${index}.branches.${branchIndex}.colorsUsed`}
             defaultValue=""
             render={({ field }) => (
-              <TextField
-                multiline
-                rows={3}
-                size="small"
-                id="colorsUsed"
-                variant="outlined"
-                fullWidth
+              // E-41: the same box, plus the shop's color chart for products that have one.
+              <ColorsUsedField
+                field={field}
+                productIndex={index}
+                countName={`products.${index}.branches.${branchIndex}.numberOfColorsUsed`}
                 label="Colors Used"
-                {...field}
                 sx={{ mt: "5px", mb: 1 }}
               />
             )}
