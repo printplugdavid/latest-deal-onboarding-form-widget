@@ -1,4 +1,4 @@
-import { computePrints } from "./printMath";
+import { computePrints, departmentFor } from "./printMath";
 import { estimateGangSheet } from "./gangSheet";
 
 /*
@@ -64,6 +64,30 @@ export function gangPerSheet(product) {
   return n > 0 ? n : 0;
 }
 
+/*
+ * E-49. A product with no garment to pick and no sheet: patches, stickers, decals, banners,
+ * the outsourced products, graphic design, a storefront -- and a garment product that was
+ * onboarded with no garment rows. Its unit is the piece. Before this, an order made only of
+ * these could not be put through the form at all (Tanner Robison Deal 1, 2026-10-08).
+ */
+export const isPieceItem = (product) =>
+  !!product &&
+  !isGangSheet(product) &&
+  !(product?.productType === "garment" && (product?.primaryBranches || []).length);
+
+// Pressed Patches is a garment product at onboarding (qty x placements, Vinyl Department).
+// With no garment rows to read, a pressed patch is costed as a patch: one per piece.
+const pieceName = (product) => {
+  const n = String(product?.productName || "").trim();
+  return n === "Pressed Patches" ? "Patches" : n;
+};
+
+/* The producing department for any product -- pieces included. */
+export function departmentForProduct(product) {
+  if (isPieceItem(product)) return departmentFor(pieceName(product), "nongarment");
+  return departmentFor(product?.productName, product?.productType);
+}
+
 const zeroResult = () => ({
   SD: 0, ED: 0, VD: 0, outsourced: 0,
   actual: { SD: 0, ED: 0, VD: 0 },
@@ -76,6 +100,9 @@ const zeroResult = () => ({
  * with NO heat-press multiplier -- the sheet ships unpressed, so one print is
  * one print (onboarding D-13). Gang sheet prints land in the Vinyl Department
  * slot, matching where the original job's roll up (David, 2026-09-22).
+ * Pieces (E-49) are costed exactly as onboarding costs a non-garment product:
+ * one per piece in the Vinyl Department for the in-house names, nothing for the
+ * rest -- those are recorded with a count of 0.
  */
 export function costItem(products, item, formType) {
   const product = products?.[item?.productIndex];
@@ -89,6 +116,15 @@ export function costItem(products, item, formType) {
     r.VD = total;
     r.actual.VD = total;
     r.gang = { sheets, perSheet };
+    return r;
+  }
+
+  if (isPieceItem(product)) {
+    const qty = effectiveQty(item);
+    const r = computePrints([
+      { productName: pieceName(product), productType: "nongarment", quantityOrdered: String(qty) },
+    ]);
+    r.piece = { qty };
     return r;
   }
 

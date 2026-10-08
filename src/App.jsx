@@ -10,7 +10,6 @@
  * underbase, placements, department -- comes off the record.
  */
 import { useEffect, useMemo, useState } from "react";
-import { departmentFor } from "./printMath";
 import { readPayload } from "./payload";
 import { deriveAgents, orderTasksForTrace } from "./agentAssign";
 import { targetStage } from "./stageMove";
@@ -18,6 +17,8 @@ import {
   placementsOf,
   costItem,
   isGangSheet,
+  isPieceItem,
+  departmentForProduct,
   gangPerSheet,
   embroiderySizes,
   effectiveQty,
@@ -323,17 +324,11 @@ export default function App() {
   }, []);
 
   // ---- derived ----------------------------------------------------------
-  // Anything an agent can send back through the press: a garment that has at
-  // least one garment branch, or a DTF gang sheet, whose unit is the sheet.
+  // Every product on the order can be picked. A garment product is picked by garment, a DTF
+  // gang sheet by the sheet, and anything else by the piece (E-49 -- before that an order made
+  // only of patches, stickers or outsourced products could not be put through the form).
   const pickableProducts = useMemo(
-    () =>
-      products
-        .map((p, i) => ({ product: p, index: i }))
-        .filter(
-          (x) =>
-            isGangSheet(x.product) ||
-            (x.product?.productType === "garment" && (x.product?.primaryBranches || []).length)
-        ),
+    () => products.map((p, i) => ({ product: p, index: i })).filter((x) => x.product),
     [products]
   );
 
@@ -342,8 +337,8 @@ export default function App() {
     const detail = [];
     items.forEach((item) => {
       if (!effectiveQty(item) || item.productIndex === "") return;
-      const gang = isGangSheet(products[item.productIndex]);
-      // A gang sheet has no garment and no placements -- the sheet is the unit.
+      const gang = isGangSheet(products[item.productIndex]) || isPieceItem(products[item.productIndex]);
+      // A gang sheet or a piece has no garment and no placements -- the sheet / piece is the unit.
       if (!gang) {
         if (item.garmentIndex === "") return;
         if (formType === "Correction" && !(item.placementKeys || []).length) return;
@@ -378,7 +373,7 @@ export default function App() {
     const auto = new Set();
     items.forEach((item) => {
       const p = products[item.productIndex];
-      if (p) auto.add(departmentFor(p.productName, p.productType));
+      if (p) auto.add(departmentForProduct(p));
     });
     setDepartments(Array.from(auto));
   }, [items, products, touchedDepartments]);
@@ -486,6 +481,24 @@ export default function App() {
         if (gdet) {
           L.push("  Sheet details:");
           gdet.split("\n").forEach((line) => L.push("    " + line.trimEnd()));
+        }
+        L.push("  Prints: Screen Print " + result.SD + " | Embroidery " + result.ED + " | Vinyl " + result.VD);
+        if (audit) {
+          L.push("    actual     SD " + result.actual.SD + " | ED " + result.actual.ED + " | VD " + result.actual.VD);
+          L.push("    projected  SD " + result.projected.SD + " | ED " + result.projected.ED + " | VD " + result.projected.VD);
+        }
+        return;
+      }
+
+      // E-49: a piece -- patches, stickers, an outsourced product. No garment, size or placement.
+      if (isPieceItem(p)) {
+        L.push("  Quantity affected: " + qty);
+        const ordered = oneLine(p?.quantityOrdered || "");
+        if (ordered) L.push("  Original order: " + ordered);
+        const pdet = String(item.details || "").trim();
+        if (pdet) {
+          L.push("  Details:");
+          pdet.split("\n").forEach((line) => L.push("    " + line.trimEnd()));
         }
         L.push("  Prints: Screen Print " + result.SD + " | Embroidery " + result.ED + " | Vinyl " + result.VD);
         if (audit) {
@@ -911,8 +924,12 @@ export default function App() {
 
         {items.map((item, i) => {
           const prod = products[item.productIndex];
-          const gang = isGangSheet(prod);
-          const perSheet = gang ? gangPerSheet(prod) : 0;
+          const piece = isPieceItem(prod);
+          // "gang" below means "no garment to pick": the garment, size and placement
+          // controls are hidden for a gang sheet and for a piece alike.
+          const sheet = isGangSheet(prod);
+          const gang = sheet || piece;
+          const perSheet = sheet ? gangPerSheet(prod) : 0;
           const branches = prod?.primaryBranches || [];
           const branch = branches[item.garmentIndex];
           const graphics = branch?.secondaryBranches || [];
@@ -1136,7 +1153,33 @@ export default function App() {
                 </>
               )}
 
-              {gang && (
+              {piece && (
+                <>
+                  <Label>{t("pc.qty")}</Label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={item.affected}
+                    onChange={(e) => patchItem(i, { affected: e.target.value })}
+                    style={S.input}
+                  />
+                  {oneLine(prod?.quantityOrdered || "") && (
+                    <p style={S.hint}>{t("pc.original", { v: oneLine(prod.quantityOrdered) })}</p>
+                  )}
+                  {r && <p style={S.hint}>{r.VD > 0 ? t("pc.counted") : t("pc.zero")}</p>}
+
+                  <Label>{t("pc.details")}</Label>
+                  <textarea
+                    rows={3}
+                    value={item.details || ""}
+                    onChange={(e) => patchItem(i, { details: e.target.value })}
+                    placeholder={t("pc.detailsPh")}
+                    style={S.textarea}
+                  />
+                </>
+              )}
+
+              {sheet && (
                 <>
                   <Label>{t("gs.sheets")}</Label>
                   <input

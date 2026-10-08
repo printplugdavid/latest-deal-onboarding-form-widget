@@ -108,8 +108,25 @@ const STRINGS = {
   "g.add": { en: "+ Add an affected item", es: "+ Agregar un artículo afectado" },
   "g.addMore": { en: "+ Add another affected item", es: "+ Agregar otro artículo afectado" },
   "g.noGarments": {
-    en: "No garment or gang sheet products found in this deal's payload.",
-    es: "No se encontraron prendas ni hojas colectivas (gang sheets) en los datos de este acuerdo.",
+    en: "No products found in this deal's saved order.",
+    es: "No se encontraron productos en el pedido guardado de este acuerdo.",
+  },
+
+  // ---- pieces: patches, stickers, decals, outsourced products ... (E-49) --
+  "pc.qty": { en: "How many are affected?", es: "¿Cuántos están afectados?" },
+  "pc.original": { en: "Original order: {v}", es: "Pedido original: {v}" },
+  "pc.counted": {
+    en: "Counted one per piece, the same way the order was counted at onboarding.",
+    es: "Se cuenta uno por pieza, igual que se contó el pedido al registrarlo.",
+  },
+  "pc.zero": {
+    en: "This product is not counted as prints, so this is recorded with a print count of 0. The category, reason, agent and details are still saved.",
+    es: "Este producto no se cuenta como impresiones, así que se registra con un conteo de 0. La categoría, el motivo, el agente y los detalles sí se guardan.",
+  },
+  "pc.details": { en: "Details (optional)", es: "Detalles (opcional)" },
+  "pc.detailsPh": {
+    en: "e.g. which ones, what was wrong, what needs to be remade",
+    es: "p. ej. cuáles, qué salió mal, qué hay que rehacer",
   },
 
   // ---- gang sheets ------------------------------------------------------
@@ -162,8 +179,8 @@ const STRINGS = {
   "btn.submit": { en: "Submit {type}", es: "Enviar {type}" },
   "btn.saving": { en: "Saving…", es: "Guardando…" },
   "need.all": {
-    en: "Needs a department, a category, a reason, and at least one garment with a count.",
-    es: "Requiere un departamento, una categoría, una razón y al menos una prenda con cantidad.",
+    en: "Needs a department, a category, a reason, and at least one item with a count.",
+    es: "Requiere un departamento, una categoría, una razón y al menos un artículo con cantidad.",
   },
   "need.closing": {
     en: "Pick a new closing date and confirm the client has approved it.",
