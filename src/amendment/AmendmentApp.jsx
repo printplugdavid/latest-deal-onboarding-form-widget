@@ -64,6 +64,7 @@ import {
   saveCustomerNotes,
   todayStamp,
 } from "../customerNotes";
+import { buildColorMatches } from "../colorMatch";
 import { newestFirst, readFileText } from "../zohoFiles";
 import { AmendContact, AmendDates } from "./AmendSections";
 import { parseNoteToForm, toPlainText } from "./noteToForm";
@@ -471,8 +472,15 @@ const AmendmentApp = () => {
     // 1. the new JSON -- create-only, newest wins (D-4). Same stamps as the onboarding form, plus
     //    an _amendment record. `_` keys are ignored by every reader (toFormValues strips them).
     await step("onboarding data", async () => {
+      let colorMatches = [];
+      try {
+        colorMatches = buildColorMatches(cardSource); // E-48, derived; see App.jsx
+      } catch (e) {
+        colorMatches = [];
+      }
       const json = JSON.stringify({
         ...cardSource,
+        ...(colorMatches.length ? { _colorMatches: colorMatches } : {}),
         _schemaVersion: 1,
         _submittedAt: new Date().toISOString(),
         ...(carry ? { _source: "note" } : {}),

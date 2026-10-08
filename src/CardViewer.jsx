@@ -42,7 +42,11 @@ const CARD_ORDER = [
   ["production-card-outsourced.html", "Outsourced"],
   ["production-card-graphicdesign.html", "Graphic Design"],
   ["production-card-storefront.html", "Storefront"],
+  ["production-card-colormatch.html", "Color Matching"],
 ];
+// A card the viewer shows whenever the onboarding data produces it, attached or not -- so deals
+// onboarded before the card existed get it too (E-48).
+const ALWAYS_BUILT = ["production-card-colormatch.html"];
 const labelFor = (name) =>
   (CARD_ORDER.find(([file]) => file === name) || [])[1] ||
   name.replace(/^production-card-/, "").replace(/\.html$/i, "");
@@ -149,6 +153,12 @@ async function loadCards(entity, recordId) {
   const built = new Map();
   for (const c of buildProductionCards(liveDue, counts)) built.set(c.name.toLowerCase(), c.html);
 
+  ALWAYS_BUILT.forEach((name) => {
+    if (built.has(name) && !byName.has(name)) byName.set(name, { olderCopies: 0 });
+    // ...and if the data no longer produces it (colors removed by an amendment), drop the tab rather
+    // than show an error for a card that is only ever a by-product.
+    if (!built.has(name)) byName.delete(name);
+  });
   const cards = [...byName.entries()].map(([name, { olderCopies }]) => {
     const base = { name, label: labelFor(name), olderCopies };
     return built.has(name)

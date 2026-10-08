@@ -13,18 +13,21 @@
  *
  * Pure: no React, no ZOHO.
  */
+import VINYL_ROWS from "./colorData/vinyl.json";
 
-// name, hex (null = no flat screen color), metallic
-export const VINYL_COLORS = [
-  ["Beige", "#cdbe9c"], ["Brown", "#422e1e"], ["Brimstone Yellow", "#f2e533"], ["Yellow", "#ffcd00"],
-  ["Golden Yellow", "#faaa12"], ["Orange", "#ff9900"], ["Light Red", "#cd2e28"], ["Red", "#b82c35"],
-  ["Dark Red", "#932f33"], ["Burgundy", "#6e000c"], ["Pink", "#cb3e79"], ["Purple", "#3e2572"],
-  ["Brilliant Blue", "#3241ae"], ["Dark Blue", "#182d61"], ["Blue", "#003a78"], ["Azure Blue", "#016ab4"],
-  ["Light Blue", "#0090c6"], ["Turquoise", "#039f99"], ["Green", "#01774a"], ["Light Green", "#02853a"],
-  ["Dark Green", "#023f28"], ["Matt White", "#fafdf7"], ["White", "#ffffff"], ["Light Grey", "#bec1c0"],
-  ["Grey", "#727c7b"], ["Dark Grey", "#4b4b4b"], ["Matte Black", "#1e1f1c"], ["Black", "#000000"],
-  ["Gold", null, true], ["Silver", null, true],
-].map(([name, hex, metallic]) => ({ name, hex: hex || null, metallic: !!metallic }));
+/*
+ * Since 2026-10-07 (E-48) the vinyl list is GENERATED from the color library -- the full ORACAL 651
+ * range: 30 colors on the shop's chart (stocked) and 50 order-in. Swatch values are ORAFOL's own,
+ * which replaced the shop chart's (David: "I would go with their catalog"). The 30 stocked colors
+ * keep the shop's names, so text already written on deals still matches.
+ */
+export const VINYL_COLORS = VINYL_ROWS.map(([code, name, hex, metallic, stocked]) => ({
+  code,
+  name,
+  hex: hex || null,
+  metallic: !!metallic || /\b(gold|silver|copper|metallic)\b/i.test(name),
+  stocked: !!stocked,
+}));
 
 export const VINYL_CATALOG = { key: "vinyl", label: "vinyl", colors: VINYL_COLORS };
 
@@ -91,7 +94,7 @@ export function addColorToText(text, name, catalog) {
 export function swatchBackground(color) {
   if (!color) return "#fff";
   if (color.hex) return color.hex;
-  return /gold/i.test(color.name)
+  return /gold|copper/i.test(color.name)
     ? "linear-gradient(135deg,#8a6d1f,#f5e08a,#b8962e)"
     : "linear-gradient(135deg,#7d7d7d,#f2f2f2,#a3a3a3)";
 }

@@ -7,6 +7,7 @@
 
 import { gangSheetPrints } from "./gangSheet";
 import { readColorSwatches } from "./colorLibrary";
+import { buildColorMatches, COLOR_MATCH_CAVEAT } from "./colorMatch";
 
 // ===== Production card generator (attached to the Deal as per-department HTML job sheets) =====
 const pcEsc = (s) => String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -36,6 +37,7 @@ const PC_META = {
   outsourced: { title: "OUTSOURCED — ORDER / STOCK", file: "production-card-outsourced.html", dept: "Outsourced", countKey: "outsourcedProducts", bi: false },
   graphicdesign: { title: "GRAPHIC DESIGN / ARTWORK", file: "production-card-graphicdesign.html", dept: "Graphics", countKey: null, bi: false },
   storefront: { title: "ONLINE STOREFRONT", file: "production-card-storefront.html", dept: "Online Storefront", countKey: null, bi: false },
+  colormatch: { title: "COLOR MATCHING — ALL DEPARTMENTS", file: "production-card-colormatch.html", dept: "Color Matching", countKey: null, bi: false },
 };
 const pcRoute = (p) => PC_ROUTE[p?.productName] || (p?.productType === "gangsheet" ? { card: "vinyl", job: "DTF Gang Sheet", key: "gangSheetPrints" } : p?.productType === "nongarment" ? { card: "outsourced", job: "Outsourced", key: "outsourcedProducts" } : (p?.productType === "onlinestorefront" ? { card: "storefront", job: "Online Storefront", key: null } : null));
 function pcRow(en, es, v, opts) { opts = opts || {}; if (!pcHas(v)) return ""; const label = opts.bi && es ? `${en} / ${es}` : en; return `<div class="row${opts.crit ? " crit" : ""}"><span class="lbl">${pcEsc(label)}</span><span class="val">${pcEsc(v)}</span></div>`; }
@@ -117,6 +119,25 @@ function buildProductionCards(data, counts) {
   });
   const artBody = art.length ? art.map((a, i) => `<div class="job"><div class="jhead"><span>Artwork ${i + 1}</span><span class="omute">${pcEsc(a.src)}</span></div><div class="garment">${pcRow("Description", "", a.gr?.graphicDescription, { crit: true })}${pcRow("Print Ready?", "", a.gr?.isGraphicPrintReady)}${pcRow("Format", "", a.gr?.currentGraphicFormat, { crit: true })}${pcRow("Fine Detail?", "", a.gr?.fineDetail)}${pcRow("Colors", "", a.gr?.numberOfColorsUsed)}${pcRow("Colors Used", "", a.gr?.colorsUsed)}${pcRow("Fonts", "", a.gr?.fontsUsed)}${a.gr?._design ? pcRow("Design Hours", "", a.gr._design.estimatedDesignHours) : ""}${a.gr?._design ? pcRow("Assets Provided", "", a.gr._design.designAssetsProvided) : ""}</div></div>`).join("") : `<div class="job"><div class="garment"><i>No artwork details captured on this deal.</i></div></div>`;
   files.push({ name: gcm.file, html: pcDoc(gcm, strip(gcm, null, "") + `<div class="cbody">${artBody}</div>` + footer("Graphics")) });
+  // E-48: the Color Matching card -- each color on the order with its best counterparts in the other
+  // departments. Only made when at least one color is recognized, so an order without any gets exactly
+  // the cards it always did.
+  const cmatches = buildColorMatches(data);
+  if (cmatches.length) {
+    const ccm = PC_META.colormatch;
+    const sw = (hex, size) => `<span class="swatch" style="display:inline-block;width:${size}px;height:${size}px;border:1px solid #777;border-radius:3px;vertical-align:-4px;margin-right:6px;background:${hex};-webkit-print-color-adjust:exact;print-color-adjust:exact"></span>`;
+    const DEPTS = ["Screen Print", "Embroidery", "Vinyl"];
+    const cbody = DEPTS.map((dept) => {
+      const rows = cmatches.filter((e) => e.dept === dept);
+      if (!rows.length) return "";
+      const entries = rows.map((e) => {
+        const groups = DEPTS.filter((d) => e.matches.some((x) => x.dept === d)).map((d) => `<div class="row"><span class="lbl">${pcEsc(d === "Screen Print" ? "Screen print ink" : d === "Embroidery" ? "Embroidery thread" : "Vinyl")}</span><span class="val">${e.matches.filter((x) => x.dept === d).map((x) => `<div style="margin:2px 0">${sw(x.hex, 16)}<b>${pcEsc(x.label)}</b> <span style="font-weight:400;color:${x.basis === "official" ? "#1b5e20" : "#666"}">· ${pcEsc(x.quality)}${x.note ? " · " + pcEsc(x.note) : ""}</span></div>`).join("")}</span></div>`).join("");
+        return `<div class="garment"><div class="ghead"><span class="gname">${sw(e.color.hex, 20)}${pcEsc(e.color.label)}</span></div><div class="row"><span class="lbl">Used on</span><span class="val" style="font-weight:400">${pcEsc(e.where.join("; "))}</span></div>${e.color.metallic ? `<div class="alsonote">Metallic - not matched. Match by eye against the real material.</div>` : groups}</div>`;
+      }).join("");
+      return `<div class="job"><div class="jhead"><span>${pcEsc(dept)} colors on this order</span><span class="omute">best matches in the other departments</span></div>${entries}</div>`;
+    }).join("");
+    files.push({ name: ccm.file, html: pcDoc(ccm, strip(ccm, null, "") + `<div class="cbody">${cbody}<div class="alsonote">${pcEsc(COLOR_MATCH_CAVEAT)}</div></div>` + footer("Color Matching")) });
+  }
   return files;
 }
 
