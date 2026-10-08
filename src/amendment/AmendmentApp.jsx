@@ -69,6 +69,8 @@ import { newestFirst, readFileText } from "../zohoFiles";
 import { AmendContact, AmendDates } from "./AmendSections";
 import { parseNoteToForm, toPlainText } from "./noteToForm";
 import {
+  copyGarment,
+  withoutGraphic,
   APPEND_FIELD,
   LIVE_NOTE_TITLE,
   SUPERSEDED_TITLE,
@@ -235,6 +237,7 @@ const AmendmentApp = () => {
   const [removedGarments, setRemovedGarments] = useState([]); // "p.g" keys, same idea one level down
   const [garmentIdx, setGarmentIdx] = useState(null);
   const [showAll, setShowAll] = useState(false); // escape hatch: every field for the chosen garment
+  const [rev, setRev] = useState(0); // E-50: bumped when rows are spliced, so the editors remount on fresh values
   const [saving, setSaving] = useState(false);
   const [outcome, setOutcome] = useState(null); // { done: [..], failed: [..] } after a save
   const ctx = useRef({ entity: null, recordId: null });
@@ -372,6 +375,28 @@ const AmendmentApp = () => {
     setValue(path, [...cur, { name: "" }], { shouldDirty: true });
     setValue(`products.${productIdx}.numberOfGarmentTypes`, String(cur.length + 1), { shouldDirty: true });
     setGarmentIdx(cur.length);
+  };
+  // E-50: split one garment type into two. The original is marked removed and two copies are
+  // appended, so the rep only has to fix each copy's quantity / colors and take off the graphics
+  // that do not go on it. Nothing is retyped.
+  const splitGarment = (g) => {
+    const path = `products.${productIdx}.primaryBranches`;
+    const cur = getValues(path) || [];
+    if (!cur[g]) return;
+    setValue(path, [...cur, copyGarment(cur[g]), copyGarment(cur[g])], { shouldDirty: true });
+    setValue(`products.${productIdx}.numberOfGarmentTypes`, String(cur.length + 2), { shouldDirty: true });
+    setRemovedGarments((r) => (r.includes(gKey(g)) ? r : [...r, gKey(g)]));
+    setGarmentIdx(cur.length);
+    setRev((n) => n + 1);
+  };
+  const removeGraphic = (g, s) => {
+    const path = `products.${productIdx}.primaryBranches.${g}`;
+    setValue(path, withoutGraphic(getValues(path), s), { shouldDirty: true });
+    setRev((n) => n + 1);
+  };
+  const graphicName = (gr, s) => {
+    const d = String(gr?.graphicDescription || "").split("\n")[0].trim();
+    return `Graphic ${s + 1}` + (d ? ` · ${d.slice(0, 70)}` : "");
   };
   const garmentLabel = (gar, g) => {
     const type = String(gar?.garmentType || "").split("\n")[0].trim();
@@ -802,7 +827,20 @@ The panel at the bottom shows exactly what will be recorded. Saving posts a new 
                             {showAll ? "Show only what changed" : "Show every field"}
                           </Button>
                         )}
-                        {(has("removed") || garmentRemoved(garmentIdx)) && (
+                        {!garmentRemoved(garmentIdx) &&
+                          !garmentIsNew(garmentIdx) &&
+                          (garments[garmentIdx]?.secondaryBranches || []).length > 1 && (
+                            <Button
+                              type="button"
+                              size="small"
+                              variant="outlined"
+                              onClick={() => splitGarment(garmentIdx)}
+                              title="For an order where some graphics go on only some of these garments"
+                            >
+                              Split into two garment types
+                            </Button>
+                          )}
+                        {(has("removed") || garmentRemoved(garmentIdx) || garmentIsNew(garmentIdx)) && (
                           <Button
                             type="button"
                             size="small"
@@ -819,15 +857,33 @@ The panel at the bottom shows exactly what will be recorded. Saving posts a new 
                     {garmentRemoved(garmentIdx) ? (
                       <Alert severity="error" sx={{ mt: 1 }}>
                         This garment will be removed from the order. Its prints come off the counts below.
+                        {garments.length > originalGarmentCount &&
+                          " If you split it, the new garment types beside it replace it - pick each one above and set it up."}
                       </Alert>
                     ) : showAll || garmentIsNew(garmentIdx) ? (
+                      <>
+                      {garmentIsNew(garmentIdx) && (garments[garmentIdx]?.secondaryBranches || []).length > 0 && (
+                        <Alert severity="info" sx={{ mt: 1 }}>
+                          <b>New garment type.</b> Set its own quantity, colors and sizes below, and take off any
+                          graphic that does not go on these garments:
+                          {(garments[garmentIdx]?.secondaryBranches || []).map((gr, s) => (
+                            <Box key={s} sx={{ display: "flex", alignItems: "center", gap: 1, mt: 0.5 }}>
+                              <span>{graphicName(gr, s)}</span>
+                              <Button type="button" size="small" color="error" onClick={() => removeGraphic(garmentIdx, s)}>
+                                Take off this garment
+                              </Button>
+                            </Box>
+                          ))}
+                        </Alert>
+                      )}
                       <GarmentPrimaryBranchForm
-                        key={`${productIdx}-${garmentIdx}-all`}
+                        key={`${productIdx}-${garmentIdx}-all-${rev}`}
                         index={productIdx}
                         branchIndex={garmentIdx}
                         options={loaded.options}
                         productName={product.productName}
                       />
+                      </>
                     ) : anyFieldTick ? (
                       <>
                         {has("quantity") && <QuantityEditor key={`q-${productIdx}-${garmentIdx}`} p={productIdx} g={garmentIdx} />}

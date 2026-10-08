@@ -360,6 +360,27 @@ const garmentTag = (values, p, g) => {
   return `${product} › Garment ${g + 1}` + (bits ? ` (${bits})` : "");
 };
 
+/*
+ * E-50 -- splitting a garment type. An order entered as ONE garment type whose graphics really go on
+ * different garments (Flute Summit 2, Ammo Squared 12) counts every graphic on every piece. The fix
+ * is two garment types. These two helpers are everything the split needs; the form marks the
+ * original as removed and appends the copies, so the save path and the What Changed lines are the
+ * ordinary "garment removed / garment added" ones.
+ */
+export function copyGarment(garment) {
+  return clone(garment || {});
+}
+
+/* The garment with graphic `s` taken out and its graphic count restated. Never mutates. */
+export function withoutGraphic(garment, s) {
+  const next = clone(garment || {});
+  const graphics = Array.isArray(next.secondaryBranches) ? next.secondaryBranches : [];
+  if (s < 0 || s >= graphics.length) return next;
+  next.secondaryBranches = graphics.filter((_, i) => i !== s);
+  next.numberOfGraphics = String(next.secondaryBranches.length);
+  return next;
+}
+
 export function effectiveValuesWithGarments(before, after, removed, removedGarments, date) {
   const gone = new Set(removedGarments || []);
   // Filter garments on the still-indexed tree FIRST, then let the product-level filter run.
