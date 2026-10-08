@@ -56,9 +56,11 @@ describe("E-48 a color's matches in the other departments", () => {
     const t = findThread("1007").filter((x) => x.line === "Classic Rayon")[0];
     const ms = matchesFor(src("thread", { hex: t.hex, thread: t }));
     expect(ms[0]).toMatchObject({ dept: "Screen Print", label: "Pantone 426 C", basis: "official" });
-    expect(ms.some((x) => /^House /.test(x.label))).toBe(true);
     expect(ms.some((x) => x.dept === "Vinyl")).toBe(true);
     expect(ms.some((x) => x.dept === "Embroidery")).toBe(false);
+    // a house ink is named only when one is in the neighborhood: a red thread gets one...
+    const red = findThread("1839")[0]; // Christmas Red
+    expect(matchesFor(src("thread", { hex: red.hex, thread: red })).some((x) => /^House /.test(x.label))).toBe(true);
   });
   test("a house ink that is nowhere near is not suggested", () => {
     const p = findPantone("4266 C").color; // a brown; the closest house ink is a red
