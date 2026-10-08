@@ -201,6 +201,13 @@ describe("E-41 fix -- finding a thread: nothing hidden, and color words work", (
     expect(searchThreads("marathon")).toHaveLength(306);
     expect(searchThreads("rayon")).toHaveLength(422);
   });
+  test("results stay grouped by brand (each brand appears as one block)", () => {
+    ["red", "blue", "18", "gold", ""].forEach((q) => {
+      const brands = searchThreads(q).map((t) => t.brand);
+      const blocks = brands.filter((b, i) => i === 0 || b !== brands[i - 1]);
+      expect(new Set(blocks).size).toBe(blocks.length);
+    });
+  });
   test("number and name searches still work, exact number first", () => {
     expect(searchThreads("1821")[0].code).toBe("1821");
     expect(searchThreads("18").every((t) => t.code.indexOf("18") === 0 || /18/.test(t.name))).toBe(true);

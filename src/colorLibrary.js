@@ -162,9 +162,12 @@ export function searchThreads(query) {
     });
     return r;
   };
+  // Brand first (the list is shown grouped by brand, and a group must stay in one piece), then the
+  // best matches within each brand.
+  const brandOrder = Object.keys(THREAD_BRAND_COUNTS);
   return hits
-    .map((e, i) => ({ e, i, r: rank(e) }))
-    .sort((a, b) => a.r - b.r || a.i - b.i)
+    .map((e, i) => ({ e, i, r: rank(e), b: brandOrder.indexOf(e.t.brand) }))
+    .sort((x, y) => x.b - y.b || x.r - y.r || x.i - y.i)
     .map((x) => x.e.t);
 }
 export const THREAD_BRAND_COUNTS = THREADS.reduce((m, t) => ((m[t.brand] = (m[t.brand] || 0) + 1), m), {});
