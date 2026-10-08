@@ -408,3 +408,53 @@ describe("buildCarriedNote (note-sourced deals)", () => {
     expect(second.endsWith(original)).toBe(true);
   });
 });
+
+/*
+ * E-50 -- splitting a lumped garment type. Ammo Squared Deal 12's shape: 600 hats, 5 graphics, where
+ * graphics 1-2 go on 400 hats, 3-4 on 200, and 5 on all. Entered as one garment it counts 3,000;
+ * split in two it counts the real 1,800.
+ */
+describe("splitting a garment type (E-50)", () => {
+  const { copyGarment, withoutGraphic, effectiveValuesWithGarments, summariseAmendmentWithGarments } = require("./amendmentDiff");
+  const { computePrints } = require("../printMath");
+  const graphic = (name) => ({ graphicDescription: name, numberOfPlacements: "1", numberOfColorsUsed: "1", tartiaryBranches: [{ placementSize: "Small" }] });
+  const hats = { garmentType: "Richardson 112", garmentQuantity: "600", numberOfGraphics: "5", secondaryBranches: ["G1", "G2", "G3", "G4", "Flag"].map(graphic) };
+  const before = { products: [{ productName: "Embroidery", productType: "garment", numberOfGarmentTypes: "1", primaryBranches: [hats] }] };
+
+  test("entered as one garment type it counts every graphic on every hat", () => {
+    expect(computePrints(before.products).ED).toBe(3000);
+  });
+
+  test("withoutGraphic removes one graphic, restates the count and does not touch its input", () => {
+    const g = withoutGraphic(hats, 2);
+    expect(g.secondaryBranches.map((x) => x.graphicDescription)).toEqual(["G1", "G2", "G4", "Flag"]);
+    expect(g.numberOfGraphics).toBe("4");
+    expect(hats.secondaryBranches).toHaveLength(5);
+    expect(withoutGraphic(hats, 9).secondaryBranches).toHaveLength(5);
+  });
+
+  test("split: original removed, two copies trimmed -> the real count, and plain What Changed lines", () => {
+    let a = copyGarment(hats);
+    a.garmentQuantity = "400";
+    a = withoutGraphic(withoutGraphic(a, 3), 2); // G1, G2, Flag
+    let b = copyGarment(hats);
+    b.garmentQuantity = "200";
+    b = withoutGraphic(withoutGraphic(b, 1), 0); // G3, G4, Flag
+    const after = { products: [{ ...before.products[0], numberOfGarmentTypes: "3", primaryBranches: [hats, a, b] }] };
+
+    const saved = effectiveValuesWithGarments(before, after, [], ["0.0"], "2026-10-08");
+    expect(saved.products[0].primaryBranches).toHaveLength(2);
+    expect(saved.products[0].numberOfGarmentTypes).toBe("2");
+    expect(computePrints(saved.products).ED).toBe(400 * 3 + 200 * 3);
+
+    const lines = summariseAmendmentWithGarments(before, after, [], ["0.0"]);
+    expect(lines.filter((l) => /^Garment removed: /.test(l))).toHaveLength(1);
+    expect(lines.filter((l) => /^Garment added: /.test(l))).toHaveLength(2);
+    // A new garment type is spelled out field by field (as any added garment is), so the note
+    // shows which graphics landed on which half. Nothing is reported against the removed original.
+    expect(lines.some((l) => /Garment 1 ›/.test(l))).toBe(false);
+    const on = (n) => lines.filter((l) => new RegExp("Garment " + n + " › Graphic \\d › Graphic description").test(l)).map((l) => l.split("→ ")[1]);
+    expect(on(2)).toEqual(["G1", "G2", "Flag"]);
+    expect(on(3)).toEqual(["G3", "G4", "Flag"]);
+  });
+});
