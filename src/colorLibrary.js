@@ -32,45 +32,87 @@ export function colorModeFor(productName) {
 }
 
 // ---- thread ---------------------------------------------------------------------------------------
-export const THREAD_BRANDS = { P: "Madeira Polyneon", R: "Madeira Classic Rayon", M: "Marathon" };
-export const THREADS = THREAD_ROWS.map(([code, name, hex, brand]) => ({
-  code,
-  name,
-  hex: hex || null,
-  brand: THREAD_BRANDS[brand] || brand,
-}));
+/*
+ * Thread is organized the way the shop buys it: MAKER -> LINE (David, 2026-10-07: "a Madeira section
+ * with sub catalogs, and the same for Marathon. That will help our staff orient around which is
+ * which"). Each line is its own catalogue with its own numbering -- the same number can be a
+ * different color in another line -- so a picked thread is written WITH its maker and line.
+ */
+export const THREAD_CATALOGS = [
+  { key: "P", maker: "Madeira", line: "Polyneon" },
+  { key: "R", maker: "Madeira", line: "Classic Rayon" },
+  { key: "M", maker: "Marathon", line: "Polyester" },
+];
+// Known lines that are NOT in the library yet -- shown greyed out so staff know it is a gap in
+// the library, not a thread that does not exist. Logged in ~/Projects/color-library/MISSING-CATALOGS.md.
+export const THREAD_CATALOGS_MISSING = [
+  { maker: "Madeira", line: "Frosted Matt" },
+  { maker: "Madeira", line: "Metallics" },
+  { maker: "Marathon", line: "Rayon" },
+];
+const CATALOG_BY_KEY = {};
+THREAD_CATALOGS.forEach((c) => (CATALOG_BY_KEY[c.key] = c));
+export const THREADS = THREAD_ROWS.map(([code, name, hex, key]) => {
+  const c = CATALOG_BY_KEY[key] || { key, maker: key, line: "" };
+  return { code, name, hex: hex || null, catalog: c.key, maker: c.maker, line: c.line, brand: `${c.maker} ${c.line}`.trim() };
+});
 const THREAD_BY_CODE = {};
 THREADS.forEach((t) => (THREAD_BY_CODE[t.code] = THREAD_BY_CODE[t.code] || []).push(t));
 
 export const findThread = (code) => THREAD_BY_CODE[String(code == null ? "" : code).trim()] || [];
-export const threadLabel = (t) => `${t.code}${t.name ? " " + t.name : ""}`;
+/* What is written into the box for a picked thread: number, official name, and which catalogue. */
+export const threadLabel = (t) => `${t.code}${t.name ? " " + t.name : ""} (${t.brand})`;
+
+// Maker / line words a rep may write next to a number; used to tell two catalogues apart.
+function narrowByWords(options, piece) {
+  if (options.length < 2) return options;
+  const p = String(piece || "").toLowerCase();
+  let out = options;
+  const keep = (fn) => {
+    const f = out.filter(fn);
+    if (f.length) out = f;
+  };
+  if (/\bmarathon\b/.test(p)) keep((t) => t.maker === "Marathon");
+  if (/\bmadeira\b/.test(p)) keep((t) => t.maker === "Madeira");
+  if (/\bpolyneon\b/.test(p)) keep((t) => t.line === "Polyneon");
+  if (/\brayon\b/.test(p)) keep((t) => /rayon/i.test(t.line));
+  if (/\bpolyester\b/.test(p)) keep((t) => t.line === "Polyester");
+  return out;
+}
 
 /*
  * Thread numbers written in the box. A thread number is four digits standing alone -- not part of a
  * longer number, a decimal, a "#60" weight or a Pantone code ("3955C").
- *   matched -- one entry per number: { code, options: [thread...] } (two options = two brands share it)
+ *   matched -- one entry per number: { code, options: [thread...] }. Two options = two catalogues
+ *              use that number and the line does not say which (a maker / line word beside the
+ *              number settles it: "2001 Marathon", "1159 (Madeira Classic Rayon)").
  *   unknown -- four-digit numbers that are in no thread catalogue
  */
 export function readThreadText(text) {
   const matched = [];
   const unknown = [];
   const seen = {};
-  const re = /\d+(?:\.\d+)?/g;
-  const s = String(text == null ? "" : text);
-  let m;
-  while ((m = re.exec(s))) {
-    const tok = m[0];
-    if (!/^\d{4}$/.test(tok)) continue;
-    const before = s.charAt(m.index - 1);
-    const after = s.slice(m.index + 4, m.index + 6);
-    if (before === "#" || before === ".") continue;
-    if (/^\s?[cu]\b/i.test(after)) continue; // "3955C" is a Pantone, not a thread
-    if (seen[tok]) continue;
-    seen[tok] = true;
-    const options = findThread(tok);
-    if (options.length) matched.push({ code: tok, options });
-    else unknown.push(tok);
-  }
+  // One written entry at a time (a line, or a comma / semicolon separated part), so the maker or
+  // line named beside a number applies to that number only.
+  String(text == null ? "" : text)
+    .split(/\r?\n|,|;/)
+    .forEach((s) => {
+      const re = /\d+(?:\.\d+)?/g;
+      let m;
+      while ((m = re.exec(s))) {
+        const tok = m[0];
+        if (!/^\d{4}$/.test(tok)) continue;
+        const before = s.charAt(m.index - 1);
+        const after = s.slice(m.index + 4, m.index + 6);
+        if (before === "#" || before === ".") continue;
+        if (/^\s?[cu]\b/i.test(after)) continue; // "3955C" is a Pantone, not a thread
+        if (seen[tok]) continue;
+        seen[tok] = true;
+        const options = narrowByWords(findThread(tok), s);
+        if (options.length) matched.push({ code: tok, options });
+        else unknown.push(tok);
+      }
+    });
   return { matched, unknown };
 }
 
@@ -140,15 +182,18 @@ const THREAD_SEARCH = THREADS.map((t) => ({
  * Threads matching what the rep typed. Every word must match one of: the number (from its start),
  * the official name, the brand, or a color word the swatch answers to. An empty search is ALL of them.
  * A color-word search is sorted so the purest matches come first.
+ * `scope` limits it: a catalogue key ("P", "R", "M") or a maker ("Madeira", "Marathon").
  */
-export function searchThreads(query) {
+export function searchThreads(query, scope) {
+  const inScope = (t) => !scope || t.catalog === scope || t.maker === scope;
   const words = String(query == null ? "" : query)
     .toLowerCase()
     .split(/[^a-z0-9]+/)
     .filter(Boolean)
     .map((w) => FAMILY_ALIASES[w] || w);
-  if (!words.length) return THREADS;
+  if (!words.length) return scope ? THREADS.filter(inScope) : THREADS;
   const hits = THREAD_SEARCH.filter((e) =>
+    inScope(e.t) &&
     words.every(
       (w) => e.t.code.indexOf(w) === 0 || e.name.indexOf(w) >= 0 || e.brand.indexOf(w) >= 0 || e.fam.indexOf(w) >= 0
     )
@@ -359,7 +404,7 @@ export function readColorSwatches(productName, text) {
     const out = [];
     readThreadText(text).matched.forEach(({ options }) =>
       options.forEach((t) => {
-        if (t.hex) out.push({ label: threadLabel(t) + (options.length > 1 ? ` (${t.brand})` : ""), background: t.hex });
+        if (t.hex) out.push({ label: threadLabel(t), background: t.hex });
       })
     );
     return out;
@@ -379,7 +424,7 @@ export function readColorSwatches(productName, text) {
 /* The caveats the form prints wherever these swatches appear. */
 export const COLOR_CAVEATS = {
   thread:
-    "Thread swatches are approximations of the maker's color chart - a check against the wrong number, not a color match. Marathon numbers have no official names.",
+    "Thread swatches are approximations of the maker's color chart - a check against the wrong number, not a color match. Each maker and line has its own numbering, so the same number can be a different color in another line. Marathon numbers have no official names.",
   ink:
     "Screen colors are approximations: a monitor cannot show ink exactly. Pantone swatches come from an unofficial reference copy of the Coated book that may not include the newest colors. A HEX or picked color is matched to the CLOSEST Pantone, which is rarely an exact equal - the match quality is shown. Metallic and neon inks cannot be shown faithfully. Always confirm against the physical Pantone book.",
 };

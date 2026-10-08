@@ -1,5 +1,5 @@
 import {
-  searchThreads, colorFamilies, THREAD_BRAND_COUNTS,
+  searchThreads, colorFamilies, THREAD_BRAND_COUNTS, THREAD_CATALOGS, THREAD_CATALOGS_MISSING, threadLabel,
   colorModeFor, THREADS, findThread, readThreadText, HOUSE_INKS, findHouseInk, PANTONES, findPantone,
   normalizeHex, findHexInText, colorDifference, describeDifference, nearestPantones, nearestHouseInk,
   houseInkHint, readInkText, addLine, readColorSwatches,
@@ -25,12 +25,12 @@ describe("E-41 library data", () => {
 
 describe("E-41 thread by number", () => {
   test("the shop's most-used numbers carry their official names", () => {
-    expect(findThread("1821")[0]).toMatchObject({ name: "Terra Cotta", brand: "Madeira Polyneon" });
+    expect(findThread("1821")[0]).toMatchObject({ name: "Terra Cotta", brand: "Madeira Polyneon", maker: "Madeira", line: "Polyneon" });
     expect(findThread("1771")[0].name).toBe("Whipped Butterscotch");
     expect(findThread("1982")[0].name).toBe("Sangria");
     expect(findThread("1652")[0].name).toBe("Mermaid");
     expect(findThread("1159")[0]).toMatchObject({ name: "Mustard", brand: "Madeira Classic Rayon" });
-    expect(findThread("2302")[0].brand).toBe("Marathon");
+    expect(findThread("2302")[0]).toMatchObject({ brand: "Marathon Polyester", maker: "Marathon", line: "Polyester" });
     expect(findThread("0000")).toEqual([]);
   });
   test("reads real rep text; plain color words are left alone", () => {
@@ -48,7 +48,7 @@ describe("E-41 thread by number", () => {
   });
   test("a number two brands share offers both, so the rep confirms the brand", () => {
     const r = readThreadText("2001");
-    expect(r.matched[0].options.map((o) => o.brand).sort()).toEqual(["Madeira Classic Rayon", "Marathon"]);
+    expect(r.matched[0].options.map((o) => o.brand).sort()).toEqual(["Madeira Classic Rayon", "Marathon Polyester"]);
   });
 });
 
@@ -181,7 +181,7 @@ describe("E-41 fix -- finding a thread: nothing hidden, and color words work", (
   test("an empty search is every thread in all three charts", () => {
     expect(searchThreads("")).toHaveLength(1161);
     expect(searchThreads("   ")).toHaveLength(1161);
-    expect(THREAD_BRAND_COUNTS).toEqual({ "Madeira Polyneon": 433, "Madeira Classic Rayon": 422, Marathon: 306 });
+    expect(THREAD_BRAND_COUNTS).toEqual({ "Madeira Polyneon": 433, "Madeira Classic Rayon": 422, "Marathon Polyester": 306 });
   });
   test("a plain color word finds threads by how they look, not just by official name", () => {
     const red = searchThreads("red");
@@ -197,7 +197,7 @@ describe("E-41 fix -- finding a thread: nothing hidden, and color words work", (
   test("Marathon has no names, so color words are the only way in -- and they work", () => {
     const m = searchThreads("marathon blue");
     expect(m.length).toBeGreaterThan(10);
-    m.forEach((t) => expect(t.brand).toBe("Marathon"));
+    m.forEach((t) => expect(t.maker).toBe("Marathon"));
     expect(searchThreads("marathon")).toHaveLength(306);
     expect(searchThreads("rayon")).toHaveLength(422);
   });
@@ -221,5 +221,38 @@ describe("E-41 fix -- finding a thread: nothing hidden, and color words work", (
     expect(colorFamilies("#12284c")).toEqual(expect.arrayContaining(["blue", "navy"]));
     expect(colorFamilies("#721e22")).toEqual(expect.arrayContaining(["red", "maroon"]));
     expect(colorFamilies(null)).toEqual(["multicolor"]);
+  });
+});
+
+describe("E-41 -- thread organized by maker and line", () => {
+  test("three catalogues today, each under its maker; the known gaps are listed, not hidden", () => {
+    expect(THREAD_CATALOGS.map((c) => `${c.maker} / ${c.line}`)).toEqual(["Madeira / Polyneon", "Madeira / Classic Rayon", "Marathon / Polyester"]);
+    expect(THREAD_CATALOGS_MISSING.map((c) => `${c.maker} / ${c.line}`)).toEqual(["Madeira / Frosted Matt", "Madeira / Metallics", "Marathon / Rayon"]);
+  });
+  test("searching inside one catalogue or one maker", () => {
+    expect(searchThreads("", "P")).toHaveLength(433);
+    expect(searchThreads("", "R")).toHaveLength(422);
+    expect(searchThreads("", "M")).toHaveLength(306);
+    expect(searchThreads("", "Madeira")).toHaveLength(855);
+    expect(searchThreads("", "Marathon")).toHaveLength(306);
+    searchThreads("red", "R").forEach((t) => expect(t.line).toBe("Classic Rayon"));
+    expect(searchThreads("red", "P").length + searchThreads("red", "R").length + searchThreads("red", "M").length).toBe(searchThreads("red").length);
+    expect(searchThreads("1821", "M")).toEqual([]);
+  });
+  test("a picked thread is written with its maker and line, and reads back as exactly that thread", () => {
+    const rayon = findThread("2001").filter((t) => t.line === "Classic Rayon")[0];
+    const marathon = findThread("2001").filter((t) => t.maker === "Marathon")[0];
+    expect(threadLabel(findThread("1821")[0])).toBe("1821 Terra Cotta (Madeira Polyneon)");
+    expect(threadLabel(marathon)).toBe("2001 (Marathon Polyester)");
+    expect(readThreadText(threadLabel(marathon)).matched[0].options).toEqual([marathon]);
+    expect(readThreadText(threadLabel(rayon)).matched[0].options).toEqual([rayon]);
+  });
+  test("a maker or line word typed beside a shared number settles it; without one, both are offered", () => {
+    expect(readThreadText("2001 Marathon").matched[0].options.map((o) => o.brand)).toEqual(["Marathon Polyester"]);
+    expect(readThreadText("Madeira rayon 2001").matched[0].options.map((o) => o.brand)).toEqual(["Madeira Classic Rayon"]);
+    expect(readThreadText("2001").matched[0].options).toHaveLength(2);
+    const r = readThreadText("2001 Marathon, 2002");
+    expect(r.matched[0].options).toHaveLength(1);
+    expect(r.matched[1].options).toHaveLength(2);
   });
 });
