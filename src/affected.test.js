@@ -485,3 +485,59 @@ describe("E-37 — a revision can say which graphics the affected garments carry
     expect(embroiderySizes(emb, item({ affected: "5", graphicKeys: [5] }), "Revision").Large).toBe(5);
   });
 });
+
+/*
+ * E-49 -- an order with no garment to pick (Tanner Robison Deal 1, 2026-10-08: Patches +
+ * Pressed Patches, nothing pickable, so the form could not be submitted at all).
+ */
+describe("pieces: products with no garment and no sheet (E-49)", () => {
+  const { isPieceItem, departmentForProduct } = require("./affected");
+  const ORDER = [
+    { productName: "Patches", productType: "nongarment", quantityOrdered: "48- Tan and Black / 36- Gold and Black", isOutsourced: "Yes" },
+    { productName: "Pressed Patches", productType: "garment", primaryBranches: [] },
+    { productName: "Business Cards", productType: "nongarment", quantityOrdered: "500" },
+    { productName: "Stickers", productType: "nongarment", quantityOrdered: "200" },
+  ];
+  const item = (productIndex, affected) => ({ productIndex, garmentIndex: "", placementKeys: [], affected, sizes: [] });
+
+  test("which products are pieces", () => {
+    ORDER.forEach((p) => expect(isPieceItem(p)).toBe(true));
+    expect(isPieceItem(PRODUCTS[0])).toBe(false); // a garment with garment rows
+    expect(isPieceItem({ productType: "gangsheet" })).toBe(false);
+    expect(isPieceItem(undefined)).toBe(false);
+  });
+
+  test("patches: one per affected piece in Vinyl, all actual -- never the quantity ordered", () => {
+    ["Revision", "Correction"].forEach((type) => {
+      const r = costItem(ORDER, item(0, "12"), type);
+      expect([r.SD, r.ED, r.VD]).toEqual([0, 0, 12]);
+      expect(r.actual.VD).toBe(12);
+      expect(r.projected.VD).toBe(0);
+    });
+  });
+
+  test("it costs what onboarding costs the same quantity", () => {
+    const onboarding = computePrints([{ productName: "Stickers", productType: "nongarment", quantityOrdered: "30" }]);
+    expect(costItem(ORDER, item(3, "30"), "Revision").VD).toBe(onboarding.VD);
+  });
+
+  test("pressed patches with no garment rows count as patches", () => {
+    expect(costItem(ORDER, item(1, "5"), "Correction").VD).toBe(5);
+    expect(departmentForProduct(ORDER[1])).toBe(departmentForProduct(ORDER[0]));
+  });
+
+  test("an outsourced product is recorded with a count of 0", () => {
+    const r = costItem(ORDER, item(2, "100"), "Correction");
+    expect([r.SD, r.ED, r.VD]).toEqual([0, 0, 0]);
+    expect(departmentForProduct(ORDER[2])).toBe("Outsourced");
+  });
+
+  test("no quantity, no prints", () => {
+    expect(costItem(ORDER, item(0, ""), "Revision").VD).toBe(0);
+  });
+
+  test("garments and gang sheets are costed exactly as before", () => {
+    expect(departmentForProduct(PRODUCTS[0])).toBe("Screen Printing");
+    expect(departmentForProduct({ productName: "DTF Gang Sheet", productType: "gangsheet" })).toBe("Vinyl Department");
+  });
+});
