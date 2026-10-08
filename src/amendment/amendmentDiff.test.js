@@ -450,6 +450,11 @@ describe("splitting a garment type (E-50)", () => {
     const lines = summariseAmendmentWithGarments(before, after, [], ["0.0"]);
     expect(lines.filter((l) => /^Garment removed: /.test(l))).toHaveLength(1);
     expect(lines.filter((l) => /^Garment added: /.test(l))).toHaveLength(2);
-    expect(lines).toHaveLength(3); // nothing else reported as changed
+    // A new garment type is spelled out field by field (as any added garment is), so the note
+    // shows which graphics landed on which half. Nothing is reported against the removed original.
+    expect(lines.some((l) => /Garment 1 ›/.test(l))).toBe(false);
+    const on = (n) => lines.filter((l) => new RegExp("Garment " + n + " › Graphic \\d › Graphic description").test(l)).map((l) => l.split("→ ")[1]);
+    expect(on(2)).toEqual(["G1", "G2", "Flag"]);
+    expect(on(3)).toEqual(["G3", "G4", "Flag"]);
   });
 });
