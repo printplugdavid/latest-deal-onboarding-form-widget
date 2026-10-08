@@ -10,6 +10,8 @@ import React from "react";
 import { Autocomplete, Box, TextField, Typography } from "@mui/material";
 import { useFormContext, useWatch } from "react-hook-form";
 import { addColorToText, catalogFor, readColors, swatchBackground } from "../colorCatalogs";
+import { colorModeFor } from "../colorLibrary";
+import { InkColors, ThreadColors } from "./ColorPanels";
 
 const Dot = ({ color, size = 16 }) => (
   <Box
@@ -31,6 +33,7 @@ const ColorsUsedField = ({ field, productIndex, countName, label, sx }) => {
   const productName = useWatch({ control, name: `products.${productIndex}.productName` });
   const typedCount = useWatch({ control, name: countName || "__none__" });
   const catalog = catalogFor(productName);
+  const mode = colorModeFor(productName); // E-41 phase 2: "thread" (Embroidery), "ink" (Screen Printing)
 
   const box = (
     <TextField
@@ -42,9 +45,11 @@ const ColorsUsedField = ({ field, productIndex, countName, label, sx }) => {
       fullWidth
       label={label}
       {...field}
-      sx={catalog ? { mt: "5px", mb: "0.4rem" } : sx}
+      sx={catalog || mode ? { mt: "5px", mb: "0.4rem" } : sx}
     />
   );
+  if (mode === "thread") return <ThreadColors field={field} box={box} />;
+  if (mode === "ink") return <InkColors field={field} box={box} typedCount={typedCount} />;
   if (!catalog) return box;
 
   const { matched, unmatched } = readColors(field.value, catalog);
