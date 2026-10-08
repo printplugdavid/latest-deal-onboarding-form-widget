@@ -21,9 +21,11 @@ describe("E-41 vinyl chart", () => {
     OLD.forEach((n) => expect(stocked).toContain(n));
     expect(names(VINYL_COLORS)).not.toContain("Turqoise");
   });
-  test("swatches are ORAFOL's values now -- Orange is their red-orange, Gold and Silver are marked metallic", () => {
+  test("swatches are ORAFOL's values, except Orange, which keeps the shop chart's orange -- Gold and Silver are marked metallic", () => {
     const by = (n) => VINYL_COLORS.filter((c) => c.name === n)[0];
-    expect(by("Orange").hex).toBe("#e1512c");
+    expect(by("Orange").hex).toBe("#ff9900");
+    expect(by("Matte Orange").hex).toBe("#ff9900");
+    expect(by("Light Orange").hex).toBe("#ea6700");
     expect(by("Gold").metallic).toBe(true);
     expect(by("Silver").metallic).toBe(true);
     expect(by("Red").metallic).toBe(false);
