@@ -4,14 +4,29 @@ import { buildProductionCards } from "./productionCards";
 const names = (list) => list.map((c) => c.name);
 
 describe("E-41 vinyl chart", () => {
-  test("is David's chart: 30 colors, 28 with a HEX, Gold and Silver metallic, spelling fixed", () => {
-    expect(VINYL_COLORS).toHaveLength(30);
-    expect(VINYL_COLORS.filter((c) => c.hex)).toHaveLength(28);
-    expect(names(VINYL_COLORS.filter((c) => c.metallic))).toEqual(["Gold", "Silver"]);
-    expect(names(VINYL_COLORS)).toContain("Turquoise");
+  test("is the ORACAL 651 range: 80 colors, the shop's 30 stocked first, the rest order-in", () => {
+    expect(VINYL_COLORS).toHaveLength(80);
+    expect(VINYL_COLORS.filter((c) => c.stocked)).toHaveLength(30);
+    expect(VINYL_COLORS.slice(0, 30).every((c) => c.stocked)).toBe(true);
+    expect(VINYL_COLORS.slice(30).some((c) => c.stocked)).toBe(false);
+    expect(new Set(names(VINYL_COLORS)).size).toBe(80);
+    VINYL_COLORS.forEach((c) => {
+      expect(c.hex).toMatch(/^#[0-9a-f]{6}$/);
+      expect(c.code).toMatch(/^\d{3}M?$/);
+    });
+  });
+  test("every name on the shop's old 30-color chart is still there and still stocked", () => {
+    const OLD = ["Beige", "Brown", "Brimstone Yellow", "Yellow", "Golden Yellow", "Orange", "Light Red", "Red", "Dark Red", "Burgundy", "Pink", "Purple", "Brilliant Blue", "Dark Blue", "Blue", "Azure Blue", "Light Blue", "Turquoise", "Green", "Light Green", "Dark Green", "Matt White", "White", "Light Grey", "Grey", "Dark Grey", "Matte Black", "Black", "Gold", "Silver"];
+    const stocked = names(VINYL_COLORS.filter((c) => c.stocked));
+    OLD.forEach((n) => expect(stocked).toContain(n));
     expect(names(VINYL_COLORS)).not.toContain("Turqoise");
-    VINYL_COLORS.filter((c) => c.hex).forEach((c) => expect(c.hex).toMatch(/^#[0-9a-f]{6}$/));
-    expect(new Set(names(VINYL_COLORS)).size).toBe(30);
+  });
+  test("swatches are ORAFOL's values now -- Orange is their red-orange, Gold and Silver are marked metallic", () => {
+    const by = (n) => VINYL_COLORS.filter((c) => c.name === n)[0];
+    expect(by("Orange").hex).toBe("#e1512c");
+    expect(by("Gold").metallic).toBe(true);
+    expect(by("Silver").metallic).toBe(true);
+    expect(by("Red").metallic).toBe(false);
   });
   test("only the cut-vinyl products get it", () => {
     ["Vinyl", "Heat-Transfer", "Decals"].forEach((p) => expect(catalogFor(p)).toBe(VINYL_CATALOG));
@@ -59,9 +74,9 @@ describe("E-41 picking a color", () => {
   test("ignores a name that is not on the chart", () => {
     expect(addColorToText("Red", "Chartreuse", VINYL_CATALOG)).toBe("Red");
   });
-  test("metallics get a sheen instead of a flat color", () => {
-    expect(swatchBackground(VINYL_COLORS.filter((c) => c.name === "Gold")[0])).toMatch(/gradient/);
-    expect(swatchBackground(VINYL_COLORS.filter((c) => c.name === "Red")[0])).toBe("#b82c35");
+  test("a swatch is the color's own value; one with no value falls back to a sheen", () => {
+    expect(swatchBackground(VINYL_COLORS.filter((c) => c.name === "Red")[0])).toBe("#b0000d");
+    expect(swatchBackground({ name: "Gold", hex: null })).toMatch(/gradient/);
   });
 });
 
@@ -75,7 +90,7 @@ describe("E-41 swatches on the production card", () => {
     const html = vinylCard(data("Heat-Transfer", "Red and White\nGold"));
     expect(html).toMatch(/class="swatch"/);
     expect((html.match(/class="swatch"/g) || []).length).toBe(3);
-    expect(html).toMatch(/#b82c35/);
+    expect(html).toMatch(/#b0000d/);
   });
   test("no chart colors written -> the card is exactly what it was", () => {
     const plain = vinylCard(data("Heat-Transfer", "see mockup"));

@@ -61,6 +61,7 @@ const ColorsUsedField = ({ field, productIndex, countName, label, sx }) => {
       <Autocomplete
         size="small"
         options={catalog.colors}
+        groupBy={(o) => (o.stocked === false ? "Order-in - ORACAL 651 (not on the shop's chart)" : "In stock")}
         value={null}
         blurOnSelect
         clearOnBlur
@@ -71,7 +72,10 @@ const ColorsUsedField = ({ field, productIndex, countName, label, sx }) => {
         renderOption={(props, o) => (
           <li {...props} key={o.name}>
             <Dot color={o} />
-            <span style={{ marginLeft: 8 }}>{o.name}</span>
+            <span style={{ marginLeft: 8 }}>
+              {o.name}
+              {o.code ? <span style={{ color: "#888" }}> · {o.code}</span> : null}
+            </span>
           </li>
         )}
         renderInput={(params) => (
@@ -85,6 +89,8 @@ const ColorsUsedField = ({ field, productIndex, countName, label, sx }) => {
             <Box key={c.name} sx={{ display: "flex", alignItems: "center", gap: "0.35rem", fontSize: "0.85rem" }}>
               <Dot color={c} size={18} />
               {c.name}
+              {c.stocked === false && <span style={{ color: "#b26a00" }}>(order-in)</span>}
+              {c.metallic && <span style={{ color: "#888" }}>(metallic - shown roughly)</span>}
             </Box>
           ))}
         </Box>

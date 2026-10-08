@@ -27,6 +27,7 @@ import { checkGarmentQuantity } from "./quantityCheck";
 import { computePrints } from "./printMath";
 import { buildOnboardingNote } from "./onboardingNote";
 import { lumpedConcerns, LUMPED_QUESTION } from "./lumpedOrder";
+import { buildColorMatches } from "./colorMatch";
 import {
   CUSTOMER_NOTES_QUESTION,
   CUSTOMER_NOTES_TOOLTIP,
@@ -239,8 +240,17 @@ function App() {
       // module later) can branch on version instead of sniffing for keys. Bumped to 1 with the
       // gangsheet product type (D-13); history and the per-version shape live in docs/06.
       // The stamp is added to the attached copy only -- `data` itself is never retyped (D-5).
+      // E-48: the cross-department color matches, worked out from the Colors Used answers. A `_`
+      // key: derived, never an answer -- every reader that rebuilds a form strips `_` keys.
+      let colorMatches = [];
+      try {
+        colorMatches = buildColorMatches(cardData);
+      } catch (e) {
+        console.log("Color matching failed - skipping:", e);
+      }
       const onboardingJson = JSON.stringify({
         ...cardData,
+        ...(colorMatches.length ? { _colorMatches: colorMatches } : {}),
         _schemaVersion: 1,
         _submittedAt: new Date().toISOString(),
       });
