@@ -74,6 +74,104 @@ export function readThreadText(text) {
   return { matched, unknown };
 }
 
+/*
+ * Finding a thread (E-41 fix, 2026-10-07 -- David: "it looks like we're missing a ton of embroidery
+ * color options"). The first version listed only the first 40 threads until the rep typed, and
+ * searched official NAMES only -- but the names are "Terra Cotta", "Whipped Butterscotch",
+ * "Sangria", and Marathon has no names at all, so typing "red" or "gold" found almost nothing.
+ * Now: every thread is listed, and a plain color word finds threads by what they LOOK like.
+ */
+function hexToHsl(hex) {
+  const r = parseInt(hex.substr(1, 2), 16) / 255;
+  const g = parseInt(hex.substr(3, 2), 16) / 255;
+  const b = parseInt(hex.substr(5, 2), 16) / 255;
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const l = (max + min) / 2;
+  const d = max - min;
+  if (d === 0) return [0, 0, l];
+  const s = d / (1 - Math.abs(2 * l - 1));
+  let h = max === r ? ((g - b) / d) % 6 : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
+  h = (h * 60 + 360) % 360;
+  return [h, s, l];
+}
+/* The everyday color words a swatch answers to: "#9b3320" -> ["red", "brown", ...]. Generous on purpose. */
+export function colorFamilies(hex) {
+  if (!hex) return ["multicolor"];
+  const [h, s, l] = hexToHsl(hex);
+  const out = [];
+  const add = (w) => out.indexOf(w) < 0 && out.push(w);
+  if (l < 0.13) add("black");
+  if (l > 0.9 && s < 0.35) add("white");
+  if (s < 0.14) {
+    if (l >= 0.13 && l <= 0.9) add("gray");
+    if (l > 0.6) add("silver");
+    if (l < 0.3) add("charcoal");
+    if (out.length) return out;
+  }
+  const inH = (a, b) => (a <= b ? h >= a && h < b : h >= a || h < b);
+  if (inH(345, 18)) add(l > 0.72 ? "pink" : "red");
+  if (inH(10, 42)) add(l < 0.42 || s < 0.45 ? "brown" : "orange");
+  if (inH(36, 68)) add("yellow");
+  if (inH(68, 165)) add("green");
+  if (inH(160, 200)) { add("teal"); add("turquoise"); }
+  if (inH(190, 258)) add("blue");
+  if (inH(255, 295)) { add("purple"); add("violet"); }
+  if (inH(290, 348)) { add("pink"); if (l < 0.45) add("purple"); if (s > 0.5) add("magenta"); }
+  if (inH(340, 20) && l < 0.33) { add("maroon"); add("burgundy"); }
+  if (inH(200, 258) && l < 0.27) add("navy");
+  if (inH(190, 258) && l > 0.42 && s > 0.45) add("royal");
+  if (inH(28, 58) && s > 0.4 && l > 0.3 && l < 0.62) add("gold");
+  if (inH(18, 58) && s < 0.55 && l > 0.5 && l < 0.86) { add("tan"); add("beige"); add("khaki"); }
+  if (inH(20, 70) && l >= 0.82) { add("cream"); add("ivory"); }
+  if (inH(55, 110) && s < 0.6 && l < 0.42) add("olive");
+  if (inH(68, 165) && l > 0.6) add("mint");
+  if (!out.length) add("gray");
+  return out;
+}
+const FAMILY_ALIASES = { grey: "gray", burgandy: "burgundy", turqoise: "turquoise", aqua: "teal", lavender: "purple", lilac: "purple", fuchsia: "magenta", crimson: "red", scarlet: "red", lime: "green", forest: "green", kelly: "green", sky: "blue", copper: "brown", bronze: "brown", rust: "brown", peach: "orange", coral: "orange", mustard: "gold", sand: "tan", offwhite: "cream" };
+const THREAD_SEARCH = THREADS.map((t) => ({
+  t,
+  name: t.name.toLowerCase(),
+  brand: t.brand.toLowerCase(),
+  fam: colorFamilies(t.hex),
+}));
+/*
+ * Threads matching what the rep typed. Every word must match one of: the number (from its start),
+ * the official name, the brand, or a color word the swatch answers to. An empty search is ALL of them.
+ * A color-word search is sorted so the purest matches come first.
+ */
+export function searchThreads(query) {
+  const words = String(query == null ? "" : query)
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter(Boolean)
+    .map((w) => FAMILY_ALIASES[w] || w);
+  if (!words.length) return THREADS;
+  const hits = THREAD_SEARCH.filter((e) =>
+    words.every(
+      (w) => e.t.code.indexOf(w) === 0 || e.name.indexOf(w) >= 0 || e.brand.indexOf(w) >= 0 || e.fam.indexOf(w) >= 0
+    )
+  );
+  const rank = (e) => {
+    let r = 3;
+    words.forEach((w) => {
+      if (e.t.code === w) r = Math.min(r, 0);
+      else if (e.t.code.indexOf(w) === 0 || e.name.indexOf(w) >= 0) r = Math.min(r, 1);
+      else if (e.fam[0] === w) r = Math.min(r, 2);
+    });
+    return r;
+  };
+  // Brand first (the list is shown grouped by brand, and a group must stay in one piece), then the
+  // best matches within each brand.
+  const brandOrder = Object.keys(THREAD_BRAND_COUNTS);
+  return hits
+    .map((e, i) => ({ e, i, r: rank(e), b: brandOrder.indexOf(e.t.brand) }))
+    .sort((x, y) => x.b - y.b || x.r - y.r || x.i - y.i)
+    .map((x) => x.e.t);
+}
+export const THREAD_BRAND_COUNTS = THREADS.reduce((m, t) => ((m[t.brand] = (m[t.brand] || 0) + 1), m), {});
+
 // ---- house inks -----------------------------------------------------------------------------------
 export const HOUSE_INKS = HOUSE_ROWS.map(([name, hex, metallic]) => ({ name, hex, metallic: !!metallic }));
 const norm = (s) =>

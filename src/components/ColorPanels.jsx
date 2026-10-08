@@ -12,7 +12,7 @@ import React, { useState } from "react";
 import { Autocomplete, Box, Button, TextField, Typography } from "@mui/material";
 import {
   COLOR_CAVEATS, HOUSE_INKS, THREADS, addLine, findPantone, houseInkHint, nearestHouseInk, nearestPantones,
-  normalizeHex, pantoneLabel, readInkText, readThreadText, threadLabel,
+  normalizeHex, pantoneLabel, readInkText, readThreadText, searchThreads, threadLabel, THREAD_BRAND_COUNTS,
 } from "../colorLibrary";
 
 const METAL = "linear-gradient(135deg,#8a6d1f,#f5e08a,#b8962e)";
@@ -40,11 +40,12 @@ export const ThreadColors = ({ field, box }) => {
         blurOnSelect
         clearOnBlur
         getOptionLabel={(t) => (t ? `${t.code} ${t.name} ${t.brand}` : "")}
-        filterOptions={(opts, state) => {
-          const q = state.inputValue.trim().toLowerCase();
-          if (!q) return opts.slice(0, 40);
-          return opts.filter((t) => t.code.indexOf(q) === 0 || t.name.toLowerCase().indexOf(q) >= 0).slice(0, 40);
-        }}
+        // Every thread is listed (grouped by brand); typing narrows by number, name, brand or a
+        // plain color word. Nothing is cut off -- a capped list read as "colors are missing".
+        filterOptions={(_, state) => searchThreads(state.inputValue)}
+        groupBy={(t) => `${t.brand} (${THREAD_BRAND_COUNTS[t.brand]} colors)`}
+        ListboxProps={{ style: { maxHeight: "22rem" } }}
+        noOptionsText="No thread matches. Try the number, or a color word like red, navy or gold."
         onChange={(_, t) => {
           if (t) field.onChange(addLine(field.value, threadLabel(t)));
         }}
@@ -56,7 +57,14 @@ export const ThreadColors = ({ field, box }) => {
             </span>
           </li>
         )}
-        renderInput={(params) => <TextField {...params} label="Find a thread by number or name to add" sx={{ mt: "5px" }} />}
+        renderInput={(params) => (
+          <TextField
+            {...params}
+            label="Find a thread by number, name or color to add"
+            helperText={`${THREADS.length.toLocaleString()} threads: Madeira Polyneon, Madeira Classic Rayon, Marathon. Type a number (1821), a name, or a color word (red, navy, gold).`}
+            sx={{ mt: "5px" }}
+          />
+        )}
       />
       {box}
       {matched.map(({ code, options }) => (
