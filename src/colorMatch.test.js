@@ -60,6 +60,10 @@ describe("E-48 a color's matches in the other departments", () => {
     expect(ms.some((x) => x.dept === "Vinyl")).toBe(true);
     expect(ms.some((x) => x.dept === "Embroidery")).toBe(false);
   });
+  test("a house ink that is nowhere near is not suggested", () => {
+    const p = findPantone("4266 C").color; // a brown; the closest house ink is a red
+    expect(matchesFor(src("pantone", { hex: p.hex, pantone: p })).some((x) => /^House /.test(x.label))).toBe(false);
+  });
   test("metallic or colorless sources are not matched", () => {
     expect(matchesFor(src("vinyl", { hex: "#756232", metallic: true }))).toEqual([]);
     expect(matchesFor(src("thread", { hex: null }))).toEqual([]);

@@ -90,9 +90,11 @@ const vinylMatches = (hex) =>
   nearestVinyls(hex).map((n) =>
     m("Vinyl", `${n.item.name} (ORACAL 651-${n.item.code})`, n.item.hex, n.difference, "computed", n.item.stocked ? "in stock" : "order-in")
   );
+// A house ink is only worth naming when it is at least in the neighborhood: "House Ruby Red - not
+// close" beside a brown is noise. No entry means "this is a custom mix".
 const houseMatch = (hex) => {
   const h = nearestHouseInk(hex);
-  return h ? [m("Screen Print", "House " + h.ink.name, h.ink.hex, h.difference, "computed", "in stock, no mixing")] : [];
+  return h && h.difference < 12 ? [m("Screen Print", "House " + h.ink.name, h.ink.hex, h.difference, "computed", "in stock, no mixing")] : [];
 };
 const pantoneMatch = (hex, official) => {
   if (official) return [m("Screen Print", pantoneLabel(official), official.hex, 0, "official")];
