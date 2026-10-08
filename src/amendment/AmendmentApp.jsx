@@ -12,8 +12,11 @@
  * submits with -- fed the amended product tree. An amendment recomputes everything; it never patches.
  * ⛔ D-25: NEVER write Onboarding_Needs_Updated -- not to clear it, not to set it. It is the agents'
  * own history of "an update was needed"; they clear and re-mark it by hand to re-do one.
- * Step 5 passes Trigger: [] -- an amendment must not fire the stage / order-modified automations by
- * itself. Re-stamping tasks already built from the old numbers is the Deluge thread's (docs/04 E-24).
+ *   6. E-43: Print_Count on the Deal's OPEN produce tasks, where the amendment changed their number
+ *      (taskRestamp.js -- which field a task holds is read from its subject; completed, Reproduce
+ *      and Correct tasks are never touched; each re-stamped task gets a dated line in its description)
+ * Steps 5 and 6 pass Trigger: [] -- an amendment must not fire the stage / order-modified automations
+ * by itself.
  *
  * How prefill works: onboarding-form.json IS the react-hook-form `data` the onboarding form submitted
  * (plus two `_` stamps). So the newest JSON goes through toFormValues() and straight into reset(), and
@@ -68,6 +71,7 @@ import { buildColorMatches } from "../colorMatch";
 import { newestFirst, readFileText } from "../zohoFiles";
 import { AmendContact, AmendDates } from "./AmendSections";
 import { parseNoteToForm, toPlainText } from "./noteToForm";
+import { countFieldForTask, planTaskRestamp } from "./taskRestamp";
 import {
   copyGarment,
   withoutGraphic,
@@ -568,7 +572,7 @@ const AmendmentApp = () => {
     }
 
     // 5. the Deal fields. ⛔ Onboarding_Needs_Updated is deliberately absent (D-25).
-    await step(countsVerified ? "print counts and update summary" : "update summary (print counts left as they were)", async () => {
+    const countsOk = await step(countsVerified ? "print counts and update summary" : "update summary (print counts left as they were)", async () => {
       const r = await ZOHO.CRM.API.updateRecord({
         Entity: entity,
         APIData: {
@@ -585,16 +589,69 @@ const AmendmentApp = () => {
       if (!ok(r)) throw new Error("updateRecord: " + JSON.stringify(r?.data?.[0] || r));
     });
 
+    // 6. E-43 -- open produce tasks carry the numbers they were created with. Only when the counts
+    // above were written (otherwise the Deal still holds the old ones and the tasks agree with it).
+    if (countsVerified && countsOk) {
+      let restamped = [];
+      const taskStep = await step("production task counts", async () => {
+        const rel = await ZOHO.CRM.API.getRelatedRecords({
+          Entity: entity,
+          RecordID: recordId,
+          RelatedList: "Tasks",
+          page: 1,
+          per_page: 200,
+        });
+        // The related list may not carry Print_Count on every org / layout. A task that looks like a
+        // produce task but arrived without the field is read on its own, so nothing is skipped or
+        // overwritten blind.
+        const tasks = [];
+        for (const t of rel?.data || []) {
+          if (t && t.Print_Count === undefined && countFieldForTask(t.Subject)) {
+            try {
+              const one = await ZOHO.CRM.API.getRecord({ Entity: "Tasks", RecordID: t.id });
+              tasks.push(one?.data?.[0] || t);
+            } catch (e) {
+              tasks.push(t);
+            }
+          } else {
+            tasks.push(t);
+          }
+        }
+        const plan = planTaskRestamp(tasks, printFields, when);
+        for (let i = 0; i < plan.length; i++) {
+          const r = await ZOHO.CRM.API.updateRecord({
+            Entity: "Tasks",
+            APIData: { id: plan[i].id, Print_Count: plan[i].to, Description: plan[i].description },
+            Trigger: [],
+          });
+          if (!ok(r)) throw new Error("task " + plan[i].id + ": " + JSON.stringify(r?.data?.[0] || r));
+          restamped.push(plan[i]);
+        }
+      });
+      // Say what happened to the tasks in plain words, in place of the bare step name.
+      const at = (taskStep ? done : failed).indexOf("production task counts");
+      const list = restamped.map((p) => `${p.subject} ${p.from === null ? "(blank)" : p.from} → ${p.to}`).join("; ");
+      if (taskStep) {
+        done[at] = restamped.length ? `open production tasks updated (${list})` : "production tasks checked (none needed a new count)";
+      } else {
+        failed[at] =
+          "updating the open production tasks" +
+          (restamped.length ? ` (done before it stopped: ${list})` : "") +
+          " - their print counts may still show the old numbers";
+      }
+    }
+
     setOutcome({ done, failed });
     setSaving(false);
     if (!failed.length) {
+      // Leave the result on screen a little longer when it lists tasks that were re-stamped.
       setTimeout(() => {
         try {
           ZOHO.CRM.UI.Popup.closeReload();
         } catch (e) {
           /* ignore */
         }
-      }, 1200);
+      }, done.some((d) => /^open production tasks updated/.test(d)) ? 5000 : 1200);
     }
   };
 

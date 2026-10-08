@@ -308,8 +308,8 @@ export function buildAmendmentNote({ content, lines, story, when, previousWhen }
       String(story || "").trim() || "(nothing written)",
       "",
       "This note replaces the onboarding note" + (previousWhen ? " submitted " + previousWhen : "") + ".",
-      "Production tasks created before this amendment may still show the old numbers --",
-      "the production card viewer and the print counts on the Deal are current.",
+      "Open production tasks are re-stamped with the new counts when this amendment saves (each one's",
+      "description says so); a completed task keeps the count it was done under.",
       "",
       "",
     ]);
