@@ -1,0 +1,287 @@
+/*
+ * colorLibrary.js -- E-41 phase 2. Thread by number, house inks, Pantone <-> HEX.
+ *
+ * Data: src/colorData/*.json, generated from ~/Projects/color-library/catalogs by
+ * tools/color-data/build_color_data.py (in the knowledge-base folder). Never edit the JSON by hand.
+ *
+ * ⚠️ `colorsUsed` STAYS A STRING. Everything here either helps type into that box or reads it back.
+ *
+ * What a reader of this file must not forget (David, 2026-10-07 -- "flag anything like color
+ * approximation, bridging limitation, color representation in the form"):
+ *   - every swatch is an on-screen approximation;
+ *   - the Pantone data is an UNOFFICIAL copy of ~2021 color books -- newer codes are missing;
+ *   - HEX -> Pantone is "closest", almost never "equal";
+ *   - the form offers the COATED book only (plastisol is matched to coated); an uncoated code a rep
+ *     types is still recognized, and labeled;
+ *   - metallics and neons cannot be shown faithfully.
+ *
+ * Pure: no React, no ZOHO.
+ */
+import THREAD_ROWS from "./colorData/thread.json";
+import HOUSE_ROWS from "./colorData/houseInk.json";
+import PANTONE_ROWS from "./colorData/pantone.json";
+import { catalogFor, readColors, splitColorText, swatchBackground } from "./colorCatalogs";
+
+// ---- which chart a product uses -----------------------------------------------------------------
+export function colorModeFor(productName) {
+  const p = String(productName || "");
+  if (catalogFor(p)) return "vinyl";
+  if (p === "Embroidery") return "thread";
+  if (p === "Screen Printing") return "ink";
+  return null;
+}
+
+// ---- thread ---------------------------------------------------------------------------------------
+export const THREAD_BRANDS = { P: "Madeira Polyneon", R: "Madeira Classic Rayon", M: "Marathon" };
+export const THREADS = THREAD_ROWS.map(([code, name, hex, brand]) => ({
+  code,
+  name,
+  hex: hex || null,
+  brand: THREAD_BRANDS[brand] || brand,
+}));
+const THREAD_BY_CODE = {};
+THREADS.forEach((t) => (THREAD_BY_CODE[t.code] = THREAD_BY_CODE[t.code] || []).push(t));
+
+export const findThread = (code) => THREAD_BY_CODE[String(code == null ? "" : code).trim()] || [];
+export const threadLabel = (t) => `${t.code}${t.name ? " " + t.name : ""}`;
+
+/*
+ * Thread numbers written in the box. A thread number is four digits standing alone -- not part of a
+ * longer number, a decimal, a "#60" weight or a Pantone code ("3955C").
+ *   matched -- one entry per number: { code, options: [thread...] } (two options = two brands share it)
+ *   unknown -- four-digit numbers that are in no thread catalogue
+ */
+export function readThreadText(text) {
+  const matched = [];
+  const unknown = [];
+  const seen = {};
+  const re = /\d+(?:\.\d+)?/g;
+  const s = String(text == null ? "" : text);
+  let m;
+  while ((m = re.exec(s))) {
+    const tok = m[0];
+    if (!/^\d{4}$/.test(tok)) continue;
+    const before = s.charAt(m.index - 1);
+    const after = s.slice(m.index + 4, m.index + 6);
+    if (before === "#" || before === ".") continue;
+    if (/^\s?[cu]\b/i.test(after)) continue; // "3955C" is a Pantone, not a thread
+    if (seen[tok]) continue;
+    seen[tok] = true;
+    const options = findThread(tok);
+    if (options.length) matched.push({ code: tok, options });
+    else unknown.push(tok);
+  }
+  return { matched, unknown };
+}
+
+// ---- house inks -----------------------------------------------------------------------------------
+export const HOUSE_INKS = HOUSE_ROWS.map(([name, hex, metallic]) => ({ name, hex, metallic: !!metallic }));
+const norm = (s) =>
+  String(s == null ? "" : s)
+    .toLowerCase()
+    .replace(/grey/g, "gray")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+const HOUSE_BY_NORM = {};
+HOUSE_INKS.forEach((h) => (HOUSE_BY_NORM[norm(h.name)] = h));
+export function findHouseInk(piece) {
+  const n = norm(piece).replace(/\b(ink|plastisol)\b/g, " ").replace(/\s+/g, " ").trim();
+  return HOUSE_BY_NORM[n] || null;
+}
+
+// ---- Pantone --------------------------------------------------------------------------------------
+export const PANTONES = PANTONE_ROWS.map(([code, hex, kind]) => ({
+  code,
+  hex,
+  metallic: kind === "m",
+  neon: kind === "n",
+  coated: / C$/.test(code),
+}));
+const pkey = (s) => norm(s).replace(/\s+/g, "");
+const PANTONE_BY_KEY = {};
+PANTONES.forEach((p) => (PANTONE_BY_KEY[pkey(p.code)] = p));
+export const pantoneLabel = (p) => "Pantone " + p.code;
+
+/*
+ * Find a Pantone code in something a rep typed: "187C", "PMS 187", "Pantone 187 C", "Cool Grey 4 C",
+ * "Red Pantone 187C", "2378C Navy Pantone".
+ *   - a C or U suffix makes it a Pantone on its own ("172 C");
+ *   - with the word Pantone / PMS and NO suffix, coated is assumed (`assumed: true`);
+ *   - a bare number with neither is NOT a Pantone -- it could be anything.
+ * Returns { color, assumed } | { unknown: true } (looks like a Pantone, not in the library) | null.
+ */
+export function findPantone(raw) {
+  const lower = String(raw == null ? "" : raw).toLowerCase();
+  const hasWord = /\b(pantone|pms)\b/.test(lower);
+  const words = lower
+    .replace(/\b(pantone|pms)\b/g, " ")
+    .replace(/grey/g, "gray")
+    .replace(/(\d)([cu])\b/g, "$1 $2")
+    .split(/[^a-z0-9]+/)
+    .filter(Boolean);
+  let assumedHit = null;
+  for (let len = Math.min(4, words.length); len >= 1; len--) {
+    for (let i = 0; i + len <= words.length; i++) {
+      const cand = words.slice(i, i + len);
+      const last = cand[cand.length - 1];
+      const key = cand.join("");
+      if ((last === "c" || last === "u") && len >= 2 && PANTONE_BY_KEY[key]) {
+        return { color: PANTONE_BY_KEY[key], assumed: false };
+      }
+      if (hasWord && !assumedHit && last !== "c" && last !== "u" && PANTONE_BY_KEY[key + "c"]) {
+        assumedHit = { color: PANTONE_BY_KEY[key + "c"], assumed: true };
+      }
+    }
+  }
+  if (assumedHit) return assumedHit;
+  if ((hasWord && /\d{3,5}/.test(lower)) || /\b\d{3,5}\s*[cu]\b/.test(lower)) return { unknown: true };
+  return null;
+}
+
+// ---- HEX ------------------------------------------------------------------------------------------
+/* "#AA1C2E", "aa1c2e", "Hex Code 9A5F3A" -> "#aa1c2e"; anything else -> null. */
+export function normalizeHex(raw) {
+  const m = /^\s*#?([0-9a-f]{6})\s*$/i.exec(String(raw == null ? "" : raw));
+  return m ? "#" + m[1].toLowerCase() : null;
+}
+/* A HEX written inside a longer line needs a "#" or the word "hex" beside it -- "140000 shirts" is not a color. */
+export function findHexInText(raw) {
+  const m = /(?:#|\bhex(?:\s*code)?\s*:?\s*#?)\s*([0-9a-f]{6})\b/i.exec(String(raw == null ? "" : raw));
+  return m ? "#" + m[1].toLowerCase() : null;
+}
+
+// ---- color distance -------------------------------------------------------------------------------
+export function hexToLab(hex) {
+  const h = normalizeHex(hex);
+  if (!h) return null;
+  const lin = [1, 3, 5].map((i) => {
+    const v = parseInt(h.substr(i, 2), 16) / 255;
+    return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+  });
+  const x = (lin[0] * 0.4124564 + lin[1] * 0.3575761 + lin[2] * 0.1804375) / 0.95047;
+  const y = lin[0] * 0.2126729 + lin[1] * 0.7151522 + lin[2] * 0.072175;
+  const z = (lin[0] * 0.0193339 + lin[1] * 0.119192 + lin[2] * 0.9503041) / 1.08883;
+  const f = (t) => (t > 0.008856 ? Math.cbrt(t) : 7.787 * t + 16 / 116);
+  return [116 * f(y) - 16, 500 * (f(x) - f(y)), 200 * (f(y) - f(z))];
+}
+export function colorDifference(hexA, hexB) {
+  const a = hexToLab(hexA);
+  const b = hexToLab(hexB);
+  if (!a || !b) return Infinity;
+  return Math.sqrt(Math.pow(a[0] - b[0], 2) + Math.pow(a[1] - b[1], 2) + Math.pow(a[2] - b[2], 2));
+}
+/* Plain words for a difference (CIE76 Lab distance: under ~3 is hard to see, over ~10 is obvious). */
+export function describeDifference(d) {
+  if (d < 1) return "same on screen";
+  if (d < 3) return "near-identical";
+  if (d < 6) return "close";
+  if (d < 12) return "visibly different";
+  return "not close";
+}
+
+let coatedLab = null; // coated, non-metallic Pantones with their Lab, built on first use
+const coatedPool = () => {
+  if (!coatedLab) {
+    coatedLab = PANTONES.filter((p) => p.coated && !p.metallic).map((p) => ({ p, lab: hexToLab(p.hex) }));
+  }
+  return coatedLab;
+};
+/* The `count` closest COATED, non-metallic Pantones to a HEX. [{ color, difference, quality }] */
+export function nearestPantones(hex, count) {
+  const t = hexToLab(hex);
+  if (!t) return [];
+  return coatedPool()
+    .map(({ p, lab }) => ({
+      color: p,
+      difference: Math.sqrt(Math.pow(t[0] - lab[0], 2) + Math.pow(t[1] - lab[1], 2) + Math.pow(t[2] - lab[2], 2)),
+    }))
+    .sort((a, b) => a.difference - b.difference)
+    .slice(0, count || 5)
+    .map((r) => ({ ...r, quality: describeDifference(r.difference) }));
+}
+/* The closest non-metallic house ink to a HEX. { ink, difference, quality } */
+export function nearestHouseInk(hex) {
+  let best = null;
+  HOUSE_INKS.filter((h) => !h.metallic).forEach((ink) => {
+    const difference = colorDifference(hex, ink.hex);
+    if (!best || difference < best.difference) best = { ink, difference };
+  });
+  return best ? { ...best, quality: describeDifference(best.difference) } : null;
+}
+/* For a Pantone the rep chose: is a house ink close enough to print without mixing? (text, or "") */
+export function houseInkHint(pantone) {
+  if (!pantone || pantone.metallic || pantone.neon) return "";
+  const n = nearestHouseInk(pantone.hex);
+  if (!n) return "";
+  if (n.difference < 3) return `House ${n.ink.name} is a near-identical match on screen - likely no mixing needed.`;
+  if (n.difference < 6) return `House ${n.ink.name} is close - check the book before mixing.`;
+  return "";
+}
+
+// ---- reading the screen-print box -----------------------------------------------------------------
+/*
+ * One item per thing written: { type, text, ... }
+ *   house    { ink }                     a stocked FN-INK color, by its exact name
+ *   pantone  { color, assumed }          assumed = no C/U was written, coated taken
+ *   unknown-pantone                      looks like a Pantone, not in the library
+ *   hex      { hex }
+ *   other                                anything else -- a note, "TBD", a color word
+ */
+export function readInkText(text) {
+  return splitColorText(text).map((piece) => {
+    const p = findPantone(piece);
+    if (p && p.color) return { type: "pantone", text: piece, color: p.color, assumed: p.assumed };
+    const hex = findHexInText(piece) || normalizeHex(piece);
+    if (hex) return { type: "hex", text: piece, hex };
+    if (p && p.unknown) return { type: "unknown-pantone", text: piece };
+    const ink = findHouseInk(piece);
+    if (ink) return { type: "house", text: piece, ink };
+    return { type: "other", text: piece };
+  });
+}
+
+/* Add a line to the box unless that exact entry is already written. */
+export function addLine(text, line) {
+  const cur = String(text == null ? "" : text);
+  const want = norm(line);
+  if (!want) return cur;
+  if (cur.split(/\r?\n|,|;/).some((p) => norm(p) === want)) return cur;
+  const base = cur.replace(/\s+$/, "");
+  return base ? base + "\n" + line : line;
+}
+
+// ---- one reader for the production cards ----------------------------------------------------------
+/* Every recognized color in a Colors Used answer, as { label, background } -- whatever the product. */
+export function readColorSwatches(productName, text) {
+  const mode = colorModeFor(productName);
+  if (mode === "vinyl") {
+    return readColors(text, catalogFor(productName)).matched.map((c) => ({ label: c.name, background: swatchBackground(c) }));
+  }
+  if (mode === "thread") {
+    const out = [];
+    readThreadText(text).matched.forEach(({ options }) =>
+      options.forEach((t) => {
+        if (t.hex) out.push({ label: threadLabel(t) + (options.length > 1 ? ` (${t.brand})` : ""), background: t.hex });
+      })
+    );
+    return out;
+  }
+  if (mode === "ink") {
+    const out = [];
+    readInkText(text).forEach((it) => {
+      if (it.type === "house") out.push({ label: "House " + it.ink.name, background: it.ink.hex });
+      else if (it.type === "pantone") out.push({ label: `${pantoneLabel(it.color)} (${it.color.hex})`, background: it.color.hex });
+      else if (it.type === "hex") out.push({ label: it.hex, background: it.hex });
+    });
+    return out;
+  }
+  return [];
+}
+
+/* The caveats the form prints wherever these swatches appear. */
+export const COLOR_CAVEATS = {
+  thread:
+    "Thread swatches are approximations of the maker's color chart - a check against the wrong number, not a color match. Marathon numbers have no official names.",
+  ink:
+    "Screen colors are approximations: a monitor cannot show ink exactly. Pantone swatches come from an unofficial reference copy of the Coated book that may not include the newest colors. A HEX or picked color is matched to the CLOSEST Pantone, which is rarely an exact equal - the match quality is shown. Metallic and neon inks cannot be shown faithfully. Always confirm against the physical Pantone book.",
+};

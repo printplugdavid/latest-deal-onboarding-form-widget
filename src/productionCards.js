@@ -6,7 +6,7 @@
  */
 
 import { gangSheetPrints } from "./gangSheet";
-import { catalogFor, readColors, swatchBackground } from "./colorCatalogs";
+import { readColorSwatches } from "./colorLibrary";
 
 // ===== Production card generator (attached to the Deal as per-department HTML job sheets) =====
 const pcEsc = (s) => String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -41,10 +41,10 @@ const pcRoute = (p) => PC_ROUTE[p?.productName] || (p?.productType === "gangshee
 function pcRow(en, es, v, opts) { opts = opts || {}; if (!pcHas(v)) return ""; const label = opts.bi && es ? `${en} / ${es}` : en; return `<div class="row${opts.crit ? " crit" : ""}"><span class="lbl">${pcEsc(label)}</span><span class="val">${pcEsc(v)}</span></div>`; }
 // E-41: a swatch per chart color named in "Colors Used", for products that have a chart (cut vinyl).
 // Nothing recognised -> empty string, so a card with no chart colors is exactly what it was.
+// Since E-41 phase 2 the same row covers thread (by number) and screen-print ink (house / Pantone / HEX).
 function pcSwatches(productName, text) {
-  const cat = catalogFor(productName); if (!cat) return "";
-  const m = readColors(text, cat).matched; if (!m.length) return "";
-  return `<div class="row"><span class="lbl">Chart colors</span><span class="val">${m.map((c) => `<span class="swatch" style="display:inline-block;width:14px;height:14px;border:1px solid #777;border-radius:2px;vertical-align:-2px;margin-right:4px;background:${swatchBackground(c)};-webkit-print-color-adjust:exact;print-color-adjust:exact"></span>${pcEsc(c.name)}`).join(" &nbsp; ")}</span></div>`;
+  const m = readColorSwatches(productName, text); if (!m.length) return "";
+  return `<div class="row"><span class="lbl">Chart colors (approx.)</span><span class="val">${m.map((c) => `<span class="swatch" style="display:inline-block;width:14px;height:14px;border:1px solid #777;border-radius:2px;vertical-align:-2px;margin-right:4px;background:${c.background};-webkit-print-color-adjust:exact;print-color-adjust:exact"></span>${pcEsc(c.label)}`).join(" &nbsp; ")}</span></div>`;
 }
 function pcGarmentBlock(g, bi, ironPass, productName) {
   const graphics = (g?.secondaryBranches || []).map((gr, i) => {
