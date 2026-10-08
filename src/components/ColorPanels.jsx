@@ -12,7 +12,8 @@ import React, { useState } from "react";
 import { Autocomplete, Box, Button, TextField, Typography } from "@mui/material";
 import {
   COLOR_CAVEATS, HOUSE_INKS, THREADS, addLine, findPantone, houseInkHint, nearestHouseInk, nearestPantones,
-  normalizeHex, pantoneLabel, readInkText, readThreadText, searchThreads, threadLabel, THREAD_BRAND_COUNTS,
+  normalizeHex, pantoneLabel, readInkText, readThreadText, searchThreads, threadLabel, THREAD_BRAND_COUNTS, THREAD_CATALOGS,
+  THREAD_CATALOGS_MISSING,
 } from "../colorLibrary";
 
 const METAL = "linear-gradient(135deg,#8a6d1f,#f5e08a,#b8962e)";
@@ -29,10 +30,63 @@ const Amber = ({ children }) => <Typography sx={{ fontSize: "0.85rem", color: "#
 const Caveat = ({ children }) => <Typography sx={{ fontSize: "0.75rem", color: "#777", mt: "0.4rem" }}>{children}</Typography>;
 
 // ---------------------------------------------------------------------------------------------------
+const MAKERS = THREAD_CATALOGS.map((c) => c.maker)
+  .concat(THREAD_CATALOGS_MISSING.map((c) => c.maker))
+  .filter((m, i, a) => a.indexOf(m) === i);
+const scopeButton = (active) => ({
+  textTransform: "none",
+  py: "1px",
+  px: "8px",
+  fontSize: "0.8rem",
+  borderColor: active ? "#1565c0" : "#bbb",
+  color: active ? "#fff" : "#222",
+  bgcolor: active ? "#1565c0" : "transparent",
+  "&:hover": { bgcolor: active ? "#0d47a1" : "#f0f0f0" },
+});
+
 export const ThreadColors = ({ field, box }) => {
+  // Which catalogue the finder is looking in: "" (all), a maker ("Madeira"), or one line ("P").
+  const [scope, setScope] = useState("");
   const { matched, unknown } = readThreadText(field.value);
+  const scopeName = scope
+    ? THREAD_CATALOGS.filter((c) => c.key === scope).map((c) => `${c.maker} ${c.line}`)[0] || `all ${scope} lines`
+    : "all thread catalogues";
   return (
     <Box sx={{ mb: "1rem" }}>
+      {/* Maker -> line, so staff can see which catalogue is which (David, 2026-10-07). */}
+      <Box sx={{ border: "1px solid #d9d9d9", borderRadius: 1, p: 1.25, mt: "5px", mb: "0.4rem", bgcolor: "#fafafa" }}>
+        <Box sx={{ display: "flex", alignItems: "center", gap: "0.4rem", flexWrap: "wrap" }}>
+          <Typography sx={{ fontSize: "0.85rem", fontWeight: 700, minWidth: "5.5rem" }}>Thread catalogue</Typography>
+          <Button size="small" variant="outlined" onClick={() => setScope("")} sx={scopeButton(scope === "")}>
+            All ({THREADS.length.toLocaleString()})
+          </Button>
+        </Box>
+        {MAKERS.map((maker) => (
+          <Box key={maker} sx={{ display: "flex", alignItems: "center", gap: "0.4rem", flexWrap: "wrap", mt: "0.4rem" }}>
+            <Button
+              size="small"
+              variant="outlined"
+              onClick={() => setScope(maker)}
+              sx={{ ...scopeButton(scope === maker), fontWeight: 700, minWidth: "5.5rem" }}
+            >
+              {maker}
+            </Button>
+            {THREAD_CATALOGS.filter((c) => c.maker === maker).map((c) => (
+              <Button key={c.key} size="small" variant="outlined" onClick={() => setScope(c.key)} sx={scopeButton(scope === c.key)}>
+                {c.line} ({THREAD_BRAND_COUNTS[`${c.maker} ${c.line}`]})
+              </Button>
+            ))}
+            {THREAD_CATALOGS_MISSING.filter((c) => c.maker === maker).map((c) => (
+              <Button key={c.line} size="small" variant="outlined" disabled sx={{ textTransform: "none", py: "1px", px: "8px", fontSize: "0.8rem" }}>
+                {c.line} — not in the library yet
+              </Button>
+            ))}
+          </Box>
+        ))}
+        <Typography sx={{ fontSize: "0.75rem", color: "#777", mt: "0.4rem" }}>
+          For a line that is not in the library yet, type the maker, line and number in the box below (for example "Marathon Rayon 1159").
+        </Typography>
+      </Box>
       <Autocomplete
         size="small"
         options={THREADS}
@@ -42,8 +96,8 @@ export const ThreadColors = ({ field, box }) => {
         getOptionLabel={(t) => (t ? `${t.code} ${t.name} ${t.brand}` : "")}
         // Every thread is listed (grouped by brand); typing narrows by number, name, brand or a
         // plain color word. Nothing is cut off -- a capped list read as "colors are missing".
-        filterOptions={(_, state) => searchThreads(state.inputValue)}
-        groupBy={(t) => `${t.brand} (${THREAD_BRAND_COUNTS[t.brand]} colors)`}
+        filterOptions={(_, state) => searchThreads(state.inputValue, scope)}
+        groupBy={(t) => `${t.maker} — ${t.line} (${THREAD_BRAND_COUNTS[t.brand]} colors)`}
         ListboxProps={{ style: { maxHeight: "22rem" } }}
         noOptionsText="No thread matches. Try the number, or a color word like red, navy or gold."
         onChange={(_, t) => {
@@ -60,8 +114,8 @@ export const ThreadColors = ({ field, box }) => {
         renderInput={(params) => (
           <TextField
             {...params}
-            label="Find a thread by number, name or color to add"
-            helperText={`${THREADS.length.toLocaleString()} threads: Madeira Polyneon, Madeira Classic Rayon, Marathon. Type a number (1821), a name, or a color word (red, navy, gold).`}
+            label={`Find a thread in ${scopeName} - by number, name or color`}
+            helperText="Type a number (1821), a name, or a color word (red, navy, gold). The thread is added with its maker and line."
             sx={{ mt: "5px" }}
           />
         )}
@@ -78,12 +132,12 @@ export const ThreadColors = ({ field, box }) => {
               </span>
             </React.Fragment>
           ))}
-          {options.length > 1 && <span style={{ color: "#b26a00" }}>— two brands use this number; write the brand.</span>}
+          {options.length > 1 && <span style={{ color: "#b26a00" }}>— more than one catalogue uses this number; write the maker and line beside it.</span>}
         </Row>
       ))}
       {unknown.length > 0 && (
         <Amber>
-          Not a thread number on the Madeira or Marathon charts: {unknown.join(" · ")}. Check the number.
+          Not a thread number in any catalogue in the library: {unknown.join(" · ")}. Check the number - or, if it is from a line that is not in the library yet, write the maker and line beside it.
         </Amber>
       )}
       <Caveat>{COLOR_CAVEATS.thread}</Caveat>
