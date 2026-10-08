@@ -1,4 +1,5 @@
 import {
+  searchThreads, colorFamilies, THREAD_BRAND_COUNTS,
   colorModeFor, THREADS, findThread, readThreadText, HOUSE_INKS, findHouseInk, PANTONES, findPantone,
   normalizeHex, findHexInText, colorDifference, describeDifference, nearestPantones, nearestHouseInk,
   houseInkHint, readInkText, addLine, readColorSwatches,
@@ -173,5 +174,45 @@ describe("E-41 swatches on the production cards", () => {
   });
   test("vinyl still works through the same reader", () => {
     expect(readColorSwatches("Heat-Transfer", "Red and White").map((s) => s.label)).toEqual(["Red", "White"]);
+  });
+});
+
+describe("E-41 fix -- finding a thread: nothing hidden, and color words work", () => {
+  test("an empty search is every thread in all three charts", () => {
+    expect(searchThreads("")).toHaveLength(1161);
+    expect(searchThreads("   ")).toHaveLength(1161);
+    expect(THREAD_BRAND_COUNTS).toEqual({ "Madeira Polyneon": 433, "Madeira Classic Rayon": 422, Marathon: 306 });
+  });
+  test("a plain color word finds threads by how they look, not just by official name", () => {
+    const red = searchThreads("red");
+    expect(red.length).toBeGreaterThan(60);
+    expect(red.map((t) => t.code)).toContain("1821"); // "Terra Cotta" -- reps call it Red
+    expect(searchThreads("gold").map((t) => t.code)).toContain("1771"); // "Whipped Butterscotch"
+    expect(searchThreads("maroon").map((t) => t.code)).toContain("1982"); // "Sangria"
+    expect(searchThreads("royal").map((t) => t.code)).toContain("1934");
+    ["blue", "green", "navy", "purple", "pink", "orange", "yellow", "brown", "gray", "black", "white", "teal", "tan"].forEach((w) =>
+      expect(searchThreads(w).length).toBeGreaterThan(10)
+    );
+  });
+  test("Marathon has no names, so color words are the only way in -- and they work", () => {
+    const m = searchThreads("marathon blue");
+    expect(m.length).toBeGreaterThan(10);
+    m.forEach((t) => expect(t.brand).toBe("Marathon"));
+    expect(searchThreads("marathon")).toHaveLength(306);
+    expect(searchThreads("rayon")).toHaveLength(422);
+  });
+  test("number and name searches still work, exact number first", () => {
+    expect(searchThreads("1821")[0].code).toBe("1821");
+    expect(searchThreads("18").every((t) => t.code.indexOf("18") === 0 || /18/.test(t.name))).toBe(true);
+    expect(searchThreads("terra cotta").map((t) => t.code)).toContain("1821");
+    expect(searchThreads("grey").length).toBe(searchThreads("gray").length);
+    expect(searchThreads("zzzz")).toEqual([]);
+  });
+  test("color words for a few known swatches", () => {
+    expect(colorFamilies("#000000")).toContain("black");
+    expect(colorFamilies("#ffffff")).toContain("white");
+    expect(colorFamilies("#12284c")).toEqual(expect.arrayContaining(["blue", "navy"]));
+    expect(colorFamilies("#721e22")).toEqual(expect.arrayContaining(["red", "maroon"]));
+    expect(colorFamilies(null)).toEqual(["multicolor"]);
   });
 });
