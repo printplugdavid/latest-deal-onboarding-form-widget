@@ -15,6 +15,7 @@ import {
   openQcTasks,
   orderLines,
   problems,
+  readInvoiceAnswer,
   splitAddress,
   startPartialLines,
   targetStage,
@@ -270,7 +271,7 @@ describe("E-52 the plan -- what is written, in what order", () => {
     expect(p.summary.join("\n")).toMatch(/emails the customer the Production Complete email/);
     expect(p.note).toMatch(/Result: PASSED — pickup/);
     expect(p.note).toMatch(/Checked: 2026-10-12 by Drew Byrd/);
-    expect(p.note).toMatch(/Remainder due on the invoice \(answered by the agent\): Yes/);
+    expect(p.note).toMatch(/Remainder due on the invoice: Yes \(answered by the agent\)/);
     expect(p.note).toMatch(/Boxes: 2/);
     expect(p.note.match(/\[x\]/g)).toHaveLength(APPROVALS.length);
   });
@@ -352,6 +353,90 @@ describe("E-52 the plan -- what is written, in what order", () => {
     expect(allApproved(ALL)).toBe(true);
     expect(allApproved({ ...ALL, placement: false })).toBe(false);
     expect(allApproved(undefined)).toBe(false);
+  });
+});
+
+describe("E-52 the Books invoice -- decide only when it is safe to", () => {
+  const answer = (invoices, extra) => ({ code: "success", details: { output: JSON.stringify({ status: "ok", message: "", count: invoices.length, invoices, ...extra }) } });
+  const inv = (o) => ({ invoice_id: "1", number: "INV-004403", status: "paid", date: "2026-09-24", total: 214.3, balance: 0, line_items_loaded: true, line_items: [{ name: "Table cloth", description: "6 ft", quantity: 2 }], ...o });
+  test("one issued invoice, balance 0: paid in full", () => {
+    const a = readInvoiceAnswer(answer([inv()]));
+    expect(a).toMatchObject({ state: "one", decided: true, remainderDue: false });
+    expect(a.invoice.lineItems).toEqual([{ name: "Table cloth", description: "6 ft", quantity: 2 }]);
+  });
+  test("one issued invoice with a balance: remainder due (a deposit is a partial payment on it)", () => {
+    expect(readInvoiceAnswer(answer([inv({ status: "partially_paid", total: 111, balance: 61 })]))).toMatchObject({ decided: true, remainderDue: true });
+    expect(readInvoiceAnswer(answer([inv({ status: "sent", total: 64.31, balance: 64.31 })])).remainderDue).toBe(true);
+  });
+  test("no invoice (every online order) -- ask", () => {
+    expect(readInvoiceAnswer(answer([]))).toMatchObject({ state: "none", decided: false, remainderDue: null });
+  });
+  test("several invoices -- ask, and show them all", () => {
+    const a = readInvoiceAnswer(answer([inv(), inv({ number: "INV-004404" })]));
+    expect(a).toMatchObject({ state: "several", decided: false });
+    expect(a.invoices).toHaveLength(2);
+  });
+  test("a draft or a void invoice decides nothing (a draft's balance is just its total)", () => {
+    expect(readInvoiceAnswer(answer([inv({ status: "draft", balance: 957.18 })]))).toMatchObject({ state: "draft", decided: false, remainderDue: null });
+    expect(readInvoiceAnswer(answer([inv({ status: "void" })])).decided).toBe(false);
+  });
+  test("a balance that is not a number decides nothing", () => {
+    expect(readInvoiceAnswer(answer([inv({ balance: null })])).decided).toBe(false); // Number(null) is 0 -- must not read as "paid"
+    expect(readInvoiceAnswer(answer([inv({ balance: "" })])).decided).toBe(false);
+    expect(readInvoiceAnswer(answer([inv({ balance: "0" })]))).toMatchObject({ decided: true, remainderDue: false });
+    expect(readInvoiceAnswer(answer([inv({ balance: "abc" })])).decided).toBe(false);
+    expect(readInvoiceAnswer(answer([inv({ balance: undefined })])).decided).toBe(false);
+  });
+  test("an error, a refusal, a function that is not installed, a timeout -- all ask", () => {
+    expect(readInvoiceAnswer({ details: { output: JSON.stringify({ status: "error", message: "Books list call failed", count: 0, invoices: [] }) } })).toMatchObject({ state: "error", decided: false });
+    expect(readInvoiceAnswer({ code: "INVALID_DATA", message: "no such function" }).decided).toBe(false);
+    expect(readInvoiceAnswer({ details: { output: "not json" } }).decided).toBe(false);
+    expect(readInvoiceAnswer(null).decided).toBe(false);
+    expect(readInvoiceAnswer(undefined).state).toBe("error");
+  });
+  test("the answer may arrive already parsed", () => {
+    expect(readInvoiceAnswer({ details: { output: { status: "ok", invoices: [inv()] } } }).decided).toBe(true);
+  });
+  test("the note says whether the answer was read from the invoice or given by the agent", () => {
+    const paid = readInvoiceAnswer(answer([inv()]));
+    const base = { approvals: ALL, result: RESULTS.PICKUP, boxes: 1 };
+    expect(buildPlan({ ...base, remainderDue: false, remainderSource: "invoice" }, ctx({ invoice: paid })).note).toMatch(
+      /Remainder due on the invoice: No \(read from the invoice: INV-004403 · paid · total \$214\.30 · balance \$0\.00\)/
+    );
+    // the agent overrode it: both are on record
+    expect(buildPlan({ ...base, remainderDue: true, remainderSource: "agent" }, ctx({ invoice: paid })).note).toMatch(
+      /Remainder due on the invoice: Yes \(answered by the agent; the invoice read: INV-004403/
+    );
+    // a stale "invoice" source can never be recorded against a different answer
+    expect(buildPlan({ ...base, remainderDue: true, remainderSource: "invoice" }, ctx({ invoice: paid })).note).toMatch(/answered by the agent/);
+    expect(buildPlan({ ...base, remainderDue: true, remainderSource: "agent" }, ctx({ invoice: readInvoiceAnswer(answer([])) })).note).toMatch(
+      /answered by the agent; No invoice in Zoho Books is linked to this Deal\.\)/
+    );
+    expect(buildPlan({ ...base, remainderDue: true }, ctx()).note).toMatch(/Remainder due on the invoice: Yes \(answered by the agent\)/);
+  });
+});
+
+describe("E-52 Partial Pick-Up Ready is un-ticked by a later check that releases nothing new", () => {
+  const ticked = { ...DEAL, Partial_Pick_Up_Ready: true, Partial_Ready_Details: "[2026-10-09] READY: Hats 24 of 24.", Partial_Ready_Date: "2026-10-09" };
+  test("a pass un-ticks it; the details and the date are not touched", () => {
+    const p = buildPlan({ approvals: ALL, result: RESULTS.PICKUP, remainderDue: false, boxes: 1 }, ctx({ deal: ticked }));
+    expect(p.fields).toEqual({ Partial_Pick_Up_Ready: false });
+    expect(p.summary.join("\n")).toMatch(/Un-tick Partial Pick-Up Ready/);
+  });
+  test("a second failure with nothing ready un-ticks it, so the sales task is not labelled partial again", () => {
+    expect(buildPlan({ approvals: {}, result: RESULTS.FAILED, partial: "no" }, ctx({ deal: ticked })).fields).toEqual({ Partial_Pick_Up_Ready: false });
+  });
+  test("a second failure that releases more keeps it ticked, appends, and re-dates it", () => {
+    const p = buildPlan({ approvals: {}, result: RESULTS.FAILED, partial: "yes", boxes: 1, partialLines: [{ label: "Polos", qty: 4, ready: true, readyQty: 4 }] }, ctx({ deal: ticked }));
+    expect(p.fields.Partial_Pick_Up_Ready).toBe(true);
+    expect(p.fields.Partial_Ready_Date).toBe("2026-10-12");
+    expect(p.fields.Partial_Ready_Details).toBe("[2026-10-09] READY: Hats 24 of 24.\n\n[2026-10-12] READY: Polos 4 of 4.");
+  });
+  test("never written when the box is not ticked, and not by the add-tracking mode", () => {
+    expect(buildPlan({ approvals: ALL, result: RESULTS.PICKUP, remainderDue: false, boxes: 1 }, ctx()).fields).toEqual({});
+    expect(buildPlan({ trackingNumber: "1" }, ctx({ deal: { ...ticked, Stage: "Products Need Shipping" } })).fields.Partial_Pick_Up_Ready).toBeUndefined();
+    // the partial question not answered yet: nothing is decided, so nothing is un-ticked
+    expect(buildPlan({ approvals: {}, result: RESULTS.FAILED }, ctx({ deal: ticked })).fields).toEqual({});
   });
 });
 

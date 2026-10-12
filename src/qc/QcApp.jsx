@@ -44,6 +44,7 @@ import { LIVE_NOTE_TITLE } from "../amendment/amendmentDiff";
 import {
   APPROVALS,
   DEFAULT_TRACKING_URL,
+  INVOICE_FUNCTION,
   QC_NOTE_TITLE,
   RESULTS,
   STAGES,
@@ -51,11 +52,13 @@ import {
   buildPlan,
   criticalNotes,
   dealIdentity,
+  invoiceLine,
   isOnlineOrder,
   isRush,
   isShipOnly,
   orderLines,
   problems,
+  readInvoiceAnswer,
   splitAddress,
   startPartialLines,
 } from "./qcRules";
@@ -199,6 +202,8 @@ const QcApp = () => {
   const [approvals, setApprovals] = useState({});
   const [result, setResult] = useState("");
   const [remainderDue, setRemainderDue] = useState(null);
+  const [remainderSource, setRemainderSource] = useState(""); // "invoice" = read from Books, "agent" = answered by hand
+  const [invoice, setInvoice] = useState(null); // null while loading; then readInvoiceAnswer(...)
   const [boxes, setBoxes] = useState("");
   const [addressee, setAddressee] = useState("");
   const [trackingNumber, setTrackingNumber] = useState("");
@@ -245,6 +250,17 @@ const QcApp = () => {
             .then((c) => setContact(c?.data?.[0] || null))
             .catch(() => {});
         }
+        // The Books invoice, through the CRM function. Never fatal and never waited on for long: a
+        // missing function, a refusal or a slow answer all end as "ask the agent".
+        Promise.race([
+          Promise.resolve().then(() => ZOHO.CRM.FUNCTIONS.execute(INVOICE_FUNCTION, { arguments: JSON.stringify({ deal_id: String(recordId) }) })),
+          new Promise((resolve) => setTimeout(() => resolve(null), 15000)),
+        ])
+          .then((r) => setInvoice(readInvoiceAnswer(r)))
+          .catch((e) => {
+            console.log("QC: invoice not read:", e);
+            setInvoice(readInvoiceAnswer(null));
+          });
         Promise.resolve()
           .then(() => ZOHO.CRM.CONFIG.getCurrentUser())
           .then((u) => setWho(u?.users?.[0]?.full_name || ""))
@@ -256,7 +272,15 @@ const QcApp = () => {
     ZOHO.embeddedApp.init();
   }, []);
 
-  const deal = loaded?.deal || {};
+  // The invoice answers the remainder question when it can -- shown, and the agent may still change it.
+  useEffect(() => {
+    if (invoice?.decided && remainderDue === null) {
+      setRemainderDue(invoice.remainderDue);
+      setRemainderSource("invoice");
+    }
+  }, [invoice]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const deal = useMemo(() => loaded?.deal || {}, [loaded]);
   const json = loaded?.json || null;
   const lines = useMemo(() => orderLines(json), [json]);
   const critical = useMemo(() => criticalNotes(json, deal, accountNotes), [json, deal, accountNotes]);
@@ -266,8 +290,12 @@ const QcApp = () => {
   const approved = allApproved(approvals);
   const orderShips = json?.doProductsNeedShipped === "Yes" || !!deal.Addressee;
 
-  const state = { approvals, result, remainderDue, boxes, addressee, trackingNumber, trackingUrl, partial, partialLines, partialNotes, notes };
-  const planCtx = { deal, tasks: loaded?.tasks || [], dateStr: todayStamp(), who };
+  const state = { approvals, result, remainderDue, remainderSource, boxes, addressee, trackingNumber, trackingUrl, partial, partialLines, partialNotes, notes };
+  const planCtx = { deal, tasks: loaded?.tasks || [], dateStr: todayStamp(), who, invoice };
+  const answerRemainder = (due) => {
+    setRemainderDue(due);
+    setRemainderSource(invoice?.decided && invoice.remainderDue === due ? "invoice" : "agent");
+  };
   const blockers = loaded ? problems(state, planCtx) : [];
   const plan = loaded && (result || shipOnly) ? buildPlan(state, planCtx) : null;
 
@@ -512,11 +540,38 @@ const QcApp = () => {
             </Box>
           </Box>
         ))}
-        {json && (
-          <Typography sx={{ fontSize: 12, color: "#666", mt: 1.5 }}>
-            These are the quantities from the onboarding form. The invoice itself is in Zoho Books (the Finance panel on the Deal) — this form cannot read it yet.
-          </Typography>
-        )}
+        <Box sx={{ mt: 2, p: 1.5, bgcolor: "#f6f8fb", border: "1px solid #dfe4ea", borderRadius: 1 }}>
+          <Typography sx={{ fontSize: 13, fontWeight: 700, mb: 0.5 }}>The invoice in Zoho Books</Typography>
+          {!invoice && <Typography sx={{ fontSize: 13, color: "#555" }}>Reading the invoice…</Typography>}
+          {invoice && invoice.invoices.length === 0 && (
+            <Typography sx={{ fontSize: 13, color: "#8a5300" }}>
+              {invoice.state === "none"
+                ? online
+                  ? "Online orders have no invoice in Zoho Books — count against the online order in InkSoft."
+                  : invoice.reason + " Check the Finance panel on the Deal."
+                : invoice.reason + " Open it from the Finance panel on the Deal."}
+            </Typography>
+          )}
+          {invoice &&
+            invoice.invoices.map((inv, ii) => (
+              <Box key={ii} sx={{ mb: 1 }}>
+                <Typography sx={{ fontSize: 14 }}>{invoiceLine(inv)}</Typography>
+                {inv.lineItems.map((l, li) => (
+                  <Typography key={li} sx={{ fontSize: 13, color: "#333", pl: 1.5 }}>
+                    <b>{l.quantity == null ? "?" : String(l.quantity)}</b> × {l.name || "(no name)"}
+                    {l.description ? " — " + l.description : ""}
+                  </Typography>
+                ))}
+                {!inv.lineItemsLoaded && <Typography sx={{ fontSize: 12, color: "#8a5300", pl: 1.5 }}>The line items could not be loaded — open the invoice to see them.</Typography>}
+              </Box>
+            ))}
+          {invoice && invoice.invoices.length > 0 && invoice.reason && <Typography sx={{ fontSize: 13, color: "#8a5300" }}>{invoice.reason}</Typography>}
+          {json && (
+            <Typography sx={{ fontSize: 12, color: "#666", mt: 0.5 }}>
+              The large numbers above are from the onboarding form; the invoice lines are from Books (they can include fees and shipping). Count against both.
+            </Typography>
+          )}
+        </Box>
       </Section>
 
       {loaded.cards.length > 0 && (
@@ -579,14 +634,23 @@ const QcApp = () => {
             <Box sx={{ mb: 2 }}>
               <Typography sx={{ fontWeight: 700, mb: 0.5 }}>Is a remainder due on the invoice?</Typography>
               <Typography sx={{ fontSize: 13, color: "#555", mb: 1 }}>
-                {online
+                {!invoice
+                  ? "Reading the invoice…"
+                  : invoice.decided
+                  ? "Read from the invoice — " + invoiceLine(invoice.invoice) + ". The answer is filled in for you; change it only if you know the invoice is out of date. It decides the stage."
+                  : online
                   ? "Online orders have no invoice in Zoho Books — check the payment on the online order itself, then answer. Your answer decides the stage."
-                  : "This form cannot read the invoice balance yet — check the invoice in the Finance panel / Zoho Books, then answer. Your answer decides the stage."}
+                  : invoice.reason + " Check the invoice in the Finance panel / Zoho Books, then answer. Your answer decides the stage."}
               </Typography>
-              <ToggleButtonGroup exclusive value={remainderDue === null ? "" : remainderDue ? "yes" : "no"} disabled={locked} onChange={(_, v) => v && setRemainderDue(v === "yes")}>
+              <ToggleButtonGroup exclusive value={remainderDue === null ? "" : remainderDue ? "yes" : "no"} disabled={locked} onChange={(_, v) => v && answerRemainder(v === "yes")}>
                 <ToggleButton value="yes" sx={{ px: 3 }}>Yes — remainder due</ToggleButton>
                 <ToggleButton value="no" sx={{ px: 3 }}>No — paid in full</ToggleButton>
               </ToggleButtonGroup>
+              {invoice?.decided && remainderDue !== null && remainderDue !== invoice.remainderDue && (
+                <Alert severity="warning" sx={{ mt: 1 }}>
+                  Your answer is different from the invoice ({invoiceLine(invoice.invoice)}). Submit only if you are sure — the note will record both.
+                </Alert>
+              )}
             </Box>
           )}
 
