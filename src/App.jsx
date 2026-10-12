@@ -270,7 +270,8 @@ function App() {
     // Generate per-department production cards and attach each to the Deal (create-only,
     // human-readable job sheets). Own try/catch so a failure never blocks the note or counts.
     try {
-      const productionCards = buildProductionCards(cardData, cardCounts);
+      // E-53: the Deal's PO number and WorkDrive folder, when it already has them at onboarding.
+      const productionCards = buildProductionCards(cardData, cardCounts, { poNumber: recordData?.PO_Number, workDriveLink: recordData?.WorkDrive_Link });
       for (let c = 0; c < productionCards.length; c++) {
         try {
           const cardBlob = new Blob([productionCards[c].html], { type: "text/html" });

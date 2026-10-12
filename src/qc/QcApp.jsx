@@ -589,7 +589,7 @@ const QcApp = () => {
               key={card.name}
               title={card.label}
               srcDoc={card.html}
-              sandbox="allow-same-origin"
+              sandbox="allow-same-origin allow-popups allow-popups-to-escape-sandbox"
               style={{ width: "100%", height: "62vh", border: 0, display: "block", background: "#e9eaec" }}
             />
           )}
