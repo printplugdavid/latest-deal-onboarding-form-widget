@@ -18,6 +18,132 @@ import { estimateGangSheet } from "./gangSheet";
 export const SIZE_OPTIONS = ["XXS", "XS", "S", "M", "L", "XL", "2XL", "3XL", "4XL", "5XL", "OSFA"];
 export const OTHER_SIZE = "__other__";
 
+/*
+ * E-46 / E-51. Youth and tall sizes, the same short codes the onboarding form saves (sizeRows.js on
+ * main). Kept as their own runs: the size grid shows them on request, and a typed range ("YS-YL 2")
+ * only ever spans one run.
+ */
+export const YOUTH_SIZES = ["YXS", "YS", "YM", "YL", "YXL"];
+export const TALL_SIZES = ["LT", "XLT", "2XLT", "3XLT", "4XLT"];
+const ADULT_RUN = ["XXS", "XS", "S", "M", "L", "XL", "2XL", "3XL", "4XL", "5XL"];
+const SIZE_RUNS = [ADULT_RUN, YOUTH_SIZES, TALL_SIZES];
+export const ALL_SIZES = ADULT_RUN.concat(["OSFA"], YOUTH_SIZES, TALL_SIZES);
+
+// What agents actually type -> the code. Compared with spaces, dots and hyphens removed.
+const SIZE_ALIASES = {
+  XXSMALL: "XXS", XSMALL: "XS", EXTRASMALL: "XS", SM: "S", SML: "S", SMALL: "S",
+  MED: "M", MD: "M", MEDIUM: "M", LG: "L", LRG: "L", LARGE: "L",
+  XLARGE: "XL", EXTRALARGE: "XL", "1XL": "XL", "1X": "XL",
+  XXL: "2XL", "2X": "2XL", XXXL: "3XL", "3X": "3XL", XXXXL: "4XL", "4X": "4XL", XXXXXL: "5XL", "5X": "5XL",
+  OS: "OSFA", ONESIZE: "OSFA", OSFM: "OSFA",
+  YOUTHXS: "YXS", YOUTHS: "YS", YOUTHSMALL: "YS", YOUTHM: "YM", YOUTHMEDIUM: "YM",
+  YOUTHL: "YL", YOUTHLARGE: "YL", YOUTHXL: "YXL",
+  LARGETALL: "LT", XLTALL: "XLT", XXLT: "2XLT", "2XLTALL": "2XLT", XXXLT: "3XLT", "3XLTALL": "3XLT", "4XLTALL": "4XLT",
+};
+const toSize = (word) => {
+  const w = String(word || "").toUpperCase().replace(/[\s.]/g, "");
+  if (ALL_SIZES.includes(w)) return w;
+  return SIZE_ALIASES[w] || null;
+};
+
+/* The sizes between two ends of one run, inclusive, in order. [] when they are not in the same run. */
+export function sizeRange(from, to) {
+  for (const run of SIZE_RUNS) {
+    const a = run.indexOf(from);
+    const b = run.indexOf(to);
+    if (a !== -1 && b !== -1) return a <= b ? run.slice(a, b + 1) : run.slice(b, a + 1);
+  }
+  return [];
+}
+
+/*
+ * E-51 -- sizes typed in one go: "S 3, M 5, L-2XL 2", "3 S 5 M", "2- Youth Large", "S-XL 2 each".
+ * A range gets the quantity on EACH size in it. Either order (size then number, or number then size)
+ * is read, as long as one line keeps to one order.
+ * Returns { rows: [{ size, qty }], unknown: [text the parser could not place] }. Never guesses: a
+ * size it does not know ("3T", "S/M") is reported, not dropped and not invented -- that is what the
+ * Other row is for.
+ */
+export function parseSizeText(text) {
+  const rows = [];
+  const unknown = [];
+  const put = (size, qty) => {
+    const at = rows.findIndex((r) => r.size === size);
+    if (at === -1) rows.push({ size, qty });
+    else rows[at] = { size, qty }; // typed twice: the later one wins
+  };
+  String(text || "")
+    .toUpperCase()
+    .replace(/[\u2013\u2014]/g, "-")
+    .replace(/\b(YOUTH|EXTRA|ONE)\s+(?=[A-Z])/g, "$1") // "YOUTH LARGE" -> "YOUTHLARGE"
+    .replace(/\b(X+L|[2-5]XL|LARGE)\s+TALL\b/g, "$1TALL")
+    .split(/[,;\n]+/)
+    .forEach((chunk) => {
+      const raw = chunk.match(/[0-9]*[A-Z][A-Z0-9/]*|[0-9]+|-/g) || [];
+      // -> items: { num } | { sizes: [...] } ; words that mean nothing here are dropped
+      const toks = [];
+      raw.forEach((t) => {
+        if (t === "-") return toks.push({ dash: true });
+        if (/^[0-9]+$/.test(t)) return toks.push({ num: parseInt(t, 10) });
+        if (["EACH", "EA", "OF", "X", "PCS", "PC", "QTY", "TO", "THRU", "THROUGH", "AND"].includes(t)) {
+          return /^(TO|THRU|THROUGH)$/.test(t) ? toks.push({ dash: true }) : null;
+        }
+        const s = toSize(t);
+        return toks.push(s ? { sizes: [s], word: t } : { bad: t });
+      });
+      // size - size  ->  one range item; any other dash is just punctuation ("3- M")
+      const items = [];
+      for (let i = 0; i < toks.length; i++) {
+        const a = toks[i];
+        if (a.sizes && toks[i + 1]?.dash && toks[i + 2]?.sizes) {
+          const span = sizeRange(a.sizes[0], toks[i + 2].sizes[0]);
+          if (span.length) items.push({ sizes: span });
+          else unknown.push(a.word + "-" + toks[i + 2].word);
+          i += 2;
+        } else if (!a.dash) {
+          items.push(a);
+        }
+      }
+      // A chunk holding something unreadable is handed back whole -- half of "3T 2" is not an answer.
+      if (items.some((x) => x.bad)) {
+        unknown.push(chunk.trim().replace(/\s+/g, " "));
+        return;
+      }
+      const seq = items;
+      if (!seq.length) return;
+      const numFirst = seq[0].num !== undefined;
+      for (let i = 0; i < seq.length; i += 2) {
+        const first = seq[i];
+        const second = seq[i + 1];
+        const num = numFirst ? first : second;
+        const size = numFirst ? second : first;
+        if (!num || num.num === undefined || !size || !size.sizes) {
+          // a size with no number, a number with no size, or the order changed mid-line
+          [first, second].forEach((x) => x && unknown.push(x.sizes ? x.sizes.join("-") : String(x.num)));
+          continue;
+        }
+        size.sizes.forEach((sz) => put(sz, num.num));
+      }
+    });
+  return { rows, unknown };
+}
+
+/*
+ * Put typed / grid quantities into an item's size rows. `entries` is [{ size, qty }]; a blank qty
+ * removes that size. Known sizes are kept in chart order with the free-text Other rows after them,
+ * so the note reads the same however the agent entered them.
+ */
+export function mergeSizeRows(existing, entries) {
+  let rows = (existing || []).slice();
+  (entries || []).forEach(({ size, qty }) => {
+    const q = qty === "" || qty === null || qty === undefined ? "" : String(qty);
+    rows = rows.filter((r) => r.size !== size);
+    if (q !== "") rows.push({ size, other: "", qty: q });
+  });
+  const known = rows.filter((r) => r.size !== OTHER_SIZE).sort((a, b) => ALL_SIZES.indexOf(a.size) - ALL_SIZES.indexOf(b.size));
+  return known.concat(rows.filter((r) => r.size === OTHER_SIZE));
+}
+
 const qtyOf = (v) => {
   const n = parseInt(v, 10);
   return n > 0 ? n : 0;
