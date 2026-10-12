@@ -271,7 +271,7 @@ describe("E-52 the plan -- what is written, in what order", () => {
     expect(p.summary.join("\n")).toMatch(/emails the customer the Production Complete email/);
     expect(p.note).toMatch(/Result: PASSED — pickup/);
     expect(p.note).toMatch(/Checked: 2026-10-12 by Drew Byrd/);
-    expect(p.note).toMatch(/Remainder due on the invoice \(answered by the agent\): Yes/);
+    expect(p.note).toMatch(/Remainder due on the invoice: Yes \(answered by the agent\)/);
     expect(p.note).toMatch(/Boxes: 2/);
     expect(p.note.match(/\[x\]/g)).toHaveLength(APPROVALS.length);
   });
