@@ -73,7 +73,7 @@ async function loadCards(entity, recordId) {
     if (!byName.has(name)) byName.set(name, { olderCopies: 0 });
     else byName.get(name).olderCopies += 1;
   }
-  if (!byName.size) return { cards: [], info: "" };
+  if (!byName.size) return { cards: [], info: "", workDrive: "" };
 
   const json = all
     .filter((a) => String(a?.File_Name || "").toLowerCase().endsWith(".json"))
@@ -107,7 +107,9 @@ async function loadCards(entity, recordId) {
     `Built from the onboarding form submitted ${pcStamp(json.Created_Time)} and the Deal's current print counts` +
     (deal.Closing_Date ? ` · due date is the Deal's Closing Date (${deal.Closing_Date})` : "") +
     ` · loaded in ${secs(t2 - t0)} (list + deal ${secs(t1 - t0)}, form ${secs(t2 - t1)})`;
-  return { cards: cards.sort((a, b) => orderOf(a.name) - orderOf(b.name)), info };
+  // E-53: the folder link for the toolbar -- https only, so nothing typed into the field can run.
+  const workDrive = /^https:\/\//i.test(String(deal.WorkDrive_Link || "").trim()) ? String(deal.WorkDrive_Link).trim() : "";
+  return { cards: cards.sort((a, b) => orderOf(a.name) - orderOf(b.name)), info, workDrive };
 }
 
 const CardViewer = () => {
@@ -133,8 +135,8 @@ const CardViewer = () => {
       const entity = data?.Entity;
       const recordId = data?.EntityId?.[0] ?? data?.EntityId;
       try {
-        const { cards, info } = await loadCards(entity, recordId);
-        setState({ status: "ready", cards, message: "", info });
+        const { cards, info, workDrive } = await loadCards(entity, recordId);
+        setState({ status: "ready", cards, message: "", info, workDrive });
       } catch (e) {
         setState({ status: "error", cards: [], message: String(e?.message || e) });
       }
@@ -230,6 +232,11 @@ const CardViewer = () => {
             <Tab key={c.name} label={c.label} />
           ))}
         </Tabs>
+        {state.workDrive && (
+          <Button variant="outlined" size="small" component="a" href={state.workDrive} target="_blank" rel="noopener noreferrer">
+            WorkDrive folder
+          </Button>
+        )}
         <Button variant="contained" size="small" onClick={printCard} disabled={!current?.html}>
           Print
         </Button>
@@ -265,8 +272,9 @@ const CardViewer = () => {
             title={current.label}
             srcDoc={current.html}
             // No scripts run inside the card. allow-same-origin lets us size and print the frame;
-            // allow-modals lets the print dialog open.
-            sandbox="allow-same-origin allow-modals"
+            // allow-modals lets the print dialog open; the two popup flags let the card's own
+            // "Open WorkDrive folder" link open a normal new tab (E-53).
+            sandbox="allow-same-origin allow-modals allow-popups allow-popups-to-escape-sandbox"
             onLoad={fitFrame}
             style={{ width: "100%", border: 0, display: "block", minHeight: "60vh" }}
           />

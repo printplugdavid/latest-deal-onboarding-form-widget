@@ -72,6 +72,8 @@ export function buildCardsFromData(data, deal) {
     ? { ...data, hardDueDate: "Yes", dueDate: localDate(deal.Closing_Date) }
     : data;
   const built = new Map();
-  for (const c of buildProductionCards(liveDue, counts)) built.set(c.name.toLowerCase(), c.html);
+  // E-53: the PO number and the WorkDrive folder come from the Deal as it is now, like the due date.
+  const dealInfo = { poNumber: deal.PO_Number, workDriveLink: deal.WorkDrive_Link };
+  for (const c of buildProductionCards(liveDue, counts, dealInfo)) built.set(c.name.toLowerCase(), c.html);
   return built;
 }
