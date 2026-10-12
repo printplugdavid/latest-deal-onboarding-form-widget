@@ -24,6 +24,10 @@ import {
   effectiveQty,
   formatSizes,
   SIZE_OPTIONS,
+  YOUTH_SIZES,
+  TALL_SIZES,
+  parseSizeText,
+  mergeSizeRows,
   OTHER_SIZE,
 } from "./affected";
 import {
@@ -417,6 +421,33 @@ export default function App() {
         // The first size inherits a total already typed, so nothing is lost.
         const carry = rows.length === 0 && int(it.affected) > 0 ? String(int(it.affected)) : "";
         return { ...it, sizes: rows.concat({ size: value, other: "", qty: carry }) };
+      })
+    );
+  }
+
+  // E-51: one number box per size. A blank box removes that size; rows stay in chart order.
+  function setSizeQty(i, size, qty) {
+    setItems((prev) => prev.map((it, j) => (j === i ? { ...it, sizes: mergeSizeRows(it.sizes, [{ size, qty }]) } : it)));
+  }
+
+  // E-51: "S 3, M 5, L-2XL 2" typed in one go. What it understood goes into the boxes; what it did
+  // not is named back to the agent and the text stays in the box so they can fix it.
+  function applyQuickSizes(i) {
+    setItems((prev) =>
+      prev.map((it, j) => {
+        if (j !== i) return it;
+        const { rows, unknown } = parseSizeText(it.quick);
+        if (!rows.length && !unknown.length) return it;
+        const sizes = mergeSizeRows(it.sizes, rows);
+        return {
+          ...it,
+          sizes,
+          quick: unknown.length ? it.quick : "",
+          quickDone: rows.map((r) => r.size + " \u00d7" + r.qty).join(", "),
+          quickUnknown: unknown.join(", "),
+          showYouth: it.showYouth || rows.some((r) => YOUTH_SIZES.includes(r.size)),
+          showTall: it.showTall || rows.some((r) => TALL_SIZES.includes(r.size)),
+        };
       })
     );
   }
@@ -1091,9 +1122,87 @@ export default function App() {
                   )}
 
                   <Label>{t("g.sizes")}</Label>
-                  {(item.sizes || []).map((row, si) => (
-                    <div key={si} style={S.sizeRow}>
-                      {row.size === OTHER_SIZE ? (
+                  {/* E-51: type them all at once ... */}
+                  <div style={S.quickRow}>
+                    <input
+                      type="text"
+                      value={item.quick || ""}
+                      placeholder={t("g.quickPh")}
+                      onChange={(e) => patchItem(i, { quick: e.target.value })}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          applyQuickSizes(i);
+                        }
+                      }}
+                      style={S.quickInput}
+                    />
+                    <button type="button" onClick={() => applyQuickSizes(i)} style={S.quickBtn}>
+                      {t("g.quickAdd")}
+                    </button>
+                  </div>
+                  {item.quickDone && <p style={S.quickOk}>{t("g.quickDone", { v: item.quickDone })}</p>}
+                  {item.quickUnknown && <p style={S.quickBad}>{t("g.quickUnknown", { v: item.quickUnknown })}</p>}
+
+                  {/* ... or a number under each size */}
+                  {[
+                    { key: "adult", sizes: SIZE_OPTIONS, show: true },
+                    { key: "youth", sizes: YOUTH_SIZES, label: t("g.youth"), flag: "showYouth" },
+                    { key: "tall", sizes: TALL_SIZES, label: t("g.tall"), flag: "showTall" },
+                  ].map((grp) => {
+                    const used = (item.sizes || []).some((r) => grp.sizes.includes(r.size));
+                    if (!grp.show && !item[grp.flag] && !used) return null;
+                    return (
+                      <div key={grp.key} style={S.sizeGrid}>
+                        {grp.sizes.map((sz) => {
+                          const row = (item.sizes || []).find((r) => r.size === sz);
+                          return (
+                            <label key={sz} style={row && row.qty !== "" ? S.sizeCellOn : S.sizeCell}>
+                              <span style={S.sizeCellTag}>{sz}</span>
+                              <input
+                                type="number"
+                                min="0"
+                                inputMode="numeric"
+                                value={row ? row.qty : ""}
+                                onChange={(e) => setSizeQty(i, sz, e.target.value)}
+                                style={S.sizeCellQty}
+                                aria-label={sz}
+                              />
+                            </label>
+                          );
+                        })}
+                      </div>
+                    );
+                  })}
+                  <div style={S.sizeLinks}>
+                    {!item.showYouth && !(item.sizes || []).some((r) => YOUTH_SIZES.includes(r.size)) && (
+                      <button type="button" style={S.linkBtn} onClick={() => patchItem(i, { showYouth: true })}>
+                        {t("g.show", { v: t("g.youth") })}
+                      </button>
+                    )}
+                    {!item.showTall && !(item.sizes || []).some((r) => TALL_SIZES.includes(r.size)) && (
+                      <button type="button" style={S.linkBtn} onClick={() => patchItem(i, { showTall: true })}>
+                        {t("g.show", { v: t("g.tall") })}
+                      </button>
+                    )}
+                    <button type="button" style={S.linkBtn} onClick={() => addSize(i, OTHER_SIZE)}>
+                      {t("g.otherSize")}
+                    </button>
+                    {(item.sizes || []).length > 0 && (
+                      <button
+                        type="button"
+                        style={S.linkBtnQuiet}
+                        onClick={() => patchItem(i, { sizes: [], quickDone: "", quickUnknown: "" })}
+                      >
+                        {t("g.clearSizes")}
+                      </button>
+                    )}
+                  </div>
+
+                  {/* free-text sizes the chart does not have */}
+                  {(item.sizes || []).map((row, si) =>
+                    row.size !== OTHER_SIZE ? null : (
+                      <div key={si} style={S.sizeRow}>
                         <input
                           type="text"
                           value={row.other || ""}
@@ -1102,44 +1211,27 @@ export default function App() {
                           style={S.sizeOther}
                           autoFocus
                         />
-                      ) : (
-                        <span style={S.sizeTag}>{row.size}</span>
-                      )}
-                      <input
-                        type="number"
-                        min="1"
-                        value={row.qty}
-                        placeholder={t("g.qty")}
-                        onChange={(e) => patchSize(i, si, { qty: e.target.value })}
-                        style={S.sizeQty}
-                        aria-label={t("g.qty")}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => removeSize(i, si)}
-                        style={S.sizeX}
-                        aria-label={t("g.removeSize")}
-                        title={t("g.removeSize")}
-                      >
-                        ×
-                      </button>
-                    </div>
-                  ))}
-                  <select
-                    value=""
-                    onChange={(e) => addSize(i, e.target.value)}
-                    style={{ ...S.select, maxWidth: 260 }}
-                  >
-                    <option value="">{t("g.addSize")}</option>
-                    {SIZE_OPTIONS.filter((sz) => !(item.sizes || []).some((r) => r.size === sz)).map(
-                      (sz) => (
-                        <option key={sz} value={sz}>
-                          {sz}
-                        </option>
-                      )
-                    )}
-                    <option value={OTHER_SIZE}>{t("g.otherSize")}</option>
-                  </select>
+                        <input
+                          type="number"
+                          min="1"
+                          value={row.qty}
+                          placeholder={t("g.qty")}
+                          onChange={(e) => patchSize(i, si, { qty: e.target.value })}
+                          style={S.sizeQty}
+                          aria-label={t("g.qty")}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeSize(i, si)}
+                          style={S.sizeX}
+                          aria-label={t("g.removeSize")}
+                          title={t("g.removeSize")}
+                        >
+                          ×
+                        </button>
+                      </div>
+                    )
+                  )}
                   <p style={S.hint}>{t("g.sizesHint")}</p>
 
                   <Label>{t("g.details")}</Label>
@@ -1430,6 +1522,19 @@ const S = {
   placeRowOn: { display: "flex", alignItems: "flex-start", gap: 9, font: "13.5px " + sans, cursor: "pointer", padding: "7px 9px", border: "1px solid #2743c7", borderRadius: 2, background: "#e4e7f8" },
   placeSub: { display: "block", fontSize: 12, color: "#5b6270", marginTop: 2 },
   sizeRow: { display: "flex", alignItems: "center", gap: 8, marginBottom: 6 },
+  quickRow: { display: "flex", gap: 8, marginBottom: 6 },
+  quickInput: { flex: 1, font: "14px " + sans, padding: "8px 10px", border: "1px solid #d3d6db", borderRadius: 2, boxSizing: "border-box", minWidth: 0 },
+  quickBtn: { font: "600 13px " + sans, padding: "8px 14px", border: "1px solid #2743c7", background: "#2743c7", color: "#fff", borderRadius: 2, cursor: "pointer", whiteSpace: "nowrap" },
+  quickOk: { margin: "0 0 6px", fontSize: 12.5, color: "#1f6b3a" },
+  quickBad: { margin: "0 0 6px", fontSize: 12.5, color: "#b5372c" },
+  sizeGrid: { display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 6 },
+  sizeCell: { display: "flex", flexDirection: "column", alignItems: "stretch", width: 58, border: "1px solid #d3d6db", borderRadius: 2, background: "#fff", overflow: "hidden" },
+  sizeCellOn: { display: "flex", flexDirection: "column", alignItems: "stretch", width: 58, border: "1px solid #2743c7", borderRadius: 2, background: "#e4e7f8", overflow: "hidden" },
+  sizeCellTag: { font: "600 11.5px " + mono, textAlign: "center", padding: "3px 0 2px", color: "#3a4150", borderBottom: "1px solid #e3e5e9" },
+  sizeCellQty: { width: "100%", font: "14px " + sans, padding: "6px 4px", border: "none", background: "transparent", textAlign: "center", boxSizing: "border-box", outline: "none" },
+  sizeLinks: { display: "flex", flexWrap: "wrap", gap: 12, margin: "2px 0 8px" },
+  linkBtn: { font: "600 12.5px " + sans, color: "#2743c7", background: "none", border: "none", padding: 0, cursor: "pointer" },
+  linkBtnQuiet: { font: "12.5px " + sans, color: "#5b6270", background: "none", border: "none", padding: 0, cursor: "pointer", marginLeft: "auto" },
   sizeTag: { font: "600 13px " + mono, minWidth: 64, padding: "7px 10px", border: "1px solid #c9d0f4", background: "#e4e7f8", color: "#2743c7", borderRadius: 2, textAlign: "center", boxSizing: "border-box" },
   sizeOther: { width: 150, font: "13.5px " + sans, padding: "7px 10px", border: "1px solid #2743c7", borderRadius: 2, boxSizing: "border-box" },
   sizeQty: { width: 76, font: "14px " + sans, padding: "7px 10px", border: "1px solid #d3d6db", borderRadius: 2, boxSizing: "border-box" },

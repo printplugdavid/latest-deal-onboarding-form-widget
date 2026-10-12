@@ -541,3 +541,80 @@ describe("pieces: products with no garment and no sheet (E-49)", () => {
     expect(departmentForProduct({ productName: "DTF Gang Sheet", productType: "gangsheet" })).toBe("Vinyl Department");
   });
 });
+
+/* E-51 -- sizes typed in one go, and the size grid's row merge. E-46 -- youth and tall sizes. */
+describe("quick size entry (E-51)", () => {
+  const { parseSizeText, mergeSizeRows, sizeRange, YOUTH_SIZES, TALL_SIZES } = require("./affected");
+  const got = (text) => parseSizeText(text).rows.map((r) => r.size + ":" + r.qty).join(" ");
+
+  test("size then number, with commas", () => {
+    expect(got("S 3, M 5, L 2")).toBe("S:3 M:5 L:2");
+    expect(got("s:3; m=5\nxl x 2")).toBe("S:3 M:5 XL:2");
+  });
+
+  test("a range puts the quantity on EACH size in it", () => {
+    expect(got("S-XL 2")).toBe("S:2 M:2 L:2 XL:2");
+    expect(got("L-2XL 2 each, S 3")).toBe("L:2 XL:2 2XL:2 S:3");
+    expect(got("M to XL 4")).toBe("M:4 L:4 XL:4");
+    expect(got("XL-S 1")).toBe("S:1 M:1 L:1 XL:1"); // typed backwards
+    expect(sizeRange("XL", "3XL")).toEqual(["XL", "2XL", "3XL"]);
+  });
+
+  test("number then size -- the way the onboarding note writes it", () => {
+    expect(got("3- S, 5- M, 2- 2XL")).toBe("S:3 M:5 2XL:2");
+    expect(got("12 L")).toBe("L:12");
+    expect(got("2 S-L")).toBe("S:2 M:2 L:2");
+  });
+
+  test("no commas at all", () => {
+    expect(got("S 3 M 5 L 2")).toBe("S:3 M:5 L:2");
+    expect(got("3 S 5 M")).toBe("S:3 M:5");
+  });
+
+  test("a digit that belongs to the size is not a quantity", () => {
+    expect(got("2XL 3")).toBe("2XL:3");
+    expect(got("3 3XL")).toBe("3XL:3");
+    expect(got("2XLT 1")).toBe("2XLT:1");
+  });
+
+  test("what agents actually type", () => {
+    expect(got("small 2, medium 4, large 1, XXL 3")).toBe("S:2 M:4 L:1 2XL:3");
+    expect(got("2- Youth Large, 1- Youth XL")).toBe("YL:2 YXL:1");
+    expect(got("YS-YL 2")).toBe("YS:2 YM:2 YL:2");
+    expect(got("XL Tall 2, LT 1")).toBe("XLT:2 LT:1");
+    expect(got("one size 10")).toBe("OSFA:10");
+  });
+
+  test("it never guesses: unknown sizes, lone numbers and cross-run ranges are reported", () => {
+    expect(parseSizeText("3T 2, M 1")).toEqual({ rows: [{ size: "M", qty: 1 }], unknown: ["3T 2"] });
+    expect(parseSizeText("S/M 4").unknown).toEqual(["S/M 4"]);
+    expect(parseSizeText("M").unknown).toEqual(["M"]);
+    expect(parseSizeText("7").unknown).toEqual(["7"]);
+    expect(parseSizeText("S-YL 2").rows).toEqual([]);
+    expect(parseSizeText("").rows).toEqual([]);
+    expect(parseSizeText(undefined)).toEqual({ rows: [], unknown: [] });
+  });
+
+  test("typed twice, the later one wins", () => {
+    expect(got("M 2, M 5")).toBe("M:5");
+  });
+
+  test("merge: chart order, Other rows last, a blank removes the size", () => {
+    const start = [{ size: "XL", other: "", qty: "1" }, { size: OTHER_SIZE, other: "3T", qty: "2" }];
+    const rows = mergeSizeRows(start, [{ size: "S", qty: 3 }, { size: "YM", qty: "4" }]);
+    expect(rows.map((r) => r.size)).toEqual(["S", "XL", "YM", OTHER_SIZE]);
+    expect(mergeSizeRows(rows, [{ size: "XL", qty: "" }]).map((r) => r.size)).toEqual(["S", "YM", OTHER_SIZE]);
+    expect(start).toHaveLength(2); // input untouched
+  });
+
+  test("the result feeds the existing count and note line unchanged", () => {
+    const item = { sizes: mergeSizeRows([], parseSizeText("S-L 2, 2XL 1, YM 3").rows) };
+    expect(effectiveQty(item)).toBe(10);
+    expect(formatSizes(item.sizes)).toBe("S ×2, M ×2, L ×2, 2XL ×1, YM ×3");
+  });
+
+  test("youth and tall sizes exist (E-46) and match the onboarding form's codes", () => {
+    expect(YOUTH_SIZES).toEqual(["YXS", "YS", "YM", "YL", "YXL"]);
+    expect(TALL_SIZES).toEqual(["LT", "XLT", "2XLT", "3XLT", "4XLT"]);
+  });
+});
