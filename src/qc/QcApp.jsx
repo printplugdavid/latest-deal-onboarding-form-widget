@@ -51,6 +51,7 @@ import {
   buildPlan,
   criticalNotes,
   dealIdentity,
+  isOnlineOrder,
   isRush,
   isShipOnly,
   orderLines,
@@ -261,6 +262,7 @@ const QcApp = () => {
   const critical = useMemo(() => criticalNotes(json, deal, accountNotes), [json, deal, accountNotes]);
   const ident = dealIdentity(deal.Deal_Name, deal.PO_Number);
   const shipOnly = isShipOnly(deal);
+  const online = isOnlineOrder(deal);
   const approved = allApproved(approvals);
   const orderShips = json?.doProductsNeedShipped === "Yes" || !!deal.Addressee;
 
@@ -477,7 +479,9 @@ const QcApp = () => {
         {loaded.orderProblem && <Alert severity="error" sx={{ mb: 1.5 }}>The saved order could not be read ({loaded.orderProblem}). Use the onboarding note on the Deal.</Alert>}
         {!json && !loaded.orderProblem && (
           <Alert severity="info">
-            This Deal has no onboarding form (online orders and older deals do not). Count against the order itself — the invoice, or the online order in InkSoft.
+            {online
+              ? "This is an online order, so there is no onboarding form and no invoice in Zoho Books. Count against the online order itself in InkSoft."
+              : "This Deal has no onboarding form (older deals do not). Count against the invoice in Zoho Books (the Finance panel on the Deal)."}
           </Alert>
         )}
         {loaded.fromNote && (
@@ -508,9 +512,11 @@ const QcApp = () => {
             </Box>
           </Box>
         ))}
-        <Typography sx={{ fontSize: 12, color: "#666", mt: 1.5 }}>
-          These are the quantities from the onboarding form. The invoice itself is in Zoho Books (the Finance panel on the Deal) — this form cannot read it yet.
-        </Typography>
+        {json && (
+          <Typography sx={{ fontSize: 12, color: "#666", mt: 1.5 }}>
+            These are the quantities from the onboarding form. The invoice itself is in Zoho Books (the Finance panel on the Deal) — this form cannot read it yet.
+          </Typography>
+        )}
       </Section>
 
       {loaded.cards.length > 0 && (
@@ -573,7 +579,9 @@ const QcApp = () => {
             <Box sx={{ mb: 2 }}>
               <Typography sx={{ fontWeight: 700, mb: 0.5 }}>Is a remainder due on the invoice?</Typography>
               <Typography sx={{ fontSize: 13, color: "#555", mb: 1 }}>
-                This form cannot read the invoice balance yet — check the invoice in the Finance panel / Zoho Books, then answer. Your answer decides the stage.
+                {online
+                  ? "Online orders have no invoice in Zoho Books — check the payment on the online order itself, then answer. Your answer decides the stage."
+                  : "This form cannot read the invoice balance yet — check the invoice in the Finance panel / Zoho Books, then answer. Your answer decides the stage."}
               </Typography>
               <ToggleButtonGroup exclusive value={remainderDue === null ? "" : remainderDue ? "yes" : "no"} disabled={locked} onChange={(_, v) => v && setRemainderDue(v === "yes")}>
                 <ToggleButton value="yes" sx={{ px: 3 }}>Yes — remainder due</ToggleButton>

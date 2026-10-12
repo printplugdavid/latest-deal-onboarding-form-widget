@@ -286,6 +286,10 @@ export function targetStage({ result, remainderDue, hasTracking, currentStage })
   return { move: true, stage };
 }
 
+/* An online order: no PO, its own order number leads the name. Measured 2026-10-12 on five of them:
+   none has an invoice in Zoho Books, so the form must not send the agent there to look for one. */
+export const isOnlineOrder = (deal) => !has(deal?.PO_Number) && /^\s*\d{5,}\s*-/.test(str(deal?.Deal_Name));
+
 /* A Deal already waiting to ship passed QC earlier: the form is then only for adding the tracking. */
 export const isShipOnly = (deal) => str(deal?.Stage) === STAGES.NEED_SHIP;
 
@@ -339,6 +343,8 @@ export function buildPlan(state, ctx) {
       fields.Tracking_URL = str(state.trackingUrl) || DEFAULT_TRACKING_URL;
       fields.Shipped = true;
       summary.push("Save tracking number " + fields.Tracking_Number + " and the tracking link, and tick Shipped.");
+    } else if (shipOnly) {
+      summary.push("Enter the tracking number — saving it is what marks this order shipped.");
     } else {
       summary.push("No tracking number yet — the Deal waits in " + STAGES.NEED_SHIP + ". Open this form again to add it.");
     }

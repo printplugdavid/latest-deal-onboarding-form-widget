@@ -9,6 +9,7 @@ import {
   buildPlan,
   criticalNotes,
   dealIdentity,
+  isOnlineOrder,
   isQcTask,
   isRush,
   openQcTasks,
@@ -87,6 +88,11 @@ describe("E-52 what goes big on the label", () => {
   });
   test("neither: nothing is invented, the whole name stands in for the deal number", () => {
     expect(dealIdentity("test", null)).toEqual({ bigLabel: "", big: "", dealNo: "test" });
+  });
+  test("an online order is told from its name, and only when it has no PO", () => {
+    expect(isOnlineOrder({ Deal_Name: "1000230 - Lori Weber - Online Order", PO_Number: null })).toBe(true);
+    expect(isOnlineOrder({ Deal_Name: "Deal 8 - H & S Company LLC", PO_Number: "4291" })).toBe(false);
+    expect(isOnlineOrder({ Deal_Name: "test" })).toBe(false);
   });
   test("rush from the field or from the name", () => {
     expect(isRush({ Rush_Order: true, Deal_Name: "Deal 1" })).toBe(true);
@@ -337,6 +343,10 @@ describe("E-52 the plan -- what is written, in what order", () => {
     expect(p.stage).toEqual({ move: true, stage: STAGES.SHIPPED });
     expect(p.note).toMatch(/TRACKING ADDED/);
     expect(p.note).not.toMatch(/Approvals:/);
+    const waiting = buildPlan({ approvals: {}, result: "", trackingNumber: "", addressee: "X, Y" }, ctx({ deal: { ...DEAL, Stage: "Products Need Shipping", Addressee: "X, Y" } }));
+    expect(waiting.fields).toEqual({});
+    expect(waiting.stage).toEqual({ move: false, reason: "already", stage: STAGES.NEED_SHIP });
+    expect(waiting.summary[0]).toMatch(/Enter the tracking number/);
   });
   test("allApproved follows the list", () => {
     expect(allApproved(ALL)).toBe(true);
