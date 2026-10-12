@@ -280,7 +280,7 @@ const QcApp = () => {
     }
   }, [invoice]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const deal = loaded?.deal || {};
+  const deal = useMemo(() => loaded?.deal || {}, [loaded]);
   const json = loaded?.json || null;
   const lines = useMemo(() => orderLines(json), [json]);
   const critical = useMemo(() => criticalNotes(json, deal, accountNotes), [json, deal, accountNotes]);
