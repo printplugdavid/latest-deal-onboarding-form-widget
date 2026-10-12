@@ -290,6 +290,54 @@ export function targetStage({ result, remainderDue, hasTracking, currentStage })
    none has an invoice in Zoho Books, so the form must not send the agent there to look for one. */
 export const isOnlineOrder = (deal) => !has(deal?.PO_Number) && /^\s*\d{5,}\s*-/.test(str(deal?.Deal_Name));
 
+/*
+ * The Deal's Books invoice, as the CRM function WIDGET_Get_Deal_Invoices returns it (Deluge thread,
+ * zoho-deluge/docs/16). The form may only DECIDE "remainder due / paid in full" from it when there
+ * is exactly one invoice, it has been issued, and its balance is a number. Anything else -- no
+ * invoice (every online order), several, a draft, a void, a failed call, a function that is not
+ * installed yet -- is "ask the agent", with the reason shown. The form never guesses about money.
+ *
+ * `raw` is whatever ZOHO.CRM.FUNCTIONS.execute resolved to: the answer is a JSON STRING at
+ * details.output. Returns { state, decided, remainderDue, invoice, invoices, reason }.
+ */
+export const INVOICE_FUNCTION = "WIDGET_Get_Deal_Invoices";
+const money = (n) => (Number.isFinite(n) ? "$" + n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",") : "$?");
+export const invoiceLine = (inv) =>
+  [str(inv?.number), str(inv?.status).replace(/_/g, " "), "total " + money(inv?.total), "balance " + money(inv?.balance)].filter(Boolean).join(" · ");
+
+// A missing balance must never read as 0 ("paid in full") -- Number(null) is 0, so guard it.
+const amount = (v) => (v === null || v === undefined || String(v).trim() === "" ? NaN : Number(v));
+
+export function readInvoiceAnswer(raw) {
+  const ask = (state, reason, invoices) => ({ state, decided: false, remainderDue: null, invoice: null, invoices: invoices || [], reason });
+  let out = raw?.details?.output ?? raw?.output ?? raw;
+  if (typeof out === "string") {
+    try {
+      out = JSON.parse(out);
+    } catch (e) {
+      return ask("error", "The invoice could not be read (the answer was not understood).");
+    }
+  }
+  if (!out || typeof out !== "object" || out.status !== "ok" || !Array.isArray(out.invoices))
+    return ask("error", "The invoice could not be read" + (has(out?.message) ? " (" + str(out.message) + ")" : "") + ".");
+  const invoices = out.invoices.filter(Boolean).map((i) => ({
+    number: str(i.number),
+    status: str(i.status).toLowerCase(),
+    total: amount(i.total),
+    balance: amount(i.balance),
+    lineItemsLoaded: i.line_items_loaded !== false,
+    lineItems: (Array.isArray(i.line_items) ? i.line_items : []).filter(Boolean).map((l) => ({ name: str(l.name), description: str(l.description), quantity: l.quantity })),
+  }));
+  if (!invoices.length) return ask("none", "No invoice in Zoho Books is linked to this Deal.");
+  if (invoices.length > 1) return ask("several", "This Deal has " + invoices.length + " invoices in Zoho Books — check which one applies.", invoices);
+  const inv = invoices[0];
+  const one = (state, reason) => ({ ...ask(state, reason, invoices), invoice: inv });
+  if (inv.status === "draft") return one("draft", "The invoice is still a draft (never sent), so its balance says nothing about payment.");
+  if (inv.status === "void") return one("void", "The invoice is void.");
+  if (!Number.isFinite(inv.balance)) return one("error", "The invoice's balance could not be read.");
+  return { state: "one", decided: true, remainderDue: inv.balance > 0, invoice: inv, invoices, reason: "" };
+}
+
 /* A Deal already waiting to ship passed QC earlier: the form is then only for adding the tracking. */
 export const isShipOnly = (deal) => str(deal?.Stage) === STAGES.NEED_SHIP;
 
@@ -318,8 +366,8 @@ export function problems(state, ctx) {
 
 /*
  * THE PLAN: every write the form will make, in order, plus the same thing in plain words.
- *   ctx   = { deal, tasks, dateStr, who }
- *   state = { approvals, result, remainderDue, boxes, addressee, trackingNumber, trackingUrl,
+ *   ctx   = { deal, tasks, dateStr, who, invoice }   (invoice = readInvoiceAnswer(...) or undefined)
+ *   state = { approvals, result, remainderDue, remainderSource ("invoice" | "agent"), boxes, addressee, trackingNumber, trackingUrl,
  *             partial ("yes" | "no"), partialLines, partialNotes, notes }
  */
 export function buildPlan(state, ctx) {
@@ -357,6 +405,16 @@ export function buildPlan(state, ctx) {
     fields.Partial_Ready_Details = appendDated(deal.Partial_Ready_Details, partialEntry);
     fields.Partial_Ready_Date = ctx.dateStr;
     summary.push("Tick Partial Pick-Up Ready on the Deal and record what is ready: " + partialEntry);
+  }
+
+  // Deluge thread, 2026-10-12 (zoho-deluge/docs/16): the failed-QC sales task reads this box, so a
+  // tick left over from an earlier check must not survive a check that releases nothing new. The
+  // Details and the Date stay -- they are the record (quality-check/04 section 2b).
+  const releasing = result === RESULTS.FAILED && state.partial === "yes";
+  const settled = result === RESULTS.PICKUP || result === RESULTS.SHIP || (result === RESULTS.FAILED && state.partial === "no");
+  if (!shipOnly && !releasing && settled && deal.Partial_Pick_Up_Ready === true) {
+    fields.Partial_Pick_Up_Ready = false;
+    summary.push("Un-tick Partial Pick-Up Ready — this check releases nothing new. What was released before stays written on the Deal.");
   }
 
   summary.push("Add a “" + QC_NOTE_TITLE + "” note to the Deal recording this check.");
@@ -404,7 +462,18 @@ export function buildQcNote(state, ctx, plan) {
     APPROVALS.forEach((a) => L.push((state.approvals?.[a.key] ? "[x] " : "[ ] ") + a.label));
   }
   const extra = [];
-  if (plan.result === RESULTS.PICKUP) extra.push("Remainder due on the invoice (answered by the agent): " + (state.remainderDue ? "Yes" : "No"));
+  if (plan.result === RESULTS.PICKUP) {
+    const inv = ctx.invoice;
+    const facts = inv?.invoice ? invoiceLine(inv.invoice) : "";
+    const fromInvoice = inv?.decided && state.remainderSource === "invoice" && inv.remainderDue === state.remainderDue;
+    extra.push(
+      "Remainder due on the invoice: " +
+        (state.remainderDue ? "Yes" : "No") +
+        (fromInvoice
+          ? " (read from the invoice: " + facts + ")"
+          : " (answered by the agent" + (inv?.decided ? "; the invoice read: " + facts : inv?.reason ? "; " + inv.reason : "") + ")")
+    );
+  }
   if (int(state.boxes) >= 1 && (plan.result !== RESULTS.FAILED || state.partial === "yes")) extra.push("Boxes: " + int(state.boxes));
   if (plan.result === RESULTS.SHIP) {
     if (has(state.addressee)) extra.push("Ship to: " + str(state.addressee));
