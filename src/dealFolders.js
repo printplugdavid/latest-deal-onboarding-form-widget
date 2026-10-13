@@ -44,7 +44,7 @@ const list = (v) => (Array.isArray(v) ? v.map((x) => String(x)) : []);
 
 /*
  * What the function said, in one shape. `details.output` arrives as a JSON string.
- *   { status: "ok" | "error" | "unavailable", message, created, found, dealFolderLink }
+ *   { status: "ok" | "skipped" | "error" | "unavailable", message, created, found, dealFolderLink }
  * "unavailable" = no usable answer (function missing, refused, not JSON) -- never thrown.
  */
 export function readFolderAnswer(response) {
@@ -53,7 +53,9 @@ export function readFolderAnswer(response) {
     const raw = response && response.details ? response.details.output : undefined;
     const out = typeof raw === "string" ? JSON.parse(raw) : raw;
     if (!out || typeof out !== "object") return none("no answer from " + FOLDER_FUNCTION);
-    const status = out.status === "ok" ? "ok" : out.status === "error" ? "error" : "unavailable";
+    // "skipped" is a success: the function decided this Deal gets no folders (an online-store order --
+    // David's interim ruling, Deluge docs/23). Nothing is created, nothing is wrong.
+    const status = out.status === "ok" || out.status === "skipped" ? out.status : out.status === "error" ? "error" : "unavailable";
     return {
       status,
       message: String(out.message == null ? "" : out.message),
@@ -84,7 +86,7 @@ export function requestDealFolders(dealId) {
       .then(readFolderAnswer)
       .catch((e) => ({ ...readFolderAnswer(null), message: "call failed: " + String((e && e.message) || e) }))
       .then((answer) => {
-        if (answer.status !== "ok") console.log("Deal folders: not created by this call -", answer.message || answer.status);
+        if (answer.status !== "ok" && answer.status !== "skipped") console.log("Deal folders: not created by this call -", answer.message || answer.status);
         return answer;
       });
   } catch (e) {

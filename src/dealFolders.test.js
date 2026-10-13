@@ -31,6 +31,10 @@ describe("E-56 what comes back", () => {
   test("a real run", () => {
     expect(readFolderAnswer(wrap(OK))).toEqual({ status: "ok", message: "", created: OK.created, found: [], dealFolderLink: "https://workdrive.zoho.com/folder/wk20z7" });
   });
+  test("'skipped' (an online-store order) is a success with nothing created; an empty link is not a failure", () => {
+    expect(readFolderAnswer(wrap({ dry_run: false, status: "skipped", message: "Online-store order - folders are not created for these", found: [], created: [], deal_folder_link: "", mock_up_link: "" }))).toEqual({ status: "skipped", message: "Online-store order - folders are not created for these", created: [], found: [], dealFolderLink: "" });
+    expect(readFolderAnswer(wrap({ ...OK, mock_up_link: "" })).status).toBe("ok"); // the Deal already had its Mock Up link
+  });
   test("an error from the function keeps its message", () => {
     expect(readFolderAnswer(wrap({ status: "error", message: "WorkDrive: could not create Art Assets", created: ["Mock Up"] }))).toMatchObject({ status: "error", message: "WorkDrive: could not create Art Assets", created: ["Mock Up"], dealFolderLink: "" });
   });
