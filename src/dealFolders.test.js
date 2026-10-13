@@ -62,13 +62,18 @@ describe("E-56 firing the request", () => {
     expect(execute).toHaveBeenCalledWith("widget_create_deal_folders", { arguments: '{"deal_id":"5249739000087561441","dry_run":"false"}' });
     expect(answer.status).toBe("ok");
   });
-  test("returns at once -- it does not wait for a 13-second run", () => {
+  test("returns at once -- it does not wait for a 13-second run", async () => {
     let finish;
+    let settled = false;
     window.ZOHO = { CRM: { FUNCTIONS: { execute: () => new Promise((r) => (finish = r)) } } };
     const p = requestDealFolders("1");
-    expect(p).toBeInstanceOf(Promise); // handed back while the function is still running
+    p.then(() => (settled = true));
+    expect(p).toBeInstanceOf(Promise); // handed back straight away
+    await new Promise((r) => setTimeout(r, 20));
+    expect(typeof finish).toBe("function"); // the function has been called ...
+    expect(settled).toBe(false); // ... and is still "running"; the caller was never held up
     finish(wrap(OK));
-    return expect(p).resolves.toMatchObject({ status: "ok" });
+    await expect(p).resolves.toMatchObject({ status: "ok" });
   });
   test("a refusal, a throw, a missing function or a missing id never rejects and never throws", async () => {
     window.ZOHO = { CRM: { FUNCTIONS: { execute: async () => { throw new Error("REST API is off"); } } } };
