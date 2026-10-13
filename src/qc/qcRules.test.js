@@ -14,6 +14,8 @@ import {
   isRush,
   openQcTasks,
   orderLines,
+  orderSnapshot,
+  printMethodFor,
   problems,
   readInvoiceAnswer,
   splitAddress,
@@ -469,5 +471,149 @@ describe("E-52 the package label", () => {
     expect(boxCount("-2")).toBe(0);
     expect(boxCount("500")).toBe(MAX_BOXES);
     expect(buildLabelHtml({ ...d, boxes: "" }).match(/class="label"/g)).toHaveLength(1);
+  });
+});
+
+// E-54 -- "a snapshot of what the order should have on it" (David, 2026-10-13).
+// DECAL is the order that prompted it (Alex Adams Deal 2), as its onboarding note reads, no contact details.
+const DECAL = {
+  products: [
+    {
+      productName: "Decals",
+      productType: "nongarment",
+      quantityOrdered: "100",
+      dimensions: '3" wide by 2.5" tall',
+      numberOfSides: "1",
+      specialInstructions: "",
+      isOutsourced: false,
+      vendorsUsed: "In house",
+      branches: [{ graphicDescription: 'Image at 3" wide - die cut', isGraphicPrintReady: true, numberOfColorsUsed: "1", colorsUsed: "Full color printable vinyl", currentGraphicFormat: "PNG", fontsUsed: "NA" }],
+    },
+  ],
+  suppliesMaterialsNeeded: "Printable vinyl",
+  specialInstructions: "",
+  doProductsNeedShipped: "No",
+};
+const MIXED = {
+  products: [
+    {
+      productName: "Embroidery",
+      productType: "garment",
+      otherInformation: "Match the thread to last year's hats",
+      primaryBranches: [
+        {
+          garmentType: "Richardson 112",
+          garmentQuantity: "70",
+          countColorSize: "Red/Black 20\nLoden 50",
+          garmentSkus: [{ sku: "112" }, { sku: "" }],
+          vendorsUsed: "S&S",
+          isUsedInOtherAppTypes: "Yes",
+          chooseApplicationType: ["Direct-to-Film"],
+          specialInstructions: "Keep the stickers on the brims",
+          secondaryBranches: [
+            { graphicDescription: "P logo", numberOfColorsUsed: "2", colorsUsed: "1800 Black, 1810 Silver", underbase: "None", fontsUsed: "IDK", tartiaryBranches: [{ placementLocation: "Front Center of Hat", placementSize: "Small", sizeAndDimensions: "2.5 in tall" }, { placementLocation: "Left Side", placementSize: "Small", sizeAndDimensions: "" }] },
+            { graphicDescription: "Flag", numberOfColorsUsed: "3", colorsUsed: "", tartiaryBranches: [] },
+          ],
+        },
+      ],
+    },
+    {
+      productName: "Screen Printing",
+      productType: "garment",
+      premiumIronPass: "Yes",
+      primaryBranches: [{ garmentType: "Gildan 5000", garmentQuantity: "24", countColorSize: "Black\n12- M\n12- L", secondaryBranches: [{ graphicDescription: "Back print", numberOfColorsUsed: "1", colorsUsed: "White", underbase: "Single-pass", fontsUsed: "Impact", tartiaryBranches: [{ placementLocation: "Full Back", placementSize: "Large", sizeAndDimensions: "12 in wide" }] }] }],
+    },
+    { productName: "Direct-to-Film", productType: "garment", primaryBranches: [{ garmentType: "Richardson 112", garmentQuantity: "70", secondaryBranches: [] }] },
+    DECAL.products[0],
+    { productName: "Banners", productType: "nongarment", quantityOrdered: "2", dimensions: "3 x 6 ft", numberOfSides: "2", isOutsourced: true, vendorsUsed: "B2Sign", specialInstructions: "Grommets every 2 ft", branches: [] },
+    { productName: "Pens", productType: "nongarment", quantityOrdered: "250", isOutsourced: true, branches: [] },
+    { productName: "DTF Gang Sheet", productType: "gangsheet", numberOfGangSheets: "4", gangSheetWidth: "22", gangSheetHeight: "60", otherInformation: "Cut apart", gangGraphics: [{ graphicDescription: "A", quantityPerSheet: "12", graphicWidth: "4", graphicHeight: "4" }] },
+    { productName: "Graphic Design", productType: "graphic", specialInstructions: "Vectorize the logo" },
+    null,
+  ],
+  suppliesMaterialsNeeded: "",
+};
+
+describe("E-54 the print method a product sits under", () => {
+  test("the method, with the department in front when the two differ", () => {
+    expect(MIXED.products.filter(Boolean).map(printMethodFor)).toEqual([
+      "Embroidery",
+      "Screen Printing",
+      "Vinyl Department · Direct-to-Film",
+      "Vinyl Department · Decals",
+      "Vinyl Department · Banners",
+      "Outsourced · Pens",
+      "Vinyl Department · DTF Gang Sheet",
+      "Graphic Design",
+    ]);
+    expect(printMethodFor({ productType: "nongarment", productName: "Pens", isOutsourced: false })).toBe("Pens"); // never called outsourced on a guess
+  });
+});
+
+describe("E-54 the order snapshot", () => {
+  test("the decal order that prompted it: the method, the piece count, sides, in-house, the graphic and its colors", () => {
+    const snap = orderSnapshot(DECAL);
+    expect(snap.groups).toHaveLength(1);
+    expect(snap.groups[0].method).toBe("Vinyl Department · Decals");
+    const l = snap.groups[0].lines[0];
+    expect(l).toMatchObject({ key: "0", label: "Decals", qty: 100, sizes: '3" wide by 2.5" tall', placementAsked: false });
+    expect(l.facts).toEqual(["1 side", "Made in house"]); // "In house" as the vendor adds nothing
+    expect(l.graphics[0]).toMatchObject({ description: 'Image at 3" wide - die cut', colorCount: "1", colors: "Full color printable vinyl", placements: [] });
+    expect(l.graphics[0].facts).toEqual([]); // fonts "NA" says nothing
+    expect(l.callouts).toEqual([]);
+    expect(snap.alsoOnOrder).toEqual([]);
+  });
+  test("a mixed order: grouped by method in the order entered, every garment detail QC checks", () => {
+    const snap = orderSnapshot(MIXED);
+    expect(snap.groups.map((g) => [g.method, g.lines.map((l) => l.label + " " + l.qty)])).toEqual([
+      ["Embroidery", ["Richardson 112 70"]],
+      ["Screen Printing", ["Gildan 5000 24"]],
+      ["Vinyl Department · Direct-to-Film", ["Richardson 112 70"]],
+      ["Vinyl Department · Decals", ["Decals 100"]],
+      ["Vinyl Department · Banners", ["Banners 2"]],
+      ["Outsourced · Pens", ["Pens 250"]],
+      ["Vinyl Department · DTF Gang Sheet", ["DTF Gang Sheet 4"]],
+    ]);
+    const hat = snap.groups[0].lines[0];
+    expect(snap.groups[0].notes).toEqual(["Match the thread to last year's hats"]); // the product's own note, on its group
+    expect(hat.facts).toEqual(["SKU 112", "Vendor: S&S"]);
+    expect(hat.callouts).toEqual([
+      { label: "This garment ALSO gets", text: "Direct-to-Film" },
+      { label: "Special instructions", text: "Keep the stickers on the brims" },
+    ]);
+    expect(hat.graphics[0]).toMatchObject({ colorCount: "2", colors: "1800 Black, 1810 Silver", placements: ["Front Center of Hat · Small · 2.5 in tall", "Left Side · Small"] });
+    expect(hat.graphics[0].facts).toEqual([]); // underbase "None" and fonts "IDK" say nothing
+    expect(hat.graphics[1].placements).toEqual([]);
+    const tee = snap.groups[1].lines[0];
+    expect(tee.facts).toEqual(["Premium iron pass"]);
+    expect(tee.graphics[0].facts).toEqual(["Underbase: Single-pass", "Fonts: Impact"]);
+    const banner = snap.groups[4].lines[0];
+    expect(banner.facts).toEqual(["2 sides", "Outsourced", "Vendor: B2Sign"]);
+    expect(banner.callouts).toEqual([{ label: "Other information", text: "Grommets every 2 ft" }]);
+    const sheet = snap.groups[6].lines[0];
+    expect(sheet.graphics[0].placements).toEqual(["12 per sheet"]);
+    expect(sheet.graphics[0].facts).toEqual(['Size: 4" × 4"']);
+    expect(sheet.callouts).toEqual([{ label: "Other information", text: "Cut apart" }]);
+    expect(snap.alsoOnOrder).toEqual(["Graphic Design"]);
+  });
+  test("the snapshot's lines ARE the count lines -- same keys, labels and quantities as a partial pickup chooses from", () => {
+    const flat = orderSnapshot(MIXED).groups.flatMap((g) => g.lines);
+    expect(flat.map((l) => [l.key, l.label, l.qty])).toEqual(orderLines(MIXED).map((l) => [l.key, l.label, l.qty]));
+    expect(orderSnapshot(fixture).groups[0].lines[0]).toMatchObject({ key: "0.0", label: "Nike Polo NKDC1963", qty: 1 });
+  });
+  test("two products of one method share a heading; a garment note with no garments still shows; nothing is nothing", () => {
+    const two = orderSnapshot({ products: [DECAL.products[0], { ...DECAL.products[0], quantityOrdered: "50" }] });
+    expect(two.groups).toHaveLength(1);
+    expect(two.groups[0].lines.map((l) => [l.key, l.qty])).toEqual([["0", 100], ["1", 50]]);
+    const lone = orderSnapshot({ products: [{ productName: "Embroidery", productType: "garment", otherInformation: "Call before starting", primaryBranches: [] }] });
+    expect(lone.groups).toEqual([{ method: "Embroidery", lines: [], notes: ["Call before starting"] }]);
+    expect(orderSnapshot(null)).toEqual({ groups: [], alsoOnOrder: [] });
+  });
+  test("notes shown against their product are not repeated in the notes list -- and nothing is dropped", () => {
+    const all = criticalNotes(MIXED, {}, "").map((n) => n.title);
+    const rest = criticalNotes(MIXED, {}, "", { skipPlaced: true }).map((n) => n.title);
+    expect(all).toEqual(["Embroidery — other information", "Banners — special instructions", "DTF Gang Sheet — other information", "Graphic Design — special instructions"]);
+    expect(rest).toEqual(["Graphic Design — special instructions"]); // a design-only product has no line to sit on
+    expect(criticalNotes(DECAL, {}, "", { skipPlaced: true }).map((n) => [n.title, n.text])).toEqual([["Supplies / materials needed", "Printable vinyl"]]);
   });
 });

@@ -7,9 +7,10 @@ import {
   useWatch,
 } from "react-hook-form";
 import GarmentPrimaryBranchForm from "./GarmentPrimaryBranchForm";
+import { splitCopy, splitInfo } from "../garmentSplit";
 
 const GarmentForm = ({ index, options, productName }) => {
-  const { control } = useFormContext();
+  const { control, getValues, setValue } = useFormContext();
 
   const numberOfGarmentTypes = useWatch({
     control,
@@ -42,6 +43,22 @@ const GarmentForm = ({ index, options, productName }) => {
       }
     }
   }, [numberOfGarmentTypes]);
+
+  // E-58: "Split this garment type". Ticking it adds a COPY of the garment type as the next garment
+  // (see garmentSplit.js); the count below is raised with it so the effect above has nothing to do.
+  // Un-ticking removes the copy the same way the form always removes a garment: one fewer, from the end.
+  const garmentValues = useWatch({
+    control,
+    name: `products.${index}.primaryBranches`,
+  });
+  const splitGarment = (branchIndex) => {
+    const source = getValues(`products.${index}.primaryBranches.${branchIndex}`);
+    append(splitCopy(source, branchIndex + 1));
+    setValue(`products.${index}.numberOfGarmentTypes`, String(primaryBranches.length + 1));
+  };
+  const undoSplit = () => {
+    setValue(`products.${index}.numberOfGarmentTypes`, String(Math.max(0, primaryBranches.length - 1)));
+  };
 
   return (
     <Box sx={{ width: "100%" }}>
@@ -90,6 +107,9 @@ const GarmentForm = ({ index, options, productName }) => {
           branchIndex={branchIndex}
           options={options}
           productName={productName}
+          split={splitInfo(garmentValues, branchIndex)}
+          onSplit={() => splitGarment(branchIndex)}
+          onUndoSplit={undoSplit}
         />
       ))}
 

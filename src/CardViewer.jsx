@@ -30,6 +30,7 @@ import {
   Typography,
 } from "@mui/material";
 import { ALWAYS_BUILT, buildCardsFromData, labelFor, orderOf } from "./cardBuild";
+import { workDriveTarget } from "./productionCards";
 import { newestFirst, readFileText } from "./zohoFiles";
 
 const ZOHO = window.ZOHO;
@@ -73,7 +74,7 @@ async function loadCards(entity, recordId) {
     if (!byName.has(name)) byName.set(name, { olderCopies: 0 });
     else byName.get(name).olderCopies += 1;
   }
-  if (!byName.size) return { cards: [], info: "", workDrive: "" };
+  if (!byName.size) return { cards: [], info: "", workDrive: "", workDriveLabel: "" };
 
   const json = all
     .filter((a) => String(a?.File_Name || "").toLowerCase().endsWith(".json"))
@@ -108,8 +109,9 @@ async function loadCards(entity, recordId) {
     (deal.Closing_Date ? ` · due date is the Deal's Closing Date (${deal.Closing_Date})` : "") +
     ` · loaded in ${secs(t2 - t0)} (list + deal ${secs(t1 - t0)}, form ${secs(t2 - t1)})`;
   // E-53: the folder link for the toolbar -- https only, so nothing typed into the field can run.
-  const workDrive = /^https:\/\//i.test(String(deal.WorkDrive_Link || "").trim()) ? String(deal.WorkDrive_Link).trim() : "";
-  return { cards: cards.sort((a, b) => orderOf(a.name) - orderOf(b.name)), info, workDrive };
+  // E-55: the Deal's own folder when the Deal carries its link, otherwise the Mock Up folder, named as such.
+  const folder = workDriveTarget(deal);
+  return { cards: cards.sort((a, b) => orderOf(a.name) - orderOf(b.name)), info, workDrive: folder.href, workDriveLabel: folder.label };
 }
 
 const CardViewer = () => {
@@ -135,8 +137,8 @@ const CardViewer = () => {
       const entity = data?.Entity;
       const recordId = data?.EntityId?.[0] ?? data?.EntityId;
       try {
-        const { cards, info, workDrive } = await loadCards(entity, recordId);
-        setState({ status: "ready", cards, message: "", info, workDrive });
+        const { cards, info, workDrive, workDriveLabel } = await loadCards(entity, recordId);
+        setState({ status: "ready", cards, message: "", info, workDrive, workDriveLabel });
       } catch (e) {
         setState({ status: "error", cards: [], message: String(e?.message || e) });
       }
@@ -234,7 +236,7 @@ const CardViewer = () => {
         </Tabs>
         {state.workDrive && (
           <Button variant="outlined" size="small" component="a" href={state.workDrive} target="_blank" rel="noopener noreferrer">
-            WorkDrive folder
+            {state.workDriveLabel || "WorkDrive folder"}
           </Button>
         )}
         <Button variant="contained" size="small" onClick={printCard} disabled={!current?.html}>

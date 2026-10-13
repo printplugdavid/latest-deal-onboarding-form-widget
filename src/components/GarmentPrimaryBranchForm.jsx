@@ -17,16 +17,28 @@ import {
 } from "react-hook-form";
 import GarmentSecondaryBranchForm from "./GarmentSecondaryBranchForm";
 import SizeRowsField from "./SizeRowsField";
+import { styleOptionsFor } from "../sizeRows";
 import { checkGarmentQuantity } from "../quantityCheck";
 import LumpedGuard from "./LumpedGuard";
+import { ON_GARMENT, SPLIT_LABEL } from "../garmentSplit";
 
 const GarmentPrimaryBranchForm = ({
   index,
   branchIndex,
   options,
   productName,
+  split,
+  onSplit,
+  onUndoSplit,
 }) => {
   const { control } = useFormContext();
+  // E-58: this garment is part of a split when it has copies or is one (garmentSplit.splitInfo).
+  const inSplit = !!split && split.group.length > 1;
+  const hasCopies = !!split && split.copies.length > 0;
+  const graphicTicks = useWatch({
+    control,
+    name: `products.${index}.primaryBranches.${branchIndex}.secondaryBranches`,
+  });
 
   const isUsedInOtherAppTypes = useWatch({
     control,
@@ -81,6 +93,17 @@ const GarmentPrimaryBranchForm = ({
 
   const quantityWarning = checkGarmentQuantity(countColorSize, garmentQuantity);
 
+  // E-57: the styles / codes this garment type lists, offered on each size line so a color and its
+  // sizes say which garment they are.
+  const garmentTypeText = useWatch({
+    control,
+    name: `products.${index}.primaryBranches.${branchIndex}.garmentType`,
+  });
+  const garmentSkuValues = useWatch({
+    control,
+    name: `products.${index}.primaryBranches.${branchIndex}.garmentSkus`,
+  });
+
   const numberOfSkus = useWatch({
     control,
     name: `products.${index}.primaryBranches.${branchIndex}.numberOfSkus`,
@@ -132,7 +155,28 @@ const GarmentPrimaryBranchForm = ({
         }}
       >
         {`Garment ${branchIndex + 1}`}
+        {split && split.splitOf ? ` — split from Garment ${split.splitOf}` : ""}
       </Typography>
+
+      {/* E-58: always here, on every garment type -- the rep ticks it, nothing is inferred. */}
+      <FormGroup sx={{ mb: inSplit ? 0 : "0.5rem" }}>
+        <FormControlLabel
+          control={
+            <Checkbox
+              checked={hasCopies}
+              disabled={hasCopies && !split.canUndo}
+              onChange={(e) => (e.target.checked ? onSplit && onSplit() : onUndoSplit && onUndoSplit())}
+            />
+          }
+          label={SPLIT_LABEL}
+        />
+      </FormGroup>
+      {inSplit && (
+        <Alert severity="info" sx={{ mb: "1rem" }}>
+          {`Garments ${split.group.join(" and ")} are one garment type, split. Give each its own quantity and sizes, and untick any graphic a garment does not get. Together: ${split.quantities.join(" + ")} = ${split.total} garment${split.total === 1 ? "" : "s"}.`}
+          {hasCopies && !split.canUndo ? " To undo the split, lower Number of Garment Types (the copy must be the last garment)." : ""}
+        </Alert>
+      )}
 
       <Controller
         control={control}
@@ -159,7 +203,7 @@ const GarmentPrimaryBranchForm = ({
         defaultValue=""
         render={({ field }) => (
           // E-29: structured rows in, the SAME string out. See SizeRowsField.jsx.
-          <SizeRowsField value={field.value} onChange={field.onChange} />
+          <SizeRowsField value={field.value} onChange={field.onChange} styleOptions={styleOptionsFor(garmentTypeText, garmentSkuValues)} />
         )}
       />
 
@@ -255,16 +299,43 @@ const GarmentPrimaryBranchForm = ({
       {/* E-42: several styles/colors AND several graphics -> ask if every graphic is on every garment. */}
       <LumpedGuard index={index} branchIndex={branchIndex} />
 
-      {secondaryBranches?.map((_, secBranchIndex) => (
-        <GarmentSecondaryBranchForm
-          key={`${index}-${branchIndex}-${secBranchIndex}`}
-          index={index}
-          branchIndex={branchIndex}
-          secBranchIndex={secBranchIndex}
-          options={options}
-          productName={productName}
-        />
-      ))}
+      {secondaryBranches?.map((_, secBranchIndex) => {
+        const off = inSplit && graphicTicks?.[secBranchIndex]?.[ON_GARMENT] === false;
+        return (
+          <Box key={`${index}-${branchIndex}-${secBranchIndex}`}>
+            {/* E-58: in a split, each graphic has its own tick for this garment. Unticked = left out
+                of this garment when the form is submitted (garmentSplit.applyGarmentSplits). */}
+            {inSplit && (
+              <Controller
+                control={control}
+                name={`products.${index}.primaryBranches.${branchIndex}.secondaryBranches.${secBranchIndex}.${ON_GARMENT}`}
+                defaultValue={true}
+                render={({ field }) => (
+                  <FormGroup sx={{ ml: "5%" }}>
+                    <FormControlLabel
+                      control={<Checkbox checked={field.value !== false} onChange={(e) => field.onChange(e.target.checked)} />}
+                      label={
+                        field.value !== false
+                          ? `Garment ${branchIndex + 1} gets Graphic ${secBranchIndex + 1}`
+                          : `Garment ${branchIndex + 1} does NOT get Graphic ${secBranchIndex + 1} — it is left out of this garment's count, note and card`
+                      }
+                    />
+                  </FormGroup>
+                )}
+              />
+            )}
+            <Box sx={off ? { opacity: 0.35, pointerEvents: "none" } : undefined}>
+              <GarmentSecondaryBranchForm
+                index={index}
+                branchIndex={branchIndex}
+                secBranchIndex={secBranchIndex}
+                options={options}
+                productName={productName}
+              />
+            </Box>
+          </Box>
+        );
+      })}
 
 <Controller
         control={control}

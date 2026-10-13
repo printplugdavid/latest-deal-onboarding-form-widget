@@ -2,6 +2,7 @@ import React from "react";
 import { Box, Typography } from "@mui/material";
 import { useFormContext, useWatch } from "react-hook-form";
 import { computePrints } from "../printMath";
+import { applyGarmentSplits } from "../garmentSplit";
 
 /*
  * What this submission will book, shown before the agent submits it.
@@ -23,7 +24,7 @@ const PrintCountPreview = () => {
   // take the form down with it: if it ever throws, show nothing and let the agent carry on.
   let counts;
   try {
-    counts = computePrints(products);
+    counts = computePrints(applyGarmentSplits({ products }).products); // E-58: what onSubmit will count
   } catch (e) {
     console.log("Print count preview failed:", e);
     return null;

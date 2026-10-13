@@ -8,6 +8,7 @@
 import { gangSheetPrints } from "./gangSheet";
 import { readColorSwatches } from "./colorLibrary";
 import { buildColorMatches, COLOR_MATCH_CAVEAT } from "./colorMatch";
+import { sizeBlocks, stylesNotMarked } from "./sizeRows";
 
 // ===== Production card generator (attached to the Deal as per-department HTML job sheets) =====
 const pcEsc = (s) => String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -48,16 +49,41 @@ function pcSwatches(productName, text) {
   const m = readColorSwatches(productName, text); if (!m.length) return "";
   return `<div class="row"><span class="lbl">Chart colors (approx.)</span><span class="val">${m.map((c) => `<span class="swatch" style="display:inline-block;width:14px;height:14px;border:1px solid #777;border-radius:2px;vertical-align:-2px;margin-right:4px;background:${c.background};-webkit-print-color-adjust:exact;print-color-adjust:exact"></span>${pcEsc(c.label)}`).join(" &nbsp; ")}</span></div>`;
 }
+// E-57: a garment type that lists several styles reads "Gildan Long Sleeve / Gildan Hoodie", not run together.
+const pcType = (g) => String(g?.garmentType == null ? "" : g.garmentType).split(/\r?\n/).map((x) => x.trim()).filter(Boolean).join(" / ");
+/*
+ * E-57 (the graphic designer, 2026-10-13: "can't see which color goes to which garment"). The size
+ * breakdown used to be poured into one row, where its line breaks vanished. Now: the style as a
+ * heading, then each color on its own line with its sizes as tags and its piece count. Text the
+ * parser cannot place is shown as typed, with its line breaks. When the garment type names several
+ * styles and the sizes do not say which is which, the card SAYS so instead of leaving it to a guess.
+ */
+function pcSizes(g, bi) {
+  const text = g?.countColorSize; if (!pcHas(text)) return "";
+  const label = bi ? "Count / Colors / Sizes / Cant / Colores / Tallas" : "Count / Colors / Sizes";
+  const { blocks, unparsed } = sizeBlocks(text);
+  if (!blocks.length) return `<div class="row"><span class="lbl">${pcEsc(label)}</span><span class="val" style="white-space:pre-line">${pcEsc(String(text).trim())}</span></div>`;
+  const lines = []; let last = null;
+  blocks.forEach((b) => {
+    if (b.group !== last) { if (b.group) lines.push(`<div class="szg">${pcEsc(b.group)}</div>`); last = b.group; }
+    lines.push(`<div class="szc">${b.color ? `<span class="szn">${pcEsc(b.color)}</span>` : ""}${b.sizes.map((x) => `<span class="sz">${pcEsc(x.size)} <b>${x.count}</b></span>`).join("")}<span class="szt">= ${b.total}</span></div>`);
+  });
+  unparsed.forEach((u) => lines.push(`<div class="szu">${pcEsc(u)}</div>`));
+  const n = stylesNotMarked(g);
+  const warn = n ? `<div class="szw">&#9888; ${n} styles on this garment type &mdash; the sizes do not say which is which. Ask sales before starting.${bi ? ` / ${n} estilos &mdash; las tallas no indican cu&aacute;l es cu&aacute;l. Pregunte a ventas antes de empezar.` : ""}</div>` : "";
+  // The label sits ABOVE the breakdown, not beside it: the bilingual label is wide and the sizes need the room.
+  return `<div class="szrow"><div class="lbl">${pcEsc(label)}</div><div class="val">${lines.join("")}${warn}</div></div>`;
+}
 function pcGarmentBlock(g, bi, ironPass, productName) {
   const graphics = (g?.secondaryBranches || []).map((gr, i) => {
     const pl = (gr?.tartiaryBranches || []).map((p) => { if (!pcHas(p?.placementLocation) && !pcHas(p?.placementSize) && !pcHas(p?.sizeAndDimensions)) return ""; const bits = [pcHas(p?.placementSize) ? pcEsc(p.placementSize) : "", pcHas(p?.sizeAndDimensions) ? pcEsc(p.sizeAndDimensions) : ""].filter(Boolean).join(" · "); return `<div class="prow"><span class="ploc">${pcEsc(p?.placementLocation || "Placement")}</span>${bits ? " · " + bits : ""}</div>`; }).join("");
     return `<div class="graphic"><div class="grtitle">${bi ? "Graphic / Gráfico" : "Graphic"} ${i + 1}${pcHas(gr?.graphicDescription) ? ": " + pcEsc(gr.graphicDescription) : ""}</div>${pcRow("Colors", "Colores", gr?.numberOfColorsUsed, { crit: true, bi })}${pcRow("Colors Used", "Colores", gr?.colorsUsed, { bi })}${pcSwatches(productName, gr?.colorsUsed)}${pcRow("Underbase", "Base", gr?.underbase, { bi })}${pcHas(ironPass) ? pcRow("Premium Iron Pass", "Planchado", ironPass, { bi }) : ""}${pl ? `<div class="plc">${pl}</div>` : ""}</div>`;
   }).join("");
   const also = (g?.isUsedInOtherAppTypes === "Yes" && pcHas(g?.chooseApplicationType)) ? `<div class="alsonote">${bi ? "Also used with / También con" : "Also used with"}: <b>${pcEsc(g.chooseApplicationType)}</b></div>` : "";
-  return `<div class="garment"><div class="ghead"><span class="gname">${pcEsc(g?.garmentType || "Garment")}</span>${pcHas(g?.garmentQuantity) ? `<span class="gqty">${bi ? "Qty / Cant" : "Qty"}: ${pcEsc(g.garmentQuantity)}</span>` : ""}</div>${pcRow("SKU(s)", "SKU(s)", pcSkus(g), { bi })}${pcRow("Count / Colors / Sizes", "Cant / Colores / Tallas", g?.countColorSize, { bi })}${graphics}${also}${pcRow("Vendors", "Proveedores", g?.vendorsUsed, { bi })}${pcRow("Special Instructions", "Instrucciones", g?.specialInstructions, { bi })}</div>`;
+  return `<div class="garment"><div class="ghead"><span class="gname">${pcEsc(pcType(g) || "Garment")}</span>${pcHas(g?.garmentQuantity) ? `<span class="gqty">${bi ? "Qty / Cant" : "Qty"}: ${pcEsc(g.garmentQuantity)}</span>` : ""}</div>${pcRow("SKU(s)", "SKU(s)", pcSkus(g), { bi })}${pcSizes(g, bi)}${graphics}${also}${pcRow("Vendors", "Proveedores", g?.vendorsUsed, { bi })}${pcRow("Special Instructions", "Instrucciones", g?.specialInstructions, { bi })}</div>`;
 }
 function pcGarmentSummary(items, bi) {
-  const gs = []; items.forEach((p) => { if (p.productType === "garment") (p.primaryBranches || []).forEach((g) => { if (pcHas(g?.garmentType) || pcHas(g?.garmentQuantity)) gs.push(`${pcHas(g?.garmentQuantity) ? pcEsc(g.garmentQuantity) + "× " : ""}${pcEsc(g?.garmentType || "Garment")}`); }); });
+  const gs = []; items.forEach((p) => { if (p.productType === "garment") (p.primaryBranches || []).forEach((g) => { if (pcHas(g?.garmentType) || pcHas(g?.garmentQuantity)) gs.push(`${pcHas(g?.garmentQuantity) ? pcEsc(g.garmentQuantity) + "× " : ""}${pcEsc(pcType(g) || "Garment")}`); }); });
   if (!gs.length) return ""; return `<div class="gsummary"><b>${bi ? "Garments / Prendas" : "Garments"}:</b> ${gs.join("  •  ")}</div>`;
 }
 // The product-level note lives under different keys by product type - garments use
@@ -65,7 +91,7 @@ function pcGarmentSummary(items, bi) {
 // labelled "Other Information" in the form. One accessor so the cards never care which.
 const pcNote = (p) => (pcHas(p?.otherInformation) ? p.otherInformation : pcHas(p?.specialInstructions) ? p.specialInstructions : "");
 function pcOverview(p) { const bits = [pcHas(p?.quantityOrdered) ? `<b>${pcEsc(p.quantityOrdered)}×</b>` : "", pcEsc(p?.productName)].filter(Boolean).join(" "); const extra = [pcHas(p?.dimensions) ? pcEsc(p.dimensions) : "", pcHas(p?.vendorsUsed) ? "vendor: " + pcEsc(p.vendorsUsed) : ""].filter(Boolean).join(" · "); const note = pcHas(pcNote(p)) ? `<div class="orow"><span class="omute">Other Information —</span> <b>${pcEsc(pcNote(p))}</b></div>` : ""; return `<div class="orow">${bits}${extra ? ` <span class="omute">— ${extra}</span>` : ""}</div>${note}`; }
-const PC_CSS = `body{font-family:-apple-system,Segoe UI,Roboto,sans-serif;background:#e9eaec;margin:0;padding:24px;color:#1a1a1a}.pcard{background:#fff;max-width:760px;margin:0 auto 28px;border:1px solid #ccc;border-radius:6px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.08)}.strip{background:#111;color:#fff;padding:14px 18px}.stripline{display:flex;align-items:center;gap:12px;flex-wrap:wrap}.acct{font-size:18px;font-weight:700}.deal{color:#bbb;font-size:14px}.po{background:#ffd54f;color:#111;font-weight:700;padding:2px 10px;border-radius:4px;font-size:14px;white-space:nowrap}.po b{font-size:20px}.wd{color:#8ecbff;font-weight:700}@media print{.wd{display:none}}.rush{margin-left:auto;background:#d32f2f;color:#fff;font-weight:800;padding:3px 12px;border-radius:4px;letter-spacing:.05em}.stripmeta{display:flex;gap:18px;flex-wrap:wrap;margin-top:8px;font-size:14px;align-items:baseline}.dept{font-size:20px;font-weight:800}.pc{margin-left:auto}.pc b{font-size:20px}.due b{color:#ffd54f}.gsummary{background:#f0f7ff;border-bottom:1px solid #cfe3ff;padding:8px 18px;font-size:14px}.cbody{padding:16px 18px}.job{border:1px solid #ddd;border-radius:5px;margin-bottom:14px;overflow:hidden}.jhead{background:#f3f4f6;padding:8px 12px;font-weight:700;display:flex;justify-content:space-between}.jcount{color:#d32f2f}.omute{color:#999;font-weight:400;font-size:13px}.garment{border-left:3px solid #111;padding:10px 12px;margin:10px}.ghead{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px}.gname{font-size:16px;font-weight:700}.gqty{font-weight:700}.graphic{margin:8px 0 8px 10px;padding-left:12px;border-left:2px solid #ddd}.grtitle{font-weight:600;margin-bottom:4px}.row{display:flex;gap:8px;font-size:14px;padding:1px 0}.lbl{color:#666;min-width:170px}.val{font-weight:500}.row.crit .val{font-weight:800}.row.crit .lbl{color:#111}.plc{margin-top:5px}.prow{font-size:14px;background:#fff7e6;border:1px solid #ffe0a3;border-radius:3px;padding:3px 8px;margin:3px 0;display:inline-block}.ploc{font-weight:800}.alsonote{margin-top:6px;font-size:13px;background:#eef2ff;border:1px solid #c7d2fe;border-radius:3px;padding:5px 9px}.orow{padding:5px 12px;font-size:15px;border-bottom:1px solid #eee}.cfooter{background:#f3f4f6;padding:9px 18px;font-size:13px;color:#444;border-top:1px solid #ddd}`;
+const PC_CSS = `body{font-family:-apple-system,Segoe UI,Roboto,sans-serif;background:#e9eaec;margin:0;padding:24px;color:#1a1a1a}.pcard{background:#fff;max-width:760px;margin:0 auto 28px;border:1px solid #ccc;border-radius:6px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.08)}.strip{background:#111;color:#fff;padding:14px 18px}.stripline{display:flex;align-items:center;gap:12px;flex-wrap:wrap}.acct{font-size:18px;font-weight:700}.deal{color:#bbb;font-size:14px}.po{background:#ffd54f;color:#111;font-weight:700;padding:2px 10px;border-radius:4px;font-size:14px;white-space:nowrap}.po b{font-size:20px}.wd{color:#8ecbff;font-weight:700}@media print{.wd{display:none}}.rush{margin-left:auto;background:#d32f2f;color:#fff;font-weight:800;padding:3px 12px;border-radius:4px;letter-spacing:.05em}.stripmeta{display:flex;gap:18px;flex-wrap:wrap;margin-top:8px;font-size:14px;align-items:baseline}.dept{font-size:20px;font-weight:800}.pc{margin-left:auto}.pc b{font-size:20px}.due b{color:#ffd54f}.gsummary{background:#f0f7ff;border-bottom:1px solid #cfe3ff;padding:8px 18px;font-size:14px}.cbody{padding:16px 18px}.job{border:1px solid #ddd;border-radius:5px;margin-bottom:14px;overflow:hidden}.jhead{background:#f3f4f6;padding:8px 12px;font-weight:700;display:flex;justify-content:space-between}.jcount{color:#d32f2f}.omute{color:#999;font-weight:400;font-size:13px}.garment{border-left:3px solid #111;padding:10px 12px;margin:10px}.ghead{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px}.gname{font-size:16px;font-weight:700}.gqty{font-weight:700}.graphic{margin:8px 0 8px 10px;padding-left:12px;border-left:2px solid #ddd}.grtitle{font-weight:600;margin-bottom:4px}.row{display:flex;gap:8px;font-size:14px;padding:1px 0}.lbl{color:#666;min-width:170px}.val{font-weight:500}.row.crit .val{font-weight:800}.row.crit .lbl{color:#111}.plc{margin-top:5px}.prow{font-size:14px;background:#fff7e6;border:1px solid #ffe0a3;border-radius:3px;padding:3px 8px;margin:3px 0;display:inline-block}.ploc{font-weight:800}.alsonote{margin-top:6px;font-size:13px;background:#eef2ff;border:1px solid #c7d2fe;border-radius:3px;padding:5px 9px}.orow{padding:5px 12px;font-size:15px;border-bottom:1px solid #eee}.szrow{font-size:14px;padding:3px 0}.szrow .val{padding-left:10px}.szg{font-weight:800;margin-top:6px;padding-bottom:1px;border-bottom:1px solid #ccc}.szc{display:flex;flex-wrap:wrap;gap:4px 6px;align-items:baseline;padding:3px 0}.szn{font-weight:700;min-width:120px}.sz{border:1px solid #bbb;border-radius:3px;padding:0 6px;white-space:nowrap;background:#fafafa}.szt{color:#666;font-size:13px}.szu{color:#444}.szw{margin-top:5px;background:#fff4e5;border:1px solid #ffb74d;border-radius:3px;padding:4px 8px;font-weight:700;-webkit-print-color-adjust:exact;print-color-adjust:exact}.cfooter{background:#f3f4f6;padding:9px 18px;font-size:13px;color:#444;border-top:1px solid #ddd}`;
 const pcDoc = (cm, inner) => `<!doctype html><html><head><meta charset="utf-8"><title>${pcEsc(cm.dept)}</title><style>${PC_CSS}</style></head><body><section class="pcard">${inner}</section></body></html>`;
 // DTF Gang Sheet block: what the vinyl department needs to lay out and print the sheet -- sheet size,
 // each graphic's size and how many of it, and the estimate the Deal's print count came from (D-13).
@@ -87,15 +113,31 @@ function pcGangSheetBlock(p, bi) {
 // rendered, so a card without them is exactly what it was.
 const pcAttr = (s) => pcEsc(s).replace(/"/g, "&quot;");
 const pcLink = (u) => { const s = String(u == null ? "" : u).trim(); return /^https:\/\//i.test(s) ? s : ""; }; // never a javascript: or data: address
+/*
+ * E-55 (David, 2026-10-13): the WorkDrive button should open the DEAL's own folder. The Deal's
+ * long-standing WorkDrive_Link field holds the share link of the Mock Up folder inside it (it is what
+ * the mock-up email sends the client), and nothing on the Deal points at the Deal folder yet. So: the
+ * Deal folder when the Deal carries its link in DEAL_FOLDER_FIELD, otherwise the Mock Up folder --
+ * named as what it is, so nobody opens it expecting the whole job. One rule for the cards, the card
+ * viewer and the Quality Check form.
+ */
+export const DEAL_FOLDER_FIELD = "Deal_Folder_Link";
+export function workDriveTarget(deal) {
+  const dealFolder = pcLink(deal?.[DEAL_FOLDER_FIELD]);
+  if (dealFolder) return { kind: "deal", href: dealFolder, label: "Open the Deal folder" };
+  const mockUp = pcLink(deal?.WorkDrive_Link);
+  if (mockUp) return { kind: "mockup", href: mockUp, label: "Open the Mock Up folder" };
+  return { kind: "", href: "", label: "" };
+}
 function buildProductionCards(data, counts, dealInfo) {
   const products = data?.products || [];
-  const meta = { account: data?.contactInfo?.Account_Name, deal: data?.contactInfo?.Deal_Name, rush: data?.upchargedForRushTurnaround === true, due: data?.hardDueDate === "Yes" ? pcDate(data?.dueDate) : "", po: pcHas(dealInfo?.poNumber) ? String(dealInfo.poNumber).trim() : "", workDrive: pcLink(dealInfo?.workDriveLink) };
+  const meta = { account: data?.contactInfo?.Account_Name, deal: data?.contactInfo?.Deal_Name, rush: data?.upchargedForRushTurnaround === true, due: data?.hardDueDate === "Yes" ? pcDate(data?.dueDate) : "", po: pcHas(dealInfo?.poNumber) ? String(dealInfo.poNumber).trim() : "", workDrive: pcLink(dealInfo?.workDriveLink), workDriveLabel: pcHas(dealInfo?.workDriveLabel) ? String(dealInfo.workDriveLabel).trim() : "Open WorkDrive folder" };
   const byCard = {}; products.forEach((p) => { const r = pcRoute(p); if (!r) return; (byCard[r.card] = byCard[r.card] || []).push({ p, r }); });
   const files = [];
   // E-38: the Account's standing notes, on EVERY card (nothing says which department a note is
   // about). Absent or blank -> not rendered, so cards without notes are exactly what they were.
   const cnotes = pcHas(data?.customerNotes) ? `<div class="gsummary" style="background:#fff4e5;border-bottom:1px solid #ffd8a8"><b>Customer Notes (every deal for this account):</b><br>${pcEsc(String(data.customerNotes).trim()).replace(/\r?\n/g, "<br>")}</div>` : "";
-  const strip = (cm, deptTotal, extra) => `<div class="strip"><div class="stripline">${meta.po ? `<span class="po">PO # <b>${pcEsc(meta.po)}</b></span>` : ""}<span class="acct">${pcEsc(meta.account || "—")}</span><span class="deal">${pcEsc(meta.deal || "")}</span>${meta.rush ? `<span class="rush">RUSH</span>` : ""}</div><div class="stripmeta"><span class="dept">${pcEsc(cm.title)}</span>${deptTotal != null ? `<span class="pc">Print Count: <b>${deptTotal}</b></span>` : ""}<span class="due">Due: <b>${pcHas(meta.due) ? pcEsc(meta.due) : "See Closing Date on Deal"}</b></span>${meta.workDrive ? `<a class="wd" href="${pcAttr(meta.workDrive)}" target="_blank" rel="noopener noreferrer">Open WorkDrive folder &#8599;</a>` : ""}</div></div>${cnotes}${extra || ""}`;
+  const strip = (cm, deptTotal, extra) => `<div class="strip"><div class="stripline">${meta.po ? `<span class="po">PO # <b>${pcEsc(meta.po)}</b></span>` : ""}<span class="acct">${pcEsc(meta.account || "—")}</span><span class="deal">${pcEsc(meta.deal || "")}</span>${meta.rush ? `<span class="rush">RUSH</span>` : ""}</div><div class="stripmeta"><span class="dept">${pcEsc(cm.title)}</span>${deptTotal != null ? `<span class="pc">Print Count: <b>${deptTotal}</b></span>` : ""}<span class="due">Due: <b>${pcHas(meta.due) ? pcEsc(meta.due) : "See Closing Date on Deal"}</b></span>${meta.workDrive ? `<a class="wd" href="${pcAttr(meta.workDrive)}" target="_blank" rel="noopener noreferrer">${pcEsc(meta.workDriveLabel)} &#8599;</a>` : ""}</div></div>${cnotes}${extra || ""}`;
   const presentDepts = [...new Set(Object.keys(byCard).map((c) => PC_META[c].dept))]; presentDepts.push("Graphics");
   const footer = (dept) => { const o = presentDepts.filter((d) => d !== dept); return o.length ? `<div class="cfooter">Other departments on this deal: <b>${pcEsc(o.join(", "))}</b></div>` : ""; };
   for (const cardKey of Object.keys(byCard)) {
