@@ -87,15 +87,31 @@ function pcGangSheetBlock(p, bi) {
 // rendered, so a card without them is exactly what it was.
 const pcAttr = (s) => pcEsc(s).replace(/"/g, "&quot;");
 const pcLink = (u) => { const s = String(u == null ? "" : u).trim(); return /^https:\/\//i.test(s) ? s : ""; }; // never a javascript: or data: address
+/*
+ * E-55 (David, 2026-10-13): the WorkDrive button should open the DEAL's own folder. The Deal's
+ * long-standing WorkDrive_Link field holds the share link of the Mock Up folder inside it (it is what
+ * the mock-up email sends the client), and nothing on the Deal points at the Deal folder yet. So: the
+ * Deal folder when the Deal carries its link in DEAL_FOLDER_FIELD, otherwise the Mock Up folder --
+ * named as what it is, so nobody opens it expecting the whole job. One rule for the cards, the card
+ * viewer and the Quality Check form.
+ */
+export const DEAL_FOLDER_FIELD = "Deal_Folder_Link";
+export function workDriveTarget(deal) {
+  const dealFolder = pcLink(deal?.[DEAL_FOLDER_FIELD]);
+  if (dealFolder) return { kind: "deal", href: dealFolder, label: "Open the Deal folder" };
+  const mockUp = pcLink(deal?.WorkDrive_Link);
+  if (mockUp) return { kind: "mockup", href: mockUp, label: "Open the Mock Up folder" };
+  return { kind: "", href: "", label: "" };
+}
 function buildProductionCards(data, counts, dealInfo) {
   const products = data?.products || [];
-  const meta = { account: data?.contactInfo?.Account_Name, deal: data?.contactInfo?.Deal_Name, rush: data?.upchargedForRushTurnaround === true, due: data?.hardDueDate === "Yes" ? pcDate(data?.dueDate) : "", po: pcHas(dealInfo?.poNumber) ? String(dealInfo.poNumber).trim() : "", workDrive: pcLink(dealInfo?.workDriveLink) };
+  const meta = { account: data?.contactInfo?.Account_Name, deal: data?.contactInfo?.Deal_Name, rush: data?.upchargedForRushTurnaround === true, due: data?.hardDueDate === "Yes" ? pcDate(data?.dueDate) : "", po: pcHas(dealInfo?.poNumber) ? String(dealInfo.poNumber).trim() : "", workDrive: pcLink(dealInfo?.workDriveLink), workDriveLabel: pcHas(dealInfo?.workDriveLabel) ? String(dealInfo.workDriveLabel).trim() : "Open WorkDrive folder" };
   const byCard = {}; products.forEach((p) => { const r = pcRoute(p); if (!r) return; (byCard[r.card] = byCard[r.card] || []).push({ p, r }); });
   const files = [];
   // E-38: the Account's standing notes, on EVERY card (nothing says which department a note is
   // about). Absent or blank -> not rendered, so cards without notes are exactly what they were.
   const cnotes = pcHas(data?.customerNotes) ? `<div class="gsummary" style="background:#fff4e5;border-bottom:1px solid #ffd8a8"><b>Customer Notes (every deal for this account):</b><br>${pcEsc(String(data.customerNotes).trim()).replace(/\r?\n/g, "<br>")}</div>` : "";
-  const strip = (cm, deptTotal, extra) => `<div class="strip"><div class="stripline">${meta.po ? `<span class="po">PO # <b>${pcEsc(meta.po)}</b></span>` : ""}<span class="acct">${pcEsc(meta.account || "—")}</span><span class="deal">${pcEsc(meta.deal || "")}</span>${meta.rush ? `<span class="rush">RUSH</span>` : ""}</div><div class="stripmeta"><span class="dept">${pcEsc(cm.title)}</span>${deptTotal != null ? `<span class="pc">Print Count: <b>${deptTotal}</b></span>` : ""}<span class="due">Due: <b>${pcHas(meta.due) ? pcEsc(meta.due) : "See Closing Date on Deal"}</b></span>${meta.workDrive ? `<a class="wd" href="${pcAttr(meta.workDrive)}" target="_blank" rel="noopener noreferrer">Open WorkDrive folder &#8599;</a>` : ""}</div></div>${cnotes}${extra || ""}`;
+  const strip = (cm, deptTotal, extra) => `<div class="strip"><div class="stripline">${meta.po ? `<span class="po">PO # <b>${pcEsc(meta.po)}</b></span>` : ""}<span class="acct">${pcEsc(meta.account || "—")}</span><span class="deal">${pcEsc(meta.deal || "")}</span>${meta.rush ? `<span class="rush">RUSH</span>` : ""}</div><div class="stripmeta"><span class="dept">${pcEsc(cm.title)}</span>${deptTotal != null ? `<span class="pc">Print Count: <b>${deptTotal}</b></span>` : ""}<span class="due">Due: <b>${pcHas(meta.due) ? pcEsc(meta.due) : "See Closing Date on Deal"}</b></span>${meta.workDrive ? `<a class="wd" href="${pcAttr(meta.workDrive)}" target="_blank" rel="noopener noreferrer">${pcEsc(meta.workDriveLabel)} &#8599;</a>` : ""}</div></div>${cnotes}${extra || ""}`;
   const presentDepts = [...new Set(Object.keys(byCard).map((c) => PC_META[c].dept))]; presentDepts.push("Graphics");
   const footer = (dept) => { const o = presentDepts.filter((d) => d !== dept); return o.length ? `<div class="cfooter">Other departments on this deal: <b>${pcEsc(o.join(", "))}</b></div>` : ""; };
   for (const cardKey of Object.keys(byCard)) {

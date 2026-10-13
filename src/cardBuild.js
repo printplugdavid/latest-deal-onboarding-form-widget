@@ -3,7 +3,7 @@
  * CardViewer.jsx (2026-10-12, E-52) so the Quality Check form shows the SAME cards the viewer does
  * (D-24: imported, never copied). Pure: no ZOHO, no React.
  */
-import { buildProductionCards } from "./productionCards";
+import { buildProductionCards, workDriveTarget } from "./productionCards";
 
 // Tab order and labels, keyed by the filenames buildProductionCards() writes in App.jsx.
 export const CARD_ORDER = [
@@ -73,7 +73,9 @@ export function buildCardsFromData(data, deal) {
     : data;
   const built = new Map();
   // E-53: the PO number and the WorkDrive folder come from the Deal as it is now, like the due date.
-  const dealInfo = { poNumber: deal.PO_Number, workDriveLink: deal.WorkDrive_Link };
+  // E-55: the Deal's own folder when the Deal carries its link, otherwise the Mock Up folder, named as such.
+  const folder = workDriveTarget(deal);
+  const dealInfo = { poNumber: deal.PO_Number, workDriveLink: folder.href, workDriveLabel: folder.label };
   for (const c of buildProductionCards(liveDue, counts, dealInfo)) built.set(c.name.toLowerCase(), c.html);
   return built;
 }

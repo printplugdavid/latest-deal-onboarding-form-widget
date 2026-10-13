@@ -57,7 +57,7 @@ import OnlineStorefrontForm from "../components/OnlineStorefrontForm";
 import DtfGangSheetForm from "../components/DtfGangSheetForm";
 import { computePrints } from "../printMath";
 import { buildOnboardingNote } from "../onboardingNote";
-import { buildProductionCards } from "../productionCards";
+import { buildProductionCards, workDriveTarget } from "../productionCards";
 import {
   CUSTOMER_NOTES_QUESTION,
   CUSTOMER_NOTES_TOOLTIP,
@@ -525,7 +525,7 @@ const AmendmentApp = () => {
     // 2. regenerated cards -- not in carry mode: a card built from a lossy parse would look
     //    authoritative while missing answers, and these deals never had cards.
     if (!carry) await step("production cards", async () => {
-      const cards = buildProductionCards(cardSource, cardCounts, { poNumber: loaded.deal?.PO_Number, workDriveLink: loaded.deal?.WorkDrive_Link }); // E-53
+      const cards = buildProductionCards(cardSource, cardCounts, { poNumber: loaded.deal?.PO_Number, workDriveLink: workDriveTarget(loaded.deal).href, workDriveLabel: workDriveTarget(loaded.deal).label }); // E-53
       for (let c = 0; c < cards.length; c++) {
         await ZOHO.CRM.API.attachFile({
           Entity: entity,

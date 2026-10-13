@@ -21,7 +21,7 @@ import GraphicForm from "./components/GraphicForm";
 import OnlineStorefrontForm from "./components/OnlineStorefrontForm";
 import DtfGangSheetForm from "./components/DtfGangSheetForm";
 import PrintCountPreview from "./components/PrintCountPreview";
-import { buildProductionCards } from "./productionCards";
+import { buildProductionCards, workDriveTarget } from "./productionCards";
 import { gangSheetPrints } from "./gangSheet";
 import { checkGarmentQuantity } from "./quantityCheck";
 import { computePrints } from "./printMath";
@@ -271,7 +271,7 @@ function App() {
     // human-readable job sheets). Own try/catch so a failure never blocks the note or counts.
     try {
       // E-53: the Deal's PO number and WorkDrive folder, when it already has them at onboarding.
-      const productionCards = buildProductionCards(cardData, cardCounts, { poNumber: recordData?.PO_Number, workDriveLink: recordData?.WorkDrive_Link });
+      const productionCards = buildProductionCards(cardData, cardCounts, { poNumber: recordData?.PO_Number, workDriveLink: workDriveTarget(recordData).href, workDriveLabel: workDriveTarget(recordData).label });
       for (let c = 0; c < productionCards.length; c++) {
         try {
           const cardBlob = new Blob([productionCards[c].html], { type: "text/html" });

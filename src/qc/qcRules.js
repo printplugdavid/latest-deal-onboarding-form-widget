@@ -11,6 +11,7 @@
  * and creates NO tasks -- it writes its few fields, closes the QC task, and moves the stage LAST
  * with the workflow trigger (D-27). Doing any of that here as well would double it.
  */
+import { VINYL_DEPT, departmentFor } from "../printMath";
 
 // The only boxes QC has to tick (David's list, quality-check/03 section 4). Expected to grow:
 // add a line here and the form, the note and the tests pick it up.
@@ -116,62 +117,134 @@ const int = (v) => {
 };
 
 /*
+ * E-54 (David, 2026-10-13): the top of the form is "a snapshot of what the order should have on it" --
+ * the print method per product, every garment / product with its graphics and placements, and the
+ * notes that apply. Everything below reads the saved order (onboarding-form.json) the cards are built
+ * from; nothing is invented, and an answer that was left blank gives no line.
+ */
+const yes = (v) => v === true || /^(yes|true)$/i.test(str(v));
+const blankish = (v) => !has(v) || /^(n\/?a|none|no|false|-+)$/i.test(str(v)); // "NA", "None", "No" say nothing
+const listed = (v) => (Array.isArray(v) ? v.map(str).filter(Boolean).join(", ") : str(v));
+
+/*
+ * The heading a product sits under -- the print method, with the department in front when the two
+ * differ ("Vinyl Department · Decals"). Uses printMath's own buckets, so it cannot disagree with how
+ * the prints were counted.
+ */
+export function printMethodFor(p) {
+  const name = str(p?.productName);
+  if (p?.productType === "gangsheet") return VINYL_DEPT + " · DTF Gang Sheet";
+  const dept = departmentFor(name, p?.productType);
+  if (p?.productType === "garment") return !name || dept === name ? name || "Garments" : dept + " · " + name;
+  if (dept === VINYL_DEPT) return VINYL_DEPT + " · " + name;
+  return yes(p?.isOutsourced) ? "Outsourced · " + (name || "Product") : name || "Product";
+}
+
+// One graphic, as QC needs it: what it is, how many colors and which, the underbase, where it goes.
+const graphicOf = (gr, placements, extra) => ({
+  description: str(gr?.graphicDescription),
+  colorCount: str(gr?.numberOfColorsUsed),
+  colors: str(gr?.colorsUsed),
+  placements: placements || [],
+  facts: [
+    !blankish(gr?.underbase) ? "Underbase: " + str(gr.underbase) : "",
+    yes(gr?.colorChange) ? "Color change: Yes" : "",
+    !blankish(gr?.fontsUsed) && !/^(idk|unknown|\?+)$/i.test(str(gr.fontsUsed)) ? "Fonts: " + str(gr.fontsUsed) : "",
+    ...(extra || []),
+  ].filter(Boolean),
+});
+
+/*
  * The physical things on the order, one line each -- what QC counts, and what a partial pickup is
  * chosen from. Garments by garment type; other products by the piece; gang sheets by the sheet.
  * Graphic-design-only and storefront products are not things on a shelf and give no line.
+ * Since E-54 each line also carries its print method, its facts (SKU, sides, vendor ...) and its
+ * callouts (the instructions typed against it) -- key, label, qty and sizes are what they were.
  */
 export function orderLines(json) {
   const out = [];
   (json?.products || []).forEach((p, pi) => {
     if (!p) return;
+    const method = printMethodFor(p);
     if (p.productType === "garment") {
       (p.primaryBranches || []).forEach((g, gi) => {
         if (!g || (!has(g.garmentType) && !has(g.garmentQuantity) && !has(g.countColorSize))) return;
+        const skus = (g.garmentSkus || []).map((r) => str(r?.sku)).filter(Boolean).join(", ");
+        const also = yes(g.isUsedInOtherAppTypes) ? listed(g.chooseApplicationType) : "";
         out.push({
           key: pi + "." + gi,
           product: str(p.productName),
+          productType: "garment",
+          method,
           label: str(g.garmentType) || "Garment",
           qty: int(g.garmentQuantity),
           sizes: str(g.countColorSize),
           special: str(g.specialInstructions),
-          graphics: (g.secondaryBranches || []).filter(Boolean).map((gr) => ({
-            description: str(gr.graphicDescription),
-            colors: str(gr.colorsUsed),
-            placements: (gr.tartiaryBranches || [])
-              .filter(Boolean)
-              .map((pl) => [str(pl.placementLocation), str(pl.placementSize), str(pl.sizeAndDimensions)].filter(Boolean).join(" · "))
-              .filter(Boolean),
-          })),
+          facts: [
+            skus ? "SKU " + skus : "",
+            yes(p.premiumIronPass) ? "Premium iron pass" : "",
+            !blankish(g.vendorsUsed) ? "Vendor: " + str(g.vendorsUsed) : "",
+          ].filter(Boolean),
+          callouts: [
+            also ? { label: "This garment ALSO gets", text: also } : null,
+            has(g.specialInstructions) ? { label: "Special instructions", text: str(g.specialInstructions) } : null,
+          ].filter(Boolean),
+          placementAsked: true,
+          graphics: (g.secondaryBranches || []).filter(Boolean).map((gr) =>
+            graphicOf(
+              gr,
+              (gr.tartiaryBranches || [])
+                .filter(Boolean)
+                .map((pl) => [str(pl.placementLocation), str(pl.placementSize), str(pl.sizeAndDimensions)].filter(Boolean).join(" · "))
+                .filter(Boolean)
+            )
+          ),
         });
       });
     } else if (p.productType === "nongarment") {
+      const sides = int(p.numberOfSides);
+      // Both keys are labelled "Other Information" in the onboarding form (productionCards.pcNote).
+      const notes = [str(p.otherInformation), str(p.specialInstructions)].filter((t, i, a) => t && a.indexOf(t) === i);
       out.push({
         key: String(pi),
         product: str(p.productName),
+        productType: "nongarment",
+        method,
         label: str(p.productName) || "Product",
         qty: int(p.quantityOrdered),
         sizes: str(p.dimensions),
         special: str(p.specialInstructions),
-        graphics: (p.branches || []).filter(Boolean).map((gr) => ({
-          description: str(gr.graphicDescription),
-          colors: str(gr.colorsUsed),
-          placements: [],
-        })),
+        facts: [
+          sides ? sides + (sides === 1 ? " side" : " sides") : has(p.numberOfSides) ? "Sides: " + str(p.numberOfSides) : "",
+          yes(p.isOutsourced) ? "Outsourced" : "Made in house",
+          !blankish(p.vendorsUsed) && !/^in.?house$/i.test(str(p.vendorsUsed)) ? "Vendor: " + str(p.vendorsUsed) : "",
+        ].filter(Boolean),
+        callouts: notes.map((text) => ({ label: "Other information", text })),
+        placementAsked: false, // the onboarding form asks placement for garments only
+        graphics: (p.branches || []).filter(Boolean).map((gr) => graphicOf(gr, [])),
       });
     } else if (p.productType === "gangsheet") {
       const size = [str(p.gangSheetWidth), str(p.gangSheetHeight)].filter(Boolean).join(" × ");
+      const notes = [str(p.otherInformation), str(p.specialInstructions)].filter((t, i, a) => t && a.indexOf(t) === i);
       out.push({
         key: String(pi),
         product: "DTF Gang Sheet",
+        productType: "gangsheet",
+        method,
         label: "DTF Gang Sheet",
         qty: int(p.numberOfGangSheets),
         sizes: size,
         special: str(p.otherInformation),
-        graphics: (p.gangGraphics || []).filter(Boolean).map((gr) => ({
-          description: str(gr.graphicDescription),
-          colors: str(gr.colorsUsed),
-          placements: has(gr.quantityPerSheet) ? [str(gr.quantityPerSheet) + " per sheet"] : [],
-        })),
+        facts: [],
+        callouts: notes.map((text) => ({ label: "Other information", text })),
+        placementAsked: true, // "per sheet" stands in for placement
+        graphics: (p.gangGraphics || []).filter(Boolean).map((gr) =>
+          graphicOf(
+            gr,
+            has(gr.quantityPerSheet) ? [str(gr.quantityPerSheet) + " per sheet"] : [],
+            has(gr.graphicWidth) && has(gr.graphicHeight) ? ["Size: " + str(gr.graphicWidth) + '" × ' + str(gr.graphicHeight) + '"'] : []
+          )
+        ),
       });
     }
   });
@@ -179,11 +252,44 @@ export function orderLines(json) {
 }
 
 /*
+ * The snapshot: the same lines, grouped under their print method in the order the products were
+ * entered. A garment product's own "other information" applies to every garment under that method,
+ * so it sits on the group. Products with nothing to count (graphic design, a storefront) are named
+ * at the foot so the list is the whole order.
+ */
+export function orderSnapshot(json) {
+  const groups = [];
+  const byMethod = {};
+  const groupFor = (method) => {
+    if (!byMethod[method]) {
+      byMethod[method] = { method, lines: [], notes: [] };
+      groups.push(byMethod[method]);
+    }
+    return byMethod[method];
+  };
+  const lines = orderLines(json);
+  (json?.products || []).forEach((p, pi) => {
+    if (!p) return;
+    const mine = lines.filter((l) => l.key === String(pi) || l.key.startsWith(pi + "."));
+    const note = p.productType === "garment" ? str(p.otherInformation) : "";
+    if (!mine.length && !note) return;
+    const g = groupFor(printMethodFor(p));
+    g.lines.push(...mine);
+    if (note && !g.notes.includes(note)) g.notes.push(note);
+  });
+  const alsoOnOrder = (json?.products || [])
+    .filter((p) => p && (p.productType === "graphic" || p.productType === "onlinestorefront"))
+    .map((p) => str(p.productName) || (p.productType === "graphic" ? "Graphic Design" : "Online Storefront"));
+  return { groups, alsoOnOrder };
+}
+
+/*
  * "The critical parts of the notes" (quality-check/03 section 3) -- a read-only list, in the order
  * QC needs them. Only what has text is returned; the full note stays one click away on the Deal.
  */
-export function criticalNotes(json, deal, accountNotes) {
+export function criticalNotes(json, deal, accountNotes, opts) {
   const out = [];
+  const placed = !!opts?.skipPlaced; // E-54: the snapshot shows these against their own product
   const add = (title, text, tone) => {
     if (has(text)) out.push({ title, text: str(text), tone: tone || "info" });
   };
@@ -191,6 +297,7 @@ export function criticalNotes(json, deal, accountNotes) {
   add("Special instructions", json?.specialInstructions, "warn");
   (json?.products || []).forEach((p) => {
     if (!p) return;
+    if (placed && ["garment", "nongarment", "gangsheet"].includes(p.productType)) return;
     const name = str(p.productName) || "Product";
     add(name + " — other information", p.otherInformation, "warn");
     if (p.productType !== "garment") add(name + " — special instructions", p.specialInstructions, "warn");

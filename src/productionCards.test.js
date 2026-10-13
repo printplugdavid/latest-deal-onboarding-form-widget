@@ -1,4 +1,4 @@
-import { buildProductionCards } from "./productionCards";
+import { DEAL_FOLDER_FIELD, buildProductionCards, workDriveTarget } from "./productionCards";
 import { buildCardsFromData } from "./cardBuild";
 
 // E-53 -- the Deal's PO number and WorkDrive folder on every production card.
@@ -65,5 +65,32 @@ describe("E-53 PO number and WorkDrive folder on the production cards", () => {
     expect(html).toContain("2026-10-13"); // the live due date still works beside them
     // a Deal that has neither yet (onboarded before the invoice / the folder existed)
     expect(buildCardsFromData(DATA, {}).get("production-card-embroidery.html")).not.toContain('class="po"');
+  });
+});
+
+// E-55 -- the WorkDrive button opens the DEAL's folder (David, 2026-10-13). WorkDrive_Link is the Mock Up folder.
+describe("E-55 which WorkDrive folder the button opens", () => {
+  const DEAL_FOLDER = "https://workdrive.zoho.com/folder/dealfolder1";
+  test("the Deal folder when the Deal carries its link; otherwise the Mock Up folder, named as that; otherwise nothing", () => {
+    expect(DEAL_FOLDER_FIELD).toBe("Deal_Folder_Link");
+    expect(workDriveTarget({ Deal_Folder_Link: DEAL_FOLDER, WorkDrive_Link: FOLDER })).toEqual({ kind: "deal", href: DEAL_FOLDER, label: "Open the Deal folder" });
+    expect(workDriveTarget({ WorkDrive_Link: FOLDER })).toEqual({ kind: "mockup", href: FOLDER, label: "Open the Mock Up folder" });
+    expect(workDriveTarget({ Deal_Folder_Link: "  ", WorkDrive_Link: " " + FOLDER + " " }).href).toBe(FOLDER);
+    [{}, null, undefined, { WorkDrive_Link: null }].forEach((d) => expect(workDriveTarget(d)).toEqual({ kind: "", href: "", label: "" }));
+  });
+  test("only an https address is ever a link -- a bad Deal-folder value falls back, it does not run", () => {
+    expect(workDriveTarget({ Deal_Folder_Link: "javascript:alert(1)", WorkDrive_Link: FOLDER }).kind).toBe("mockup");
+    expect(workDriveTarget({ Deal_Folder_Link: "http://x.test/a", WorkDrive_Link: "data:text/html,x" }).href).toBe("");
+  });
+  test("the cards say which folder they open, and point at the Deal folder when there is one", () => {
+    const mock = buildCardsFromData(DATA, { WorkDrive_Link: FOLDER });
+    const deal = buildCardsFromData(DATA, { WorkDrive_Link: FOLDER, Deal_Folder_Link: DEAL_FOLDER });
+    expect(mock.size).toBeGreaterThanOrEqual(2);
+    mock.forEach((html) => expect(html).toContain(`href="${FOLDER}" target="_blank" rel="noopener noreferrer">Open the Mock Up folder`));
+    deal.forEach((html) => {
+      expect(html).toContain(`href="${DEAL_FOLDER}" target="_blank" rel="noopener noreferrer">Open the Deal folder`);
+      expect(html).not.toContain(FOLDER);
+    });
+    buildCardsFromData(DATA, {}).forEach((html) => expect(html).not.toContain('class="wd"'));
   });
 });

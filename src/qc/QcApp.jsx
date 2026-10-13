@@ -38,6 +38,8 @@ import {
 } from "@mui/material";
 import { newestFirst, readFileText } from "../zohoFiles";
 import { buildCardsFromData, labelFor, orderOf } from "../cardBuild";
+import { workDriveTarget } from "../productionCards";
+import { readColorSwatches } from "../colorLibrary";
 import { loadAccountNotes, todayStamp } from "../customerNotes";
 import { parseNoteToForm } from "../amendment/noteToForm";
 import { LIVE_NOTE_TITLE } from "../amendment/amendmentDiff";
@@ -57,6 +59,7 @@ import {
   isRush,
   isShipOnly,
   orderLines,
+  orderSnapshot,
   problems,
   readInvoiceAnswer,
   splitAddress,
@@ -194,6 +197,7 @@ const QcApp = () => {
   const [status, setStatus] = useState({ state: "loading", message: "" });
   const [loaded, setLoaded] = useState(null);
   const [accountNotes, setAccountNotes] = useState("");
+  const [accountRead, setAccountRead] = useState("loading"); // loading | ok | failed | none (the Deal has no Account)
   const [contact, setContact] = useState(null);
   const [who, setWho] = useState("");
   const [cardTab, setCardTab] = useState(0);
@@ -243,7 +247,12 @@ const QcApp = () => {
         setPartialLines(startPartialLines(orderLines(res.json)));
         setStatus({ state: "ready", message: "" });
         // Three extras, none of them fatal.
-        loadAccountNotes(res.deal).then((a) => setAccountNotes(a?.notes || "")).catch(() => {});
+        loadAccountNotes(res.deal)
+          .then((a) => {
+            setAccountNotes(a?.notes || "");
+            setAccountRead(a?.readFailed ? "failed" : a?.accountId ? "ok" : "none");
+          })
+          .catch(() => setAccountRead("failed"));
         if (res.deal.Contact_Name?.id) {
           Promise.resolve()
             .then(() => ZOHO.CRM.API.getRecord({ Entity: "Contacts", RecordID: res.deal.Contact_Name.id }))
@@ -283,7 +292,11 @@ const QcApp = () => {
   const deal = useMemo(() => loaded?.deal || {}, [loaded]);
   const json = loaded?.json || null;
   const lines = useMemo(() => orderLines(json), [json]);
-  const critical = useMemo(() => criticalNotes(json, deal, accountNotes), [json, deal, accountNotes]);
+  const snapshot = useMemo(() => orderSnapshot(json), [json]);
+  // E-54: what is typed against one product shows against that product; the rest are "notes that apply".
+  const critical = useMemo(() => criticalNotes(json, deal, accountNotes, { skipPlaced: true }), [json, deal, accountNotes]);
+  const hasCustomerNotes = critical.some((n) => n.title.startsWith("Customer notes"));
+  const folder = workDriveTarget(deal);
   const ident = dealIdentity(deal.Deal_Name, deal.PO_Number);
   const shipOnly = isShipOnly(deal);
   const online = isOnlineOrder(deal);
@@ -472,10 +485,15 @@ const QcApp = () => {
             {deal.Sales_Person && <Chip size="small" variant="outlined" label={"Sales: " + deal.Sales_Person} />}
           </Box>
         </Box>
-        {deal.WorkDrive_Link ? (
-          <Button variant="contained" component="a" href={deal.WorkDrive_Link} target="_blank" rel="noopener noreferrer">
-            Open WorkDrive folder
-          </Button>
+        {folder.href ? (
+          <Box sx={{ textAlign: "right", maxWidth: 230 }}>
+            <Button variant="contained" component="a" href={folder.href} target="_blank" rel="noopener noreferrer">
+              {folder.label}
+            </Button>
+            {folder.kind === "mockup" && (
+              <Typography sx={{ fontSize: 11, color: "#666", mt: 0.5 }}>This Deal has no Deal-folder link yet, so this opens its Mock Up folder.</Typography>
+            )}
+          </Box>
         ) : (
           <Typography sx={{ fontSize: 13, color: "#8a5300", maxWidth: 180 }}>No WorkDrive folder link on this Deal</Typography>
         )}
@@ -492,24 +510,14 @@ const QcApp = () => {
         </Alert>
       )}
 
-      {/* ---- 1. overview, read-only ---- */}
-      <Section title="1 · Check the notes">
-        {critical.length === 0 && <Typography sx={{ fontSize: 14, color: "#555" }}>No customer notes, special instructions, amendments or earlier revisions on this Deal.</Typography>}
-        {critical.map((n, i) => (
-          <Box key={i} sx={{ mb: 1.25, p: 1.25, borderLeft: "4px solid " + (n.tone === "warn" ? "#e69500" : "#8aa4c8"), bgcolor: n.tone === "warn" ? "#fff8ea" : "#f3f6fa" }}>
-            <Typography sx={{ fontSize: 12, fontWeight: 700, color: "#444" }}>{n.title}</Typography>
-            <Typography sx={{ fontSize: 14, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>{n.text}</Typography>
-          </Box>
-        ))}
-      </Section>
-
-      <Section title="2 · Count against the order">
+      {/* ---- 1. overview, read-only: the order snapshot (E-54) ---- */}
+      <Section title="1 · What this order should have">
         {loaded.orderProblem && <Alert severity="error" sx={{ mb: 1.5 }}>The saved order could not be read ({loaded.orderProblem}). Use the onboarding note on the Deal.</Alert>}
         {!json && !loaded.orderProblem && (
-          <Alert severity="info">
+          <Alert severity="info" sx={{ mb: 1.5 }}>
             {online
-              ? "This is an online order, so there is no onboarding form and no invoice in Zoho Books. Count against the online order itself in InkSoft."
-              : "This Deal has no onboarding form (older deals do not). Count against the invoice in Zoho Books (the Finance panel on the Deal)."}
+              ? "This is an online order, so there is no onboarding form and no invoice in Zoho Books. Check against the online order itself in InkSoft."
+              : "This Deal has no onboarding form (older deals do not). Check against the invoice in Zoho Books (the Finance panel on the Deal)."}
           </Alert>
         )}
         {loaded.fromNote && (
@@ -517,29 +525,107 @@ const QcApp = () => {
             This order was rebuilt from the onboarding note, not from saved answers, so a detail may be missing. Read the full note on the Deal if anything looks short.
           </Alert>
         )}
-        {json && lines.length === 0 && <Typography sx={{ fontSize: 14, color: "#555" }}>The onboarding form lists no garments or products to count.</Typography>}
-        {lines.map((l) => (
-          <Box key={l.key} sx={{ display: "flex", gap: 2, py: 1.25, borderBottom: "1px solid #eceef1", alignItems: "flex-start" }}>
-            <Box sx={{ width: 76, textAlign: "center", flexShrink: 0 }}>
-              <Typography sx={{ fontSize: 30, fontWeight: 800, lineHeight: 1 }}>{l.qty == null ? "?" : l.qty}</Typography>
-              <Typography sx={{ fontSize: 11, color: "#666" }}>{l.qty == null ? "no quantity given" : "ordered"}</Typography>
-            </Box>
-            <Box sx={{ flexGrow: 1, minWidth: 0 }}>
-              <Typography sx={{ fontSize: 15, fontWeight: 700 }}>
-                {l.label} {l.product && l.product !== l.label && <span style={{ fontWeight: 400, color: "#555" }}>· {l.product}</span>}
-              </Typography>
-              {l.sizes && <Typography sx={{ fontSize: 14, whiteSpace: "pre-wrap" }}>{l.sizes}</Typography>}
-              {l.graphics.map((g, gi) => (
-                <Typography key={gi} sx={{ fontSize: 13, color: "#333", mt: 0.25 }}>
-                  <b>Graphic {gi + 1}:</b> {g.description || "(no description)"}
-                  {g.colors ? " — colors: " + g.colors : ""}
-                  {g.placements.length ? " — " + g.placements.join("; ") : ""}
-                </Typography>
+        {json && lines.length === 0 && <Typography sx={{ fontSize: 14, color: "#555", mb: 1.5 }}>The onboarding form lists no garments or products to count.</Typography>}
+        {snapshot.groups.map((grp) => (
+          <Box key={grp.method} sx={{ mb: 2 }}>
+            <Typography sx={{ fontSize: 13, fontWeight: 800, letterSpacing: "0.06em", textTransform: "uppercase", color: "#fff", bgcolor: "#111", px: 1.25, py: 0.5, borderRadius: "4px 4px 0 0" }}>
+              {grp.method}
+            </Typography>
+            <Box sx={{ border: "1px solid #d5d8dd", borderTop: 0, borderRadius: "0 0 4px 4px", px: 1.5 }}>
+              {grp.notes.map((t, ni) => (
+                <Box key={ni} sx={{ mt: 1.25, p: 1, borderLeft: "4px solid #e69500", bgcolor: "#fff8ea" }}>
+                  <Typography sx={{ fontSize: 12, fontWeight: 700, color: "#444" }}>Other information — applies to everything under {grp.method}</Typography>
+                  <Typography sx={{ fontSize: 14, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>{t}</Typography>
+                </Box>
               ))}
-              {l.special && <Typography sx={{ fontSize: 13, mt: 0.5, color: "#8a5300" }}><b>Special instructions:</b> {l.special}</Typography>}
+              {grp.lines.map((l, li) => (
+                <Box key={l.key} sx={{ display: "flex", gap: 2, py: 1.25, borderTop: li || grp.notes.length ? "1px solid #eceef1" : 0, alignItems: "flex-start" }}>
+                  <Box sx={{ width: 76, textAlign: "center", flexShrink: 0 }}>
+                    <Typography sx={{ fontSize: 30, fontWeight: 800, lineHeight: 1 }}>{l.qty == null ? "?" : l.qty}</Typography>
+                    <Typography sx={{ fontSize: 11, color: "#666" }}>{l.qty == null ? "no quantity given" : l.productType === "gangsheet" ? "sheets" : "ordered"}</Typography>
+                  </Box>
+                  <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+                    <Typography sx={{ fontSize: 15, fontWeight: 700 }}>{l.label}</Typography>
+                    {l.sizes && <Typography sx={{ fontSize: 14, whiteSpace: "pre-wrap" }}>{l.sizes}</Typography>}
+                    {l.facts.length > 0 && <Typography sx={{ fontSize: 13, color: "#555" }}>{l.facts.join(" · ")}</Typography>}
+                    {l.graphics.map((g, gi) => {
+                      const swatches = readColorSwatches(l.product, g.colors);
+                      return (
+                        <Box key={gi} sx={{ mt: 0.75, pl: 1.25, borderLeft: "2px solid #d5d8dd" }}>
+                          <Typography sx={{ fontSize: 14 }}>
+                            <b>Graphic {gi + 1}:</b> {g.description || "(no description)"}
+                          </Typography>
+                          {(g.colorCount || g.colors) && (
+                            <Typography sx={{ fontSize: 13, color: "#333", whiteSpace: "pre-wrap" }}>
+                              <b>{g.colorCount ? g.colorCount + (g.colorCount === "1" ? " color" : " colors") : "Colors"}</b>
+                              {g.colors ? ": " + g.colors : ""}
+                            </Typography>
+                          )}
+                          {swatches.length > 0 && (
+                            <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1, my: 0.25 }}>
+                              {swatches.map((c, ci) => (
+                                <Box key={ci} sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                                  <Box sx={{ width: 14, height: 14, border: "1px solid #777", borderRadius: "2px", background: c.background }} />
+                                  <Typography sx={{ fontSize: 12, color: "#444" }}>{c.label}</Typography>
+                                </Box>
+                              ))}
+                            </Box>
+                          )}
+                          {g.facts.length > 0 && <Typography sx={{ fontSize: 13, color: "#333" }}>{g.facts.join(" · ")}</Typography>}
+                          {g.placements.map((pl, pli) => (
+                            <Typography key={pli} sx={{ fontSize: 13, display: "inline-block", bgcolor: "#fff7e6", border: "1px solid #ffe0a3", borderRadius: "3px", px: 0.75, mr: 0.75, mt: 0.25 }}>
+                              <b>{l.productType === "gangsheet" ? "" : "Placement: "}</b>
+                              {pl}
+                            </Typography>
+                          ))}
+                          {l.placementAsked && l.productType === "garment" && g.placements.length === 0 && (
+                            <Typography sx={{ fontSize: 12, color: "#8a5300" }}>No placement was entered for this graphic — check the mock-up.</Typography>
+                          )}
+                        </Box>
+                      );
+                    })}
+                    {!l.placementAsked && (
+                      <Typography sx={{ fontSize: 12, color: "#666", mt: 0.5 }}>Where it goes is not asked at onboarding for this product — go by the mock-up{l.callouts.length ? " and the note below" : ""}.</Typography>
+                    )}
+                    {l.callouts.map((c, ci) => (
+                      <Box key={ci} sx={{ mt: 0.75, p: 0.75, borderLeft: "4px solid #e69500", bgcolor: "#fff8ea" }}>
+                        <Typography sx={{ fontSize: 13, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
+                          <b>{c.label}:</b> {c.text}
+                        </Typography>
+                      </Box>
+                    ))}
+                  </Box>
+                </Box>
+              ))}
             </Box>
           </Box>
         ))}
+        {snapshot.alsoOnOrder.length > 0 && (
+          <Typography sx={{ fontSize: 13, color: "#555", mb: 1.5 }}>Also on this order, with nothing to count: {snapshot.alsoOnOrder.join(", ")}.</Typography>
+        )}
+
+        <Typography sx={{ fontSize: 13, fontWeight: 800, letterSpacing: "0.06em", textTransform: "uppercase", color: "#444", mt: 1, mb: 0.75 }}>Notes that apply to this order</Typography>
+        {critical.map((n, i) => (
+          <Box key={i} sx={{ mb: 1.25, p: 1.25, borderLeft: "4px solid " + (n.tone === "warn" ? "#e69500" : "#8aa4c8"), bgcolor: n.tone === "warn" ? "#fff8ea" : "#f3f6fa" }}>
+            <Typography sx={{ fontSize: 12, fontWeight: 700, color: "#444" }}>{n.title}</Typography>
+            <Typography sx={{ fontSize: 14, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>{n.text}</Typography>
+          </Box>
+        ))}
+        {!hasCustomerNotes && (
+          <Typography sx={{ fontSize: 13, color: accountRead === "failed" ? "#8a5300" : "#555" }}>
+            {accountRead === "loading"
+              ? "Reading the customer notes on the account…"
+              : accountRead === "failed"
+              ? "The account’s customer notes could not be read — open the Account to check them."
+              : accountRead === "none"
+              ? "This Deal has no Account, so there are no customer notes to show."
+              : "No customer notes on this account."}
+          </Typography>
+        )}
+        {critical.length === 0 && json && <Typography sx={{ fontSize: 13, color: "#555" }}>No special instructions, supplies, amendments or earlier revisions on this Deal.</Typography>}
+      </Section>
+
+      <Section title="2 · Count against the invoice">
         <Box sx={{ mt: 2, p: 1.5, bgcolor: "#f6f8fb", border: "1px solid #dfe4ea", borderRadius: 1 }}>
           <Typography sx={{ fontSize: 13, fontWeight: 700, mb: 0.5 }}>The invoice in Zoho Books</Typography>
           {!invoice && <Typography sx={{ fontSize: 13, color: "#555" }}>Reading the invoice…</Typography>}
@@ -568,7 +654,7 @@ const QcApp = () => {
           {invoice && invoice.invoices.length > 0 && invoice.reason && <Typography sx={{ fontSize: 13, color: "#8a5300" }}>{invoice.reason}</Typography>}
           {json && (
             <Typography sx={{ fontSize: 12, color: "#666", mt: 0.5 }}>
-              The large numbers above are from the onboarding form; the invoice lines are from Books (they can include fees and shipping). Count against both.
+              The large numbers in section 1 are from the onboarding form; the invoice lines are from Books (they can include fees and shipping). Count against both.
             </Typography>
           )}
         </Box>
