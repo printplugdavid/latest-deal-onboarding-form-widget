@@ -324,3 +324,45 @@ export function stylesNotMarked(garment) {
   return blocks.every((b) => b.group) ? 0 : several;
 }
 
+/*
+ * E-57, the entry screen (David, 2026-10-13: "styles above sizes -- what sizes per style, instead of
+ * what styles per size"). When a garment type holds several styles the rows are shown in SECTIONS,
+ * one per style: the style once as the heading, its colors and sizes under it.
+ *
+ * `sec` is a screen-only tag on each row -- never saved (formatSizeRows reads only group / color /
+ * size / count). It keeps two sections apart while their style boxes are still empty or, for a
+ * moment while typing, equal. Read from text, a new section starts wherever the style changes.
+ */
+export function tagSections(rows) {
+  let sec = -1;
+  let prev = null;
+  return (rows || []).map((r) => {
+    const g = (r && r.group) || "";
+    if (sec < 0 || g !== prev) sec += 1;
+    prev = g;
+    return { ...r, sec };
+  });
+}
+
+/* [{ sec, group, indexes: [row index ...], total }] in screen order. */
+export function sectionsOf(rows) {
+  const out = [];
+  (rows || []).forEach((r, i) => {
+    const sec = r && r.sec != null ? r.sec : 0;
+    let cur = out[out.length - 1];
+    if (!cur || cur.sec !== sec) {
+      cur = { sec, group: (r && r.group) || "", indexes: [], total: 0 };
+      out.push(cur);
+    }
+    cur.indexes.push(i);
+    cur.total += r && r.size ? Number(r.count) || 0 : 0;
+  });
+  return out;
+}
+
+/* The style a new section starts with: the first listed style no section uses yet, else blank. */
+export function nextUnusedStyle(rows, styleOptions) {
+  const used = (rows || []).map((r) => String((r && r.group) || "").trim().toLowerCase());
+  return (styleOptions || []).find((o) => used.indexOf(String(o).trim().toLowerCase()) < 0) || "";
+}
+

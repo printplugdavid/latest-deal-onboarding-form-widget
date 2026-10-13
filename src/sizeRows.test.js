@@ -358,3 +358,37 @@ describe("E-57 a style heading is a name, not a count", () => {
   });
 });
 
+describe("E-57 the entry screen: one section per style, sizes under it", () => {
+  const { tagSections, sectionsOf, nextUnusedStyle } = require("./sizeRows");
+  const MARKED = "Gildan Long Sleeve G2400:\nSafety Green\n10- M\n30- L\n\nGildan Hoodie 18500:\nSafety Green\n3- M\nBlack\n1- 2XL";
+  test("read from text: a section starts wherever the style changes", () => {
+    const rows = tagSections(parseSizeText(MARKED).rows);
+    expect(rows.map((r) => r.sec)).toEqual([0, 0, 1, 1]);
+    expect(sectionsOf(rows)).toEqual([
+      { sec: 0, group: "Gildan Long Sleeve G2400", indexes: [0, 1], total: 40 },
+      { sec: 1, group: "Gildan Hoodie 18500", indexes: [2, 3], total: 4 },
+    ]);
+    expect(tagSections(parseSizeText("Red\n6- S\n23- M").rows).map((r) => r.sec)).toEqual([0, 0]); // one style: one section
+    expect(tagSections(null)).toEqual([]);
+    expect(sectionsOf(null)).toEqual([]);
+  });
+  test("the screen tag keeps two sections apart while their styles are blank or equal -- and is never saved", () => {
+    const rows = [
+      { group: "", color: "Safety Green", size: "M", count: 10, sec: 0 },
+      { group: "", color: "Safety Green", size: "M", count: 3, sec: 1 },
+    ];
+    expect(sectionsOf(rows).map((x) => [x.sec, x.indexes, x.total])).toEqual([[0, [0], 10], [1, [1], 3]]);
+    expect(formatSizeRows(rows)).toBe("Safety Green\n10- M\n3- M"); // nothing about `sec` in the string
+    const named = rows.map((r) => ({ ...r, group: r.sec ? "Gildan Hoodie" : "Gildan Long Sleeve" }));
+    expect(formatSizeRows(named)).toBe("Gildan Long Sleeve:\nSafety Green\n10- M\n\nGildan Hoodie:\nSafety Green\n3- M");
+    expect(sumRows(named)).toBe(13);
+  });
+  test("a new section starts on the first listed style nothing uses yet", () => {
+    const opts = ["Gildan Long Sleeve", "Gildan Hoodie", "G2400", "18500"];
+    expect(nextUnusedStyle([], opts)).toBe("Gildan Long Sleeve");
+    expect(nextUnusedStyle([{ group: "gildan long sleeve " }], opts)).toBe("Gildan Hoodie");
+    expect(nextUnusedStyle(opts.map((group) => ({ group })), opts)).toBe("");
+    expect(nextUnusedStyle([{ group: "x" }], [])).toBe("");
+  });
+});
+
