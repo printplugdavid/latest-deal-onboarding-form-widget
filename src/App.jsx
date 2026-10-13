@@ -27,6 +27,7 @@ import { checkGarmentQuantity } from "./quantityCheck";
 import { computePrints } from "./printMath";
 import { buildOnboardingNote } from "./onboardingNote";
 import { lumpedConcerns, LUMPED_QUESTION } from "./lumpedOrder";
+import { applyGarmentSplits } from "./garmentSplit";
 import { buildColorMatches } from "./colorMatch";
 import {
   CUSTOMER_NOTES_QUESTION,
@@ -173,7 +174,10 @@ function App() {
     );
   };
 
-  const onSubmit = async (data) => {
+  const onSubmit = async (formData) => {
+    // E-58: in a split garment type, a graphic unticked for a garment is left out of that garment.
+    // Done FIRST, so the count, the saved order, the cards and the note all read the same thing.
+    const data = applyGarmentSplits(formData);
     // E-42: a garment type that looks like several (styles/colors + graphics) and was not answered
     // "Yes" gets one last question. Cancel returns to the form; OK submits exactly as entered.
     const lumped = lumpedConcerns(data?.products);
