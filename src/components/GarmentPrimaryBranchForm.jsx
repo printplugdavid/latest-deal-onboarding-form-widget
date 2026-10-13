@@ -17,6 +17,7 @@ import {
 } from "react-hook-form";
 import GarmentSecondaryBranchForm from "./GarmentSecondaryBranchForm";
 import SizeRowsField from "./SizeRowsField";
+import { styleOptionsFor } from "../sizeRows";
 import { checkGarmentQuantity } from "../quantityCheck";
 import LumpedGuard from "./LumpedGuard";
 
@@ -80,6 +81,17 @@ const GarmentPrimaryBranchForm = ({
   });
 
   const quantityWarning = checkGarmentQuantity(countColorSize, garmentQuantity);
+
+  // E-57: the styles / codes this garment type lists, offered on each size line so a color and its
+  // sizes say which garment they are.
+  const garmentTypeText = useWatch({
+    control,
+    name: `products.${index}.primaryBranches.${branchIndex}.garmentType`,
+  });
+  const garmentSkuValues = useWatch({
+    control,
+    name: `products.${index}.primaryBranches.${branchIndex}.garmentSkus`,
+  });
 
   const numberOfSkus = useWatch({
     control,
@@ -159,7 +171,7 @@ const GarmentPrimaryBranchForm = ({
         defaultValue=""
         render={({ field }) => (
           // E-29: structured rows in, the SAME string out. See SizeRowsField.jsx.
-          <SizeRowsField value={field.value} onChange={field.onChange} />
+          <SizeRowsField value={field.value} onChange={field.onChange} styleOptions={styleOptionsFor(garmentTypeText, garmentSkuValues)} />
         )}
       />
 

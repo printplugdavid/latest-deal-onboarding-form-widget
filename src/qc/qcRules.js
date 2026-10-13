@@ -12,6 +12,7 @@
  * with the workflow trigger (D-27). Doing any of that here as well would double it.
  */
 import { VINYL_DEPT, departmentFor } from "../printMath";
+import { stylesNotMarked } from "../sizeRows";
 
 // The only boxes QC has to tick (David's list, quality-check/03 section 4). Expected to grow:
 // add a line here and the form, the note and the tests pick it up.
@@ -176,9 +177,11 @@ export function orderLines(json) {
           product: str(p.productName),
           productType: "garment",
           method,
-          label: str(g.garmentType) || "Garment",
+          label: str(g.garmentType).split(/\r?\n/).map((x) => x.trim()).filter(Boolean).join(" / ") || "Garment",
           qty: int(g.garmentQuantity),
           sizes: str(g.countColorSize),
+          stylesUnmarked: stylesNotMarked(g), // E-57: several styles, sizes not tied to one
+
           special: str(g.specialInstructions),
           facts: [
             skus ? "SKU " + skus : "",

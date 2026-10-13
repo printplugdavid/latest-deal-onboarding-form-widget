@@ -258,3 +258,69 @@ export function insertSizeBelow(rows, i) {
   next.splice(i + 1, 0, { group: src.group || "", color: src.color || "", size: "", count: "" });
   return next;
 }
+
+/*
+ * E-57 (the graphic designer, through David, 2026-10-13): "can't see which color goes to which
+ * garment". When one garment type holds several styles ("Gildan Long Sleeve" + "Gildan Hoodie",
+ * SKUs G2400 + 18500), the rows above have always been able to carry the style (`group`) and
+ * formatSizeRows() has always written it as a "Style:" heading -- but since the structured rows
+ * replaced the free-text box (E-29) the screen had no place to pick it, so the link was lost.
+ * Everything below is for showing and picking that link. The saved field is still ONE string.
+ */
+
+/* What a rep can pick as a line's style: each line of Garment Type, then any SKU not already in one. */
+export function styleOptionsFor(garmentType, garmentSkus) {
+  const out = [];
+  const add = (v) => {
+    const t = String(v == null ? "" : v).trim();
+    if (t && !out.some((o) => o.toLowerCase() === t.toLowerCase())) out.push(t);
+  };
+  String(garmentType == null ? "" : garmentType).split(/\r?\n/).forEach(add);
+  (garmentSkus || []).forEach((r) => {
+    const sku = String((r && r.sku) == null ? "" : r.sku).trim();
+    if (sku && !out.some((o) => o.toLowerCase().indexOf(sku.toLowerCase()) >= 0)) add(sku);
+  });
+  return out;
+}
+
+/* Lines that have a size or count but no style -- what the screen asks the rep to finish. */
+export const rowsMissingStyle = (rows) => (rows || []).filter((r) => r && !isBlankRow(r) && !String(r.group || "").trim()).length;
+
+/*
+ * The breakdown as a READER needs it -- style, then color, then that color's sizes on one line.
+ * Used by the production cards and the Quality Check form. Anything the parser could not place is
+ * returned in `unparsed`, verbatim, and shown as typed: nothing is dropped and nothing is guessed.
+ *   { blocks: [{ group, color, sizes: [{ size, count }], total }], unparsed: [..], total }
+ */
+export function sizeBlocks(text) {
+  const { rows, unparsed } = parseSizeText(text);
+  const blocks = [];
+  rows.forEach((r) => {
+    const g = r.group || "";
+    const c = r.color || "";
+    let b = blocks[blocks.length - 1];
+    if (!b || b.group !== g || b.color !== c) {
+      b = { group: g, color: c, sizes: [], total: 0 };
+      blocks.push(b);
+    }
+    b.sizes.push({ size: r.size, count: Number(r.count) || 0 });
+    b.total += Number(r.count) || 0;
+  });
+  return { blocks, unparsed, total: blocks.reduce((n, b) => n + b.total, 0) };
+}
+
+/*
+ * True when the garment type names several styles / codes but the sizes do not say which is which --
+ * the case the designer cannot read. `styles` = lines of Garment Type, `skus` = filled SKU rows.
+ */
+export function stylesNotMarked(garment) {
+  const g = garment || {};
+  const styles = String(g.garmentType == null ? "" : g.garmentType).split(/\r?\n/).map((x) => x.trim()).filter(Boolean);
+  const skus = (g.garmentSkus || []).map((r) => String((r && r.sku) == null ? "" : r.sku).trim()).filter(Boolean);
+  const several = Math.max(styles.length, new Set(skus.map((x) => x.toLowerCase())).size);
+  if (several < 2) return 0;
+  const { blocks } = sizeBlocks(g.countColorSize);
+  if (!blocks.length) return 0;
+  return blocks.every((b) => b.group) ? 0 : several;
+}
+

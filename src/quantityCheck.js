@@ -32,7 +32,12 @@ const SUBTOTAL_BEFORE = /\btotal\s*(?:of|is)?\s*[:=-]?\s*\d+\b/gi;
  * returns { sum, numbers, parsed } -- parsed is false when there was nothing countable
  */
 export function sumSizeCounts(text) {
-  const raw = String(text == null ? "" : text);
+  // E-57: a style heading ("Gildan Hoodie 18500:", "112:") is a name, and its style number is not a
+  // quantity -- without this a heading with a bare code made the check claim thousands of garments.
+  const raw = String(text == null ? "" : text)
+    .split(/\r?\n/)
+    .filter((line) => !/:\s*$/.test(line))
+    .join("\n");
   const cleaned = raw
     .replace(MEASUREMENT, " ")
     .replace(SUBTOTAL_AFTER, " ")

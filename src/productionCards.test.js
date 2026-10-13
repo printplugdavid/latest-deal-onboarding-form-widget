@@ -94,3 +94,38 @@ describe("E-55 which WorkDrive folder the button opens", () => {
     buildCardsFromData(DATA, {}).forEach((html) => expect(html).not.toContain('class="wd"'));
   });
 });
+
+// E-57 -- the size breakdown on the cards, laid out so a color and its sizes say which garment they are.
+describe("E-57 sizes on the production cards", () => {
+  const order = (garment, productName) => ({ contactInfo: { Account_Name: "A", Deal_Name: "D" }, products: [{ productName: productName || "Screen Printing", productType: "garment", primaryBranches: [garment] }] });
+  const card = (data, name) => buildProductionCards(data, {}).find((c) => c.name === name).html;
+  const KC = { garmentType: "Gildan Long Sleeve\nGildan Hoodie", garmentQuantity: "73", garmentSkus: [{ sku: "G2400" }, { sku: "18500" }], secondaryBranches: [] };
+  test("each style is a heading; each color is one line with its sizes and its count", () => {
+    const html = card(order({ ...KC, countColorSize: "Gildan Long Sleeve G2400:\nSafety Green\n10- M\n30- L\n\nGildan Hoodie 18500:\nSafety Green\n3- M\nBlack\n1- 2XL" }), "production-card-screenprint.html");
+    expect(html).toContain('<span class="gname">Gildan Long Sleeve / Gildan Hoodie</span>');
+    expect(html).toContain('<div class="szg">Gildan Long Sleeve G2400</div><div class="szc"><span class="szn">Safety Green</span><span class="sz">M <b>10</b></span><span class="sz">L <b>30</b></span><span class="szt">= 40</span></div>');
+    expect(html).toContain('<div class="szg">Gildan Hoodie 18500</div><div class="szc"><span class="szn">Safety Green</span><span class="sz">M <b>3</b></span><span class="szt">= 3</span></div><div class="szc"><span class="szn">Black</span><span class="sz">2XL <b>1</b></span><span class="szt">= 1</span></div>');
+    expect(html).not.toContain('class="szw"');
+  });
+  test("several styles with unmarked sizes: the card says so (in both languages on the screen-print card)", () => {
+    const lumped = { ...KC, countColorSize: "Safety Green\n10- M\n30- L\n3- M\n10- L" };
+    const sp = card(order(lumped), "production-card-screenprint.html");
+    expect(sp).toContain('class="szw"');
+    expect(sp).toContain("2 styles on this garment type");
+    expect(sp).toContain("2 estilos");
+    const emb = card(order(lumped, "Embroidery"), "production-card-embroidery.html");
+    expect(emb).toContain("2 styles on this garment type");
+    expect(emb).not.toContain("estilos");
+  });
+  test("an ordinary one-style garment gets the layout and no warning; free text keeps its line breaks and nothing is dropped", () => {
+    const plain = card(order({ garmentType: "Next Level Shirts", garmentQuantity: "29", garmentSkus: [{ sku: "NL6210" }], countColorSize: "Red\n6- S\n23- M", secondaryBranches: [] }), "production-card-screenprint.html");
+    expect(plain).toContain('<span class="szn">Red</span><span class="sz">S <b>6</b></span><span class="sz">M <b>23</b></span><span class="szt">= 29</span>');
+    expect(plain).not.toContain('class="szw"');
+    const free = card(order({ garmentType: "Hats", garmentQuantity: "400", countColorSize: "112T \n200- Green \n200- Black <b>", secondaryBranches: [] }), "production-card-screenprint.html");
+    expect(free).toContain('<span class="val" style="white-space:pre-line">112T \n200- Green \n200- Black &lt;b&gt;</span>');
+    const mixed = card(order({ garmentType: "Tees", garmentQuantity: "5", countColorSize: "Red\n5- M\nship 2 to the Boise office", secondaryBranches: [] }), "production-card-screenprint.html");
+    expect(mixed).toContain('<div class="szu">ship 2 to the Boise office</div>');
+    expect(card(order({ garmentType: "Tees", garmentQuantity: "5", countColorSize: "", secondaryBranches: [] }), "production-card-screenprint.html")).not.toContain("Count / Colors / Sizes");
+  });
+});
+

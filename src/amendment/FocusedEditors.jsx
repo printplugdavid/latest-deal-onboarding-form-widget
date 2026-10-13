@@ -12,6 +12,7 @@ import React from "react";
 import { Alert, Box, Button, TextField, Typography } from "@mui/material";
 import { Controller, useFormContext, useWatch } from "react-hook-form";
 import SizeRowsField from "../components/SizeRowsField";
+import { styleOptionsFor } from "../sizeRows";
 import GarmentSecondaryBranchForm from "../components/GarmentSecondaryBranchForm";
 import LumpedGuard from "../components/LumpedGuard";
 import { checkGarmentQuantity } from "../quantityCheck";
@@ -28,6 +29,9 @@ export const QuantityEditor = ({ p, g }) => {
   const { control } = useFormContext();
   const qty = useWatch({ control, name: `${base(p, g)}.garmentQuantity` });
   const sizes = useWatch({ control, name: `${base(p, g)}.countColorSize` });
+  // E-57: the styles this garment type lists, offered on each size line.
+  const garmentType = useWatch({ control, name: `${base(p, g)}.garmentType` });
+  const garmentSkus = useWatch({ control, name: `${base(p, g)}.garmentSkus` });
   let warning = null;
   try {
     warning = checkGarmentQuantity(sizes, qty);
@@ -55,7 +59,7 @@ export const QuantityEditor = ({ p, g }) => {
       <Controller
         control={control}
         name={`${base(p, g)}.countColorSize`}
-        render={({ field }) => <SizeRowsField value={field.value} onChange={field.onChange} />}
+        render={({ field }) => <SizeRowsField value={field.value} onChange={field.onChange} styleOptions={styleOptionsFor(garmentType, garmentSkus)} />}
       />
       {warning?.message && (
         <Alert severity="warning" sx={{ mt: 1 }}>

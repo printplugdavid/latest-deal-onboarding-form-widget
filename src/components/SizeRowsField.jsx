@@ -15,6 +15,7 @@
  */
 import React, { useEffect, useRef, useState } from "react";
 import {
+  Autocomplete,
   Box,
   Button,
   IconButton,
@@ -31,6 +32,7 @@ import {
   formatSizeRows,
   insertSizeBelow,
   parseSizeText,
+  rowsMissingStyle,
   setColorCount,
   sumRows,
 } from "../sizeRows";
@@ -42,7 +44,9 @@ const blankRow = (like) => ({
   count: "",
 });
 
-const SizeRowsField = ({ value, onChange, label = "Total Count, Colors & Sizes" }) => {
+// E-57: `styleOptions` = the styles / codes this garment type lists (sizeRows.styleOptionsFor). With
+// two or more, every line gets a "Which garment?" box so a color and its sizes say which style they are.
+const SizeRowsField = ({ value, onChange, label = "Total Count, Colors & Sizes", styleOptions = [] }) => {
   const [rows, setRows] = useState([]);
   // Lines the parser could not classify. Kept verbatim so opening an old deal can
   // never silently drop what an agent wrote.
@@ -112,6 +116,9 @@ const SizeRowsField = ({ value, onChange, label = "Total Count, Colors & Sizes" 
   };
 
   const total = sumRows(rows);
+  // Show the style box when the garment type lists several styles, or a line already carries one.
+  const showStyles = styleOptions.length >= 2 || rows.some((r) => r && r.group);
+  const missingStyle = styleOptions.length >= 2 ? rowsMissingStyle(rows) : 0;
 
   return (
     <Box sx={{ mb: "1rem", mt: "5px" }}>
@@ -135,6 +142,11 @@ const SizeRowsField = ({ value, onChange, label = "Total Count, Colors & Sizes" 
             : `${countColorBlocks(rows)} color line${countColorBlocks(rows) === 1 ? "" : "s"} below. Use ＋ on a line to add another size of that color.`}
         </Typography>
       </Box>
+      {missingStyle > 0 && (
+        <Typography sx={{ fontSize: "0.85rem", color: "#b26a00", mb: "0.5rem" }}>
+          This garment type lists more than one style. Pick the garment on each line — {missingStyle} line{missingStyle === 1 ? " has" : "s have"} none yet — so graphics and production can tell which colors and sizes are which.
+        </Typography>
+      )}
       {keptTyped && (
         <Typography sx={{ fontSize: "0.85rem", color: "#b26a00", mb: "0.5rem" }}>
           Lines with something typed in them were kept. Remove any you do not need with ✕.
@@ -144,8 +156,22 @@ const SizeRowsField = ({ value, onChange, label = "Total Count, Colors & Sizes" 
       {rows.map((row, i) => (
         <Box
           key={i}
-          sx={{ display: "flex", gap: "0.5rem", mb: "0.5rem", alignItems: "flex-start" }}
+          sx={{ display: "flex", gap: "0.5rem", mb: "0.5rem", alignItems: "flex-start", flexWrap: "wrap" }}
         >
+          {showStyles && (
+            <Autocomplete
+              freeSolo
+              size="small"
+              options={styleOptions}
+              value={row.group || ""}
+              onChange={(_, v) => setRow(i, { group: v || "" })}
+              onInputChange={(_, v, reason) => {
+                if (reason === "input") setRow(i, { group: v });
+              }}
+              sx={{ flex: "2 1 11rem" }}
+              renderInput={(params) => <TextField {...params} label="Which garment? (style / code)" />}
+            />
+          )}
           <TextField
             size="small"
             label="Color"

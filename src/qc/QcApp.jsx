@@ -40,6 +40,7 @@ import { newestFirst, readFileText } from "../zohoFiles";
 import { buildCardsFromData, labelFor, orderOf } from "../cardBuild";
 import { workDriveTarget } from "../productionCards";
 import { readColorSwatches } from "../colorLibrary";
+import { sizeBlocks } from "../sizeRows";
 import { loadAccountNotes, todayStamp } from "../customerNotes";
 import { parseNoteToForm } from "../amendment/noteToForm";
 import { LIVE_NOTE_TITLE } from "../amendment/amendmentDiff";
@@ -169,6 +170,36 @@ const Section = ({ title, children, sx }) => (
     <Box sx={{ p: 2 }}>{children}</Box>
   </Box>
 );
+
+// E-57: the size breakdown as the cards show it -- style, then each color with its sizes on one line.
+// Text that is not in that shape (dimensions, older free text) is shown exactly as typed.
+const SizeLines = ({ text }) => {
+  const { blocks, unparsed } = sizeBlocks(text);
+  if (!blocks.length) return <Typography sx={{ fontSize: 14, whiteSpace: "pre-wrap" }}>{text}</Typography>;
+  return (
+    <Box>
+      {blocks.map((b, i) => (
+        <Box key={i}>
+          {b.group && (i === 0 || blocks[i - 1].group !== b.group) && (
+            <Typography sx={{ fontSize: 14, fontWeight: 800, mt: i ? 0.75 : 0, borderBottom: "1px solid #ccc" }}>{b.group}</Typography>
+          )}
+          <Box sx={{ display: "flex", flexWrap: "wrap", gap: "4px 6px", alignItems: "baseline", py: 0.25 }}>
+            {b.color && <Typography sx={{ fontSize: 14, fontWeight: 700, minWidth: 110 }}>{b.color}</Typography>}
+            {b.sizes.map((x, xi) => (
+              <Typography key={xi} component="span" sx={{ fontSize: 13, border: "1px solid #bbb", borderRadius: "3px", px: 0.75, bgcolor: "#fafafa", whiteSpace: "nowrap" }}>
+                {x.size} <b>{x.count}</b>
+              </Typography>
+            ))}
+            <Typography component="span" sx={{ fontSize: 12, color: "#666" }}>= {b.total}</Typography>
+          </Box>
+        </Box>
+      ))}
+      {unparsed.map((u, i) => (
+        <Typography key={"u" + i} sx={{ fontSize: 13, color: "#444" }}>{u}</Typography>
+      ))}
+    </Box>
+  );
+};
 
 const CopyLine = ({ label, value }) => {
   const [state, setState] = useState("");
@@ -546,7 +577,12 @@ const QcApp = () => {
                   </Box>
                   <Box sx={{ flexGrow: 1, minWidth: 0 }}>
                     <Typography sx={{ fontSize: 15, fontWeight: 700 }}>{l.label}</Typography>
-                    {l.sizes && <Typography sx={{ fontSize: 14, whiteSpace: "pre-wrap" }}>{l.sizes}</Typography>}
+                    {l.sizes && <SizeLines text={l.sizes} />}
+                    {l.stylesUnmarked > 0 && (
+                      <Typography sx={{ fontSize: 13, fontWeight: 700, color: "#8a5300", bgcolor: "#fff4e5", border: "1px solid #ffb74d", borderRadius: "3px", px: 0.75, mt: 0.5 }}>
+                        {l.stylesUnmarked} styles on this garment type — the sizes do not say which is which. Check with sales.
+                      </Typography>
+                    )}
                     {l.facts.length > 0 && <Typography sx={{ fontSize: 13, color: "#555" }}>{l.facts.join(" · ")}</Typography>}
                     {l.graphics.map((g, gi) => {
                       const swatches = readColorSwatches(l.product, g.colors);

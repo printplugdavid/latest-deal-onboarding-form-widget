@@ -289,3 +289,72 @@ describe("E-45 -- tall sizes", () => {
     expect(sumSizeCounts("12 Large Tall").sum).toBe(12);
   });
 });
+
+// E-57 -- "can't see which color goes to which garment" (the graphic designer, 2026-10-13).
+// KC is a real block from 2026-10-13 (Kc Steel Erectors Deal 6): two styles, two codes, one color,
+// and eight size lines with nothing saying where the long sleeves end and the hoodies begin.
+describe("E-57 which garment a color and its sizes belong to", () => {
+  const { sizeBlocks, stylesNotMarked, styleOptionsFor, rowsMissingStyle } = require("./sizeRows");
+  const KC = { garmentType: "Gildan Long Sleeve\nGildan Hoodie", garmentSkus: [{ sku: "G2400" }, { sku: "18500" }], countColorSize: "Safety Green\n10- M\n30- L\n10- XL\n4- 2XL\n3- M\n10- L\n5- XL\n1- 2XL" };
+  const MARKED = "Gildan Long Sleeve G2400:\nSafety Green\n10- M\n30- L\n10- XL\n4- 2XL\n\nGildan Hoodie 18500:\nSafety Green\n3- M\n10- L\n5- XL\n1- 2XL";
+
+  test("the options a rep picks from: each Garment Type line, then any SKU not already named in one", () => {
+    expect(styleOptionsFor(KC.garmentType, KC.garmentSkus)).toEqual(["Gildan Long Sleeve", "Gildan Hoodie", "G2400", "18500"]);
+    expect(styleOptionsFor("PC55Y Port & Co youth t-shirts\nPC55 Port & Co Adult T- Shirts", [{ sku: "PC55Y" }, { sku: "PC55" }])).toEqual(["PC55Y Port & Co youth t-shirts", "PC55 Port & Co Adult T- Shirts"]);
+    expect(styleOptionsFor("Next Level Shirts", [{ sku: "NL6210" }, { sku: "" }])).toEqual(["Next Level Shirts", "NL6210"]);
+    expect(styleOptionsFor(null, null)).toEqual([]);
+  });
+  test("rows with a style are written under a heading, and read back exactly", () => {
+    const rows = [
+      ...[["M", 10], ["L", 30], ["XL", 10], ["2XL", 4]].map(([size, count]) => ({ group: "Gildan Long Sleeve G2400", color: "Safety Green", size, count })),
+      ...[["M", 3], ["L", 10], ["XL", 5], ["2XL", 1]].map(([size, count]) => ({ group: "Gildan Hoodie 18500", color: "Safety Green", size, count })),
+    ];
+    expect(formatSizeRows(rows)).toBe(MARKED);
+    expect(parseSizeText(MARKED)).toEqual({ rows, unparsed: [] });
+    expect(rowsMissingStyle(rows)).toBe(0);
+    expect(rowsMissingStyle([{ group: "", color: "Black", size: "M", count: 1 }, { group: "", color: "", size: "", count: "" }])).toBe(1); // a blank line is not "missing"
+  });
+  test("for the reader: style, then each color with its sizes and its piece count", () => {
+    expect(sizeBlocks(MARKED)).toEqual({
+      blocks: [
+        { group: "Gildan Long Sleeve G2400", color: "Safety Green", sizes: [{ size: "M", count: 10 }, { size: "L", count: 30 }, { size: "XL", count: 10 }, { size: "2XL", count: 4 }], total: 54 },
+        { group: "Gildan Hoodie 18500", color: "Safety Green", sizes: [{ size: "M", count: 3 }, { size: "L", count: 10 }, { size: "XL", count: 5 }, { size: "2XL", count: 1 }], total: 19 },
+      ],
+      unparsed: [],
+      total: 73,
+    });
+    // as it was actually saved: ONE block of eight lines -- the boundary is not in the data
+    const lumped = sizeBlocks(KC.countColorSize);
+    expect(lumped.blocks).toHaveLength(1);
+    expect(lumped.blocks[0].sizes).toHaveLength(8);
+    expect(lumped.total).toBe(73);
+    // older free text is not forced into the shape
+    expect(sizeBlocks("NKDC1963 Black 1 Extra Large")).toEqual({ blocks: [], unparsed: ["NKDC1963 Black 1 Extra Large"], total: 0 });
+    expect(sizeBlocks("")).toEqual({ blocks: [], unparsed: [], total: 0 });
+  });
+  test("says so when several styles are listed and the sizes are not tied to one -- and only then", () => {
+    expect(stylesNotMarked(KC)).toBe(2);
+    expect(stylesNotMarked({ ...KC, countColorSize: MARKED })).toBe(0);
+    expect(stylesNotMarked({ garmentType: "Nike Polo\nNike Long Sleeve Polo\nWomen's Cardigan", garmentSkus: [{ sku: "NKDC1963" }, { sku: "NKDC2104" }, { sku: "MM3023" }], countColorSize: "Black\n3- L\n4- XL\n2- L\n1- XL\n1- M\n1- L" })).toBe(3);
+    expect(stylesNotMarked({ garmentType: "Next Level Shirts", garmentSkus: [{ sku: "NL6210" }], countColorSize: "Red\n6- S\n23- M" })).toBe(0); // one style: nothing to mark
+    expect(stylesNotMarked({ garmentType: "A\nB", garmentSkus: [], countColorSize: "" })).toBe(0); // no sizes typed: nothing to read wrong
+    expect(stylesNotMarked({ garmentType: "PC55", garmentSkus: [{ sku: "PC55" }, { sku: "pc55" }], countColorSize: "Black\n1- L" })).toBe(0); // the same code twice is one style
+    expect(stylesNotMarked(null)).toBe(0);
+  });
+});
+
+describe("E-57 a style heading is a name, not a count", () => {
+  test("a heading carrying a bare style number does not inflate the sizes check", () => {
+    const marked = "Gildan Long Sleeve G2400:\nSafety Green\n10- M\n30- L\n10- XL\n4- 2XL\n\nGildan Hoodie 18500:\nSafety Green\n3- M\n10- L\n5- XL\n1- 2XL";
+    expect(sumSizeCounts(marked).sum).toBe(73); // was 18,573 before the heading rule
+    expect(sumSizeCounts("112:\nBlack\n15- OSFA").sum).toBe(15);
+    expect(sumSizeCounts("Richardson 112:\nBlack\n15- OSFA\n8800 Gildan Polo:\nBlack\n1- L").sum).toBe(16);
+  });
+  test("what counted before still counts", () => {
+    expect(sumSizeCounts("Black 5- Small, 5- Medium, 7- Large, 6- XL, 1- 4XL").sum).toBe(24);
+    expect(sumSizeCounts("Black: OSFA ×12").sum).toBe(12); // a colon inside a line is not a heading
+    expect(sumSizeCounts("Navy: L ×12, XL ×12").sum).toBe(24);
+    expect(sumSizeCounts("Hoodies:\nSnow Camo\n1- XS\n1- Small\nIND4000Z Hoodies:\nMaroon\n1- XS").sum).toBe(3);
+  });
+});
+
