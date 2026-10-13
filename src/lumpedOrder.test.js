@@ -133,3 +133,46 @@ describe("E-44 -- a typed subtotal is not a quantity", () => {
     expect(sumSizeCounts("200- Green\n200- Black").sum).toBe(400);
   });
 });
+
+// E-58 -- Jeb Shippy Deal 1, as onboarded 2026-09-23: two identical hoodies, three graphics, each
+// written for one of them. Counted 6, real 3; the left chest was stitched onto both (revision 10-09).
+describe("E-58 -- a graphic that says it goes on only some of the garments", () => {
+  const { saysSomeOnly, lumpedExplanation } = require("./lumpedOrder");
+  const { computePrints } = require("./printMath");
+  const JEB = {
+    garmentType: "2- Client Owned Carhartt Quarter Zip Hoodies",
+    garmentSkus: [{ sku: "CT100617" }],
+    countColorSize: "Forest Green\n2- Medium",
+    garmentQuantity: "2",
+    numberOfGraphics: "3",
+    secondaryBranches: [
+      { graphicDescription: 'Left Sleeve cuff of 1- hoodie (the hoodie with the left chest)  2.5" Wide "J.S." under that "10/10" 2" wide', numberOfPlacements: "1", tartiaryBranches: [{ placementLocation: "Left Sleeve cuff of hoodie with left chest placement", placementSize: "Small" }] },
+      { graphicDescription: 'Left sleeve cuff of hoodie without left chest placement\n" I P " with the I and P diagonal', numberOfPlacements: "1", tartiaryBranches: [{ placementLocation: "Bottom Left Sleeve Cuff of hoodie without left chest", placementSize: "Small" }] },
+      { graphicDescription: 'Left chest of hoodie with " JS" on cuff\nDragon fly image 3.5" wide', numberOfPlacements: "1", tartiaryBranches: [{ placementLocation: "Left chest of hoodie with \"JS' on the Cuff", placementSize: "Small" }] },
+    ],
+  };
+  test("the real order is asked about -- strongly -- though its garments are all alike", () => {
+    const sig = lumpedSignals(JEB);
+    expect(sig.variety).toEqual([]); // one SKU, one style, one color: nothing the old rule could see
+    expect(sig.someOnly).toEqual([1, 2]);
+    expect(sig).toMatchObject({ graphics: 3, quantity: 2, suspect: true, strong: true });
+    expect(lumpedExplanation(sig)).toBe("This garment type lists 2 garments and 3 graphics. The print count puts every graphic on every garment. Graphic 1, 2 mention particular garments, styles or colors.");
+    expect(lumpedConcerns([{ productName: "Embroidery", productType: "garment", primaryBranches: [JEB] }])).toHaveLength(1);
+  });
+  test("what the count is today, and what it is once the two hoodies are entered separately", () => {
+    const as = (branches) => computePrints([{ productName: "Embroidery", productType: "garment", primaryBranches: branches }]).ED;
+    expect(as([JEB])).toBe(6);
+    const [cuffJS, cuffIP, chest] = JEB.secondaryBranches;
+    expect(as([{ ...JEB, garmentQuantity: "1", secondaryBranches: [cuffJS, chest] }, { ...JEB, garmentQuantity: "1", secondaryBranches: [cuffIP] }])).toBe(3);
+  });
+  test("the wording it listens for needs a garment word -- ordinary descriptions do not trip it", () => {
+    ["of 1- hoodie", "one of the shirts", "the hoodie with the left chest", "hat without the patch", "only on the black hoodie", "the other shirt gets the name"].forEach((t) => expect(saysSomeOnly(t)).toBe(true));
+    ["Company logo, text only", "Logo without the tagline", "1 color front print", "Full back with phone number", "Left chest logo 3.5 wide", "", null].forEach((t) => expect(saysSomeOnly(t)).toBe(false));
+  });
+  test("one garment, or one graphic, is never asked; front + back on every shirt still is not", () => {
+    expect(lumpedSignals({ ...JEB, garmentQuantity: "1" }).suspect).toBe(false);
+    expect(lumpedSignals({ ...JEB, numberOfGraphics: "1", secondaryBranches: [JEB.secondaryBranches[0]] }).suspect).toBe(false);
+    expect(lumpedSignals({ garmentType: "Gildan 5000", garmentQuantity: "24", countColorSize: "Black\n12- M\n12- L", secondaryBranches: [{ graphicDescription: "Front logo" }, { graphicDescription: "Full back with phone number" }] }).suspect).toBe(false);
+  });
+});
+

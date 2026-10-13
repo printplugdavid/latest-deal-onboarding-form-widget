@@ -31,6 +31,28 @@ const COLOR_WORDS = [
 ];
 
 /*
+ * E-58: a graphic that says IN WORDS that it goes on only some of the garments. Jeb Shippy Deal 1
+ * (2026-09-23): two identical hoodies -- one style, one color, one size -- and three graphics, each
+ * written for one of them ("of 1- hoodie (the hoodie with the left chest)", "hoodie without left
+ * chest placement"). Counted 6 prints, real 3, and the left chest was stitched onto both. Nothing
+ * above could see it: there is no variety in the garments, only in what goes on them.
+ * Kept narrow on purpose -- each pattern needs a garment word, so "text only" or "logo without the
+ * tagline" does not trip it.
+ */
+const PIECE = "(?:one|hood\\w*|sweater\\w*|sweatshirt\\w*|shirt\\w*|tee\\w*|polo\\w*|hat\\w*|cap\\w*|beanie\\w*|jacket\\w*|vest\\w*|crew\\w*|quarter\\s*zip\\w*|garment\\w*|piece\\w*|item\\w*)";
+const SOME_ONLY = [
+  new RegExp("\\b(?:1|one)\\s*[-–]?\\s*(?:of\\s+the\\s+)?" + PIECE.replace("one|", "") + "\\b"), // "1- hoodie", "one of the shirts"
+  new RegExp("\\bthe\\s+" + PIECE + "\\s+(?:with|that|which)\\b"), // "the hoodie with the left chest"
+  new RegExp("\\b" + PIECE + "\\s+without\\b"), // "hoodie without left chest"
+  new RegExp("\\bonly\\s+(?:on|for)\\s+(?:the\\s+)?(?:\\w+\\s+)?" + PIECE + "\\b"), // "only on the black hoodie"
+  new RegExp("\\bthe\\s+other\\s+" + PIECE + "\\b"), // "the other hoodie"
+];
+export const saysSomeOnly = (text) => {
+  const t = lower(text);
+  return !!t && SOME_ONLY.some((re) => re.test(t));
+};
+
+/*
  * What about this garment type suggests it may be several?
  *   graphics  -- how many graphics it has
  *   variety   -- plain-language reasons it looks like more than one kind of garment
@@ -71,17 +93,32 @@ export function lumpedSignals(garment) {
     if (namesSku || namesColor || countsOut) scoped.push(i + 1);
   });
 
-  const suspect = graphics >= 2 && variety.length > 0;
-  return { graphics, variety, scoped, suspect, strong: suspect && scoped.length > 0 };
+  // E-58: with two or more garments, a graphic whose own words (description or placement) put it
+  // on only some of them is a reason to ask even when the garments themselves are all alike.
+  const quantity = parseInt(g.garmentQuantity, 10) || 0;
+  const someOnly = [];
+  if (quantity >= 2) {
+    list.forEach((gr, i) => {
+      const words = [gr && gr.graphicDescription].concat(((gr && gr.tartiaryBranches) || []).map((pl) => pl && pl.placementLocation));
+      if (words.some(saysSomeOnly)) someOnly.push(i + 1);
+    });
+  }
+  someOnly.forEach((n) => {
+    if (scoped.indexOf(n) < 0) scoped.push(n);
+  });
+  scoped.sort((a, b) => a - b);
+
+  const suspect = graphics >= 2 && (variety.length > 0 || someOnly.length > 0);
+  return { graphics, variety, scoped, someOnly, quantity, suspect, strong: suspect && scoped.length > 0 };
 }
 
 /* The sentence under the question. */
 export function lumpedExplanation(sig) {
   if (!sig || !sig.suspect) return "";
-  const what = sig.variety.join(", ");
+  const what = sig.variety.length ? sig.variety.join(", ") : `${sig.quantity} garments`;
   const base = `This garment type lists ${what} and ${sig.graphics} graphics. The print count puts every graphic on every garment.`;
   return sig.scoped.length
-    ? `${base} Graphic ${sig.scoped.join(", ")} ${sig.scoped.length === 1 ? "mentions" : "mention"} particular styles or colors.`
+    ? `${base} Graphic ${sig.scoped.join(", ")} ${sig.scoped.length === 1 ? "mentions" : "mention"} particular garments, styles or colors.`
     : base;
 }
 
