@@ -58,6 +58,7 @@ import DtfGangSheetForm from "../components/DtfGangSheetForm";
 import { computePrints } from "../printMath";
 import { buildOnboardingNote } from "../onboardingNote";
 import { buildProductionCards, workDriveTarget } from "../productionCards";
+import { requestDealFolders, shouldRequestFolders } from "../dealFolders";
 import {
   CUSTOMER_NOTES_QUESTION,
   CUSTOMER_NOTES_TOOLTIP,
@@ -588,6 +589,11 @@ const AmendmentApp = () => {
       });
       if (!ok(r)) throw new Error("updateRecord: " + JSON.stringify(r?.data?.[0] || r));
     });
+
+    // E-56: an amendment can add a department. Ask the CRM to make sure this Deal's WorkDrive folders
+    // exist (it only adds what is missing). After the Deal fields above, not awaited, cannot throw.
+    // Not sent for a Deal whose folder was made by hand (David: no back-fill).
+    if (countsOk && shouldRequestFolders(loaded.deal)) requestDealFolders(recordId);
 
     // 6. E-43 -- open produce tasks carry the numbers they were created with. Only when the counts
     // above were written (otherwise the Deal still holds the old ones and the tasks agree with it).
