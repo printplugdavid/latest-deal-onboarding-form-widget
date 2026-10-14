@@ -246,12 +246,22 @@ PANTONES.forEach((p) => (PANTONE_BY_KEY[pkey(p.code)] = p));
 export const pantoneLabel = (p) => "Pantone " + p.code;
 
 /*
+ * E-62 (David, 2026-10-14): "Always COATED when it's PANTONE / Remove UNCOATED from options on sales floor. We
+ * want to preserve them to be able to bring them back in the future but in the screen print room it's always
+ * matching to C." So an Uncoated code a rep types is read as its Coated twin (the reply says so), and no list
+ * offers U codes. The Uncoated data stays in pantone.json; set this to true to bring it back.
+ */
+export const SHOW_UNCOATED = false;
+const coatedTwin = (p) => (p && !p.coated ? PANTONE_BY_KEY[pkey(p.code.replace(/ U$/, " C"))] || null : null);
+
+/*
  * Find a Pantone code in something a rep typed: "187C", "PMS 187", "Pantone 187 C", "Cool Grey 4 C",
  * "Red Pantone 187C", "2378C Navy Pantone".
  *   - a C or U suffix makes it a Pantone on its own ("172 C");
  *   - with the word Pantone / PMS and NO suffix, coated is assumed (`assumed: true`);
  *   - a bare number with neither is NOT a Pantone -- it could be anything.
- * Returns { color, assumed } | { unknown: true } (looks like a Pantone, not in the library) | null.
+ * Returns { color, assumed, typedUncoated? } | { unknown: true } (looks like a Pantone, not in the library) | null.
+ * E-62: with SHOW_UNCOATED off, a U code comes back as its C twin with `typedUncoated` = the code as typed.
  */
 export function findPantone(raw) {
   const lower = String(raw == null ? "" : raw).toLowerCase();
@@ -269,7 +279,9 @@ export function findPantone(raw) {
       const last = cand[cand.length - 1];
       const key = cand.join("");
       if ((last === "c" || last === "u") && len >= 2 && PANTONE_BY_KEY[key]) {
-        return { color: PANTONE_BY_KEY[key], assumed: false };
+        const hit = PANTONE_BY_KEY[key];
+        const twin = SHOW_UNCOATED ? null : coatedTwin(hit);
+        return twin ? { color: twin, assumed: false, typedUncoated: hit.code } : { color: hit, assumed: false };
       }
       if (hasWord && !assumedHit && last !== "c" && last !== "u" && PANTONE_BY_KEY[key + "c"]) {
         assumedHit = { color: PANTONE_BY_KEY[key + "c"], assumed: true };
@@ -373,7 +385,7 @@ export function houseInkHint(pantone) {
 export function readInkText(text) {
   return splitColorText(text).map((piece) => {
     const p = findPantone(piece);
-    if (p && p.color) return { type: "pantone", text: piece, color: p.color, assumed: p.assumed };
+    if (p && p.color) return { type: "pantone", text: piece, color: p.color, assumed: p.assumed, ...(p.typedUncoated ? { typedUncoated: p.typedUncoated } : {}) };
     const hex = findHexInText(piece) || normalizeHex(piece);
     if (hex) return { type: "hex", text: piece, hex };
     if (p && p.unknown) return { type: "unknown-pantone", text: piece };

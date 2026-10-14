@@ -236,6 +236,8 @@ const QcApp = () => {
 
   const [approvals, setApprovals] = useState({});
   const [result, setResult] = useState("");
+  // E-64: "auto" = the form chose the result (the order ships); cleared the moment the agent picks one.
+  const [resultAuto, setResultAuto] = useState(false);
   const [remainderDue, setRemainderDue] = useState(null);
   const [remainderSource, setRemainderSource] = useState(""); // "invoice" = read from Books, "agent" = answered by hand
   const [invoice, setInvoice] = useState(null); // null while loading; then readInvoiceAnswer(...)
@@ -333,6 +335,15 @@ const QcApp = () => {
   const online = isOnlineOrder(deal);
   const approved = allApproved(approvals);
   const orderShips = json?.doProductsNeedShipped === "Yes" || !!deal.Addressee;
+  // E-64 (the team, 2026-10-14): like the remainder answer read from the invoice -- when the order ships, the
+  // result is pre-chosen as "Passed — needs shipping" once all four approvals are ticked. Only while nothing is
+  // chosen yet; the agent can change it; it never pre-chooses on a ship-only re-open.
+  useEffect(() => {
+    if (approved && orderShips && !shipOnly && !result) {
+      setResult(RESULTS.SHIP);
+      setResultAuto(true);
+    }
+  }, [approved, orderShips, shipOnly]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const state = { approvals, result, remainderDue, remainderSource, boxes, addressee, trackingNumber, trackingUrl, partial, partialLines, partialNotes, notes };
   const planCtx = { deal, tasks: loaded?.tasks || [], dateStr: todayStamp(), who, invoice };
@@ -741,13 +752,22 @@ const QcApp = () => {
             fullWidth
             value={result}
             disabled={locked}
-            onChange={(_, v) => v && setResult(v)}
+            onChange={(_, v) => {
+              if (!v) return;
+              setResult(v);
+              setResultAuto(false);
+            }}
             sx={{ mb: 2, "& .MuiToggleButton-root": { fontWeight: 700, py: 1.5 } }}
           >
             <ToggleButton value={RESULTS.PICKUP} disabled={!approved} color="success">Passed — pickup</ToggleButton>
             <ToggleButton value={RESULTS.SHIP} disabled={!approved} color="success">Passed — needs shipping</ToggleButton>
             <ToggleButton value={RESULTS.FAILED} color="error">Failed</ToggleButton>
           </ToggleButtonGroup>
+          {resultAuto && result === RESULTS.SHIP && (
+            <Alert severity="info" sx={{ mb: 2 }}>
+              Chosen for you: {json?.doProductsNeedShipped === "Yes" ? "the onboarding form says this order needs shipping" : "this Deal has a ship-to address"}. Pick another result if it is being picked up.
+            </Alert>
+          )}
           {result && result !== RESULTS.FAILED && !approved && (
             <Alert severity="warning" sx={{ mb: 2 }}>An approval was un-ticked. Tick them all again, or choose Failed.</Alert>
           )}

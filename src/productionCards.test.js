@@ -129,3 +129,14 @@ describe("E-57 sizes on the production cards", () => {
   });
 });
 
+describe("E-69 a gang sheet says what color garments it goes on", () => {
+  const sheet = (extra) => ({ contactInfo: {}, products: [{ productName: "DTF Gang Sheet", productType: "gangsheet", numberOfGangSheets: "2", gangSheetWidth: "22", gangSheetHeight: "24", numberOfGraphics: "1", gangGraphics: [{ graphicDescription: "Logo", graphicWidth: "4", graphicHeight: "4" }], ...extra }] });
+  test("on the vinyl card when answered, and not at all when not", () => {
+    const withIt = buildProductionCards(sheet({ garmentColors: "Black, Heather Gray" }), {}).find((c) => c.name === "production-card-vinyl.html").html;
+    expect(withIt).toContain("Goes on garments");
+    expect(withIt).toContain("Black, Heather Gray");
+    const without = buildProductionCards(sheet({}), {}).find((c) => c.name === "production-card-vinyl.html").html;
+    expect(without).not.toContain("Goes on garments");
+  });
+});
+

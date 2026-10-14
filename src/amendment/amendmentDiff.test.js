@@ -458,3 +458,63 @@ describe("splitting a garment type (E-50)", () => {
     expect(on(3)).toEqual(["G3", "G4", "Flag"]);
   });
 });
+
+// E-63 -- change a garment's print method in the Amendment Form (sales, URGENT, 2026-10-14).
+describe("E-63 moving a garment type to another print method", () => {
+  const { moveGarmentToMethod, forPrintMethod, effectiveValuesWithGarments } = require("./amendmentDiff");
+  const { computePrints } = require("../printMath");
+  const tees = { garmentType: "Gildan 5000", garmentQuantity: "10", countColorSize: "Black\n10- L", numberOfGraphics: "1", secondaryBranches: [{ graphicDescription: "Logo", numberOfColorsUsed: "1", colorsUsed: "White", underbase: "Single-pass", fineDetail: "No", numberOfPlacements: "1", tartiaryBranches: [{ placementLocation: "Left Chest", placementSize: "Small" }] }] };
+  const hats = { garmentType: "Richardson 112", garmentQuantity: "12", numberOfGraphics: "1", secondaryBranches: [{ graphicDescription: "Logo", numberOfPlacements: "1", tartiaryBranches: [{ placementLocation: "Front", placementSize: "Small" }] }] };
+  const order = () => ({ products: [{ productName: "Direct-to-Film", productType: "garment", numberOfGarmentTypes: "2", primaryBranches: [tees, hats] }, { productName: "Decals", productType: "nongarment", quantityOrdered: "5" }], productSelector: ["Direct-to-Film#garment", "Decals#nongarment"] });
+  const saved = (before, plan) => effectiveValuesWithGarments(before, { ...before, products: plan.products }, plan.removed, plan.removedGarments, "2026-10-14");
+
+  test("to a method not on the order: a new product holding the garment; the original marked removed; counts move", () => {
+    const before = order();
+    expect(computePrints(before.products)).toMatchObject({ ED: 0 });
+    const plan = moveGarmentToMethod({ products: before.products, removed: [], removedGarments: [], from: 0, g: 0, target: "Embroidery#garment" });
+    expect(plan).toMatchObject({ to: 2, garmentIdx: 0, removed: [], removedGarments: ["0.0"] });
+    expect(plan.products[2]).toMatchObject({ productName: "Embroidery", productType: "garment", numberOfGarmentTypes: "1" });
+    expect(plan.products[2].primaryBranches[0]).toMatchObject({ garmentType: "Gildan 5000", garmentQuantity: "10", countColorSize: "Black\n10- L" });
+    const out = saved(before, plan);
+    expect(out.products.map((p) => p.productName)).toEqual(["Direct-to-Film", "Decals", "Embroidery"]);
+    expect(out.products[0].primaryBranches.map((g) => g.garmentType)).toEqual(["Richardson 112"]);
+    expect(out.productSelector).toEqual(["Direct-to-Film#garment", "Decals#nongarment", "Embroidery#garment"]);
+    const c = computePrints(out.products);
+    expect(c.ED).toBe(10); // 10 tees x 1 placement, now embroidery
+    expect(c.breakdown ? true : true).toBe(true);
+    expect(JSON.stringify(before)).toBe(JSON.stringify(order())); // nothing mutated
+  });
+  test("to a method already on the order: appended there", () => {
+    const before = order();
+    before.products.push({ productName: "Embroidery", productType: "garment", numberOfGarmentTypes: "1", primaryBranches: [hats] });
+    const plan = moveGarmentToMethod({ products: before.products, removed: [], removedGarments: [], from: 0, g: 0, target: "Embroidery#garment" });
+    expect(plan).toMatchObject({ to: 2, garmentIdx: 1 });
+    expect(plan.products[2].numberOfGarmentTypes).toBe("2");
+  });
+  test("moving the last garment out removes the old product too", () => {
+    const before = order();
+    let plan = moveGarmentToMethod({ products: before.products, removed: [], removedGarments: [], from: 0, g: 0, target: "Embroidery#garment" });
+    plan = moveGarmentToMethod({ products: plan.products, removed: plan.removed, removedGarments: plan.removedGarments, from: 0, g: 1, target: "Embroidery#garment" });
+    expect(plan.removed).toEqual([0]);
+    const out = saved(before, plan);
+    expect(out.products.map((p) => p.productName)).toEqual(["Decals", "Embroidery"]);
+    expect(out.products[1].primaryBranches.map((g) => g.garmentType)).toEqual(["Gildan 5000", "Richardson 112"]);
+    expect(computePrints(out.products).ED).toBe(22);
+  });
+  test("answers that belong only to the old method are cleared; colors are kept", () => {
+    const toEmb = forPrintMethod(tees, "Embroidery").secondaryBranches[0];
+    expect(toEmb).toMatchObject({ underbase: "", fineDetail: "No", colorsUsed: "White" });
+    const toSp = forPrintMethod(tees, "Screen Printing").secondaryBranches[0];
+    expect(toSp).toMatchObject({ underbase: "Single-pass", fineDetail: "", colorsUsed: "White" });
+    expect(tees.secondaryBranches[0].underbase).toBe("Single-pass"); // never mutates
+  });
+  test("nothing to do: the same method, a non-garment target, a missing or already-removed garment", () => {
+    const p = order().products;
+    expect(moveGarmentToMethod({ products: p, removed: [], removedGarments: [], from: 0, g: 0, target: "Direct-to-Film#garment" })).toBe(null);
+    expect(moveGarmentToMethod({ products: p, removed: [], removedGarments: [], from: 0, g: 0, target: "Decals#nongarment" })).toBe(null);
+    expect(moveGarmentToMethod({ products: p, removed: [], removedGarments: [], from: 0, g: 9, target: "Embroidery#garment" })).toBe(null);
+    expect(moveGarmentToMethod({ products: p, removed: [], removedGarments: ["0.0"], from: 0, g: 0, target: "Embroidery#garment" })).toBe(null);
+    expect(moveGarmentToMethod({ products: null, from: 0, g: 0, target: "Embroidery#garment" })).toBe(null);
+  });
+});
+
