@@ -381,6 +381,62 @@ export function withoutGraphic(garment, s) {
   return next;
 }
 
+/*
+ * E-63 (sales, URGENT, 2026-10-14) -- "client chooses DTF, then changes mind and wants embroidery". A garment type
+ * moves to another garment print method (another garment product on the order, or a new one). Done the way E-50's
+ * split is done, so the save path and the What Changed lines are the ordinary ones: the original is marked removed
+ * in its product and a copy is appended to the target product -- its quantity, sizes and graphics with it.
+ *
+ * forPrintMethod() clears the answers that belong only to the OLD method and would mislead under the new one:
+ * underbase (screen print only -- it is also counted) and fine detail (an embroidery question). Colors are kept as
+ * typed; the form tells the rep to check them for the new method.
+ */
+export function forPrintMethod(garment, productName) {
+  const next = clone(garment || {});
+  (Array.isArray(next.secondaryBranches) ? next.secondaryBranches : []).forEach((gr) => {
+    if (!gr) return;
+    if (productName !== "Screen Printing" && gr.underbase) gr.underbase = "";
+    if (productName !== "Embroidery" && gr.fineDetail) gr.fineDetail = "";
+  });
+  return next;
+}
+
+/*
+ * The whole move, as data: { products, removed, removedGarments, to, garmentIdx } or null when there is nothing
+ * to do (no such garment, the same method, a target that is not a garment product). Never mutates its input.
+ *   - target already on the order (and not removed) -> the garment is appended there;
+ *   - otherwise a new garment product is appended, holding just this garment;
+ *   - the original garment is marked removed ("p.g"); when that leaves its product with no garments, the product
+ *     is marked removed too, so the note and the cards do not list an empty "Direct-to-Film".
+ */
+export function moveGarmentToMethod({ products, removed, removedGarments, from, g, target }) {
+  const [productName, productType] = String(target || "").split("#");
+  const list = clone(products || []);
+  const src = list[from];
+  const garment = src && Array.isArray(src.primaryBranches) ? src.primaryBranches[g] : null;
+  if (!garment || productType !== "garment" || !productName || src.productName === productName) return null;
+  const gone = (removedGarments || []).slice();
+  if (gone.includes(from + "." + g)) return null;
+  const moved = forPrintMethod(garment, productName);
+  const goneProducts = (removed || []).slice();
+  let to = list.findIndex((p, i) => p && p.productName === productName && p.productType === "garment" && !goneProducts.includes(i));
+  let garmentIdx;
+  if (to < 0) {
+    list.push({ productName, productType: "garment", numberOfGarmentTypes: "1", primaryBranches: [moved] });
+    to = list.length - 1;
+    garmentIdx = 0;
+  } else {
+    const branches = Array.isArray(list[to].primaryBranches) ? list[to].primaryBranches : [];
+    list[to].primaryBranches = [...branches, moved];
+    list[to].numberOfGarmentTypes = String(list[to].primaryBranches.length);
+    garmentIdx = list[to].primaryBranches.length - 1;
+  }
+  gone.push(from + "." + g);
+  const left = (src.primaryBranches || []).filter((_, i) => !gone.includes(from + "." + i)).length;
+  if (left === 0 && !goneProducts.includes(from)) goneProducts.push(from);
+  return { products: list, removed: goneProducts, removedGarments: gone, to, garmentIdx };
+}
+
 export function effectiveValuesWithGarments(before, after, removed, removedGarments, date) {
   const gone = new Set(removedGarments || []);
   // Filter garments on the still-indexed tree FIRST, then let the product-level filter run.

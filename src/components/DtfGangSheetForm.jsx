@@ -1,6 +1,7 @@
 import { React, useEffect } from "react";
 import {
   Alert,
+  Autocomplete,
   Box,
   Checkbox,
   FormControlLabel,
@@ -15,6 +16,16 @@ import {
   useWatch,
 } from "react-hook-form";
 import { estimateGangSheet, GANG_GAP_INCHES } from "../gangSheet";
+
+// E-69 (the team, 2026-10-14): on a print-only DTF order the designer needs to know what color garments the
+// transfers go on. Picked, not typed (David: structured answers over prose); "type another" is still allowed.
+// Saved as ONE string on the product, `garmentColors`, e.g. "Black, White, Heather Gray".
+export const GANG_GARMENT_COLORS = [
+  "Black", "White", "Navy", "Royal Blue", "Light Blue", "Red", "Maroon", "Cardinal", "Forest Green", "Kelly Green",
+  "Military Green", "Olive", "Charcoal", "Heather Gray", "Sport Gray", "Purple", "Orange", "Gold", "Yellow", "Pink",
+  "Brown", "Tan / Sand", "Natural / Cream", "Safety Green", "Safety Orange", "Camo", "Various / mixed",
+];
+const splitColors = (v) => String(v == null ? "" : v).split(",").map((x) => x.trim()).filter(Boolean);
 
 /*
  * DTF Gang Sheet -- print-only DTF work, product type "gangsheet" (products org variable:
@@ -394,6 +405,30 @@ const DtfGangSheetForm = ({ index }) => {
           </Alert>
         ) : null}
       </Box>
+
+      <Controller
+        control={control}
+        name={`products.${index}.garmentColors`}
+        defaultValue=""
+        render={({ field }) => (
+          <Autocomplete
+            multiple
+            freeSolo
+            size="small"
+            options={GANG_GARMENT_COLORS}
+            value={splitColors(field.value)}
+            onChange={(_, v) => field.onChange((v || []).map((x) => String(x).trim()).filter(Boolean).join(", "))}
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                label="What color garments will these transfers go on?"
+                helperText="Pick every color that applies, or type another and press Enter. The designer needs this to choose colors and the white underlayer."
+                sx={{ mt: "5px", mb: "1rem" }}
+              />
+            )}
+          />
+        )}
+      />
 
       <Controller
         control={control}

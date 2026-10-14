@@ -238,7 +238,7 @@ export function orderLines(json) {
         qty: int(p.numberOfGangSheets),
         sizes: size,
         special: str(p.otherInformation),
-        facts: [],
+        facts: has(p.garmentColors) ? ["Goes on: " + str(p.garmentColors)] : [], // E-69
         callouts: notes.map((text) => ({ label: "Other information", text })),
         placementAsked: true, // "per sheet" stands in for placement
         graphics: (p.gangGraphics || []).filter(Boolean).map((gr) =>

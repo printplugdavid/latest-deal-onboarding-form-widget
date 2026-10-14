@@ -76,7 +76,7 @@ describe("E-41 Pantone the way reps write it", () => {
     expect(code("Cool Gray 5C")).toBe("Cool Gray 5 C");
     expect(code("Copper Color Pantone 4266C")).toBe("4266 C");
     expect(code("pantone reflex blue")).toBe("Reflex Blue C");
-    expect(code("239 U")).toBe("239 U");
+    expect(code("239 U")).toBe("239 C"); // E-62: an Uncoated code is read as its Coated twin
   });
   test("no suffix + the word Pantone -> coated is assumed, and says so", () => {
     expect(findPantone("PMS 187")).toMatchObject({ assumed: true });
@@ -256,3 +256,28 @@ describe("E-41 -- thread organized by maker and line", () => {
     expect(r.matched[1].options).toHaveLength(2);
   });
 });
+
+// E-62 -- Pantone is always Coated on the sales floor (David, 2026-10-14). The Uncoated data is kept.
+describe("E-62 an Uncoated code is read as its Coated twin", () => {
+  const lib = require("./colorLibrary");
+  test("a typed U code comes back as the C code, saying what was typed", () => {
+    expect(lib.SHOW_UNCOATED).toBe(false);
+    const r = lib.findPantone("172 U");
+    expect(r.color.code).toBe("172 C");
+    expect(r).toMatchObject({ assumed: false, typedUncoated: "172 U" });
+    expect(lib.findPantone("Pantone 186U").color.code).toBe("186 C");
+    expect(lib.findPantone("172 C")).toEqual({ color: lib.findPantone("172 C").color, assumed: false }); // C is untouched
+    expect(lib.findPantone("PMS 187").typedUncoated).toBeUndefined();
+  });
+  test("the reading of a Colors Used box carries the same note, and the swatch is the Coated color", () => {
+    const items = lib.readInkText("Pantone 172 U, White");
+    const p = items.find((i) => i.type === "pantone");
+    expect(p).toMatchObject({ typedUncoated: "172 U" });
+    expect(p.color.coated).toBe(true);
+    expect(lib.readColorSwatches("Screen Printing", "172 U")[0].label).toMatch(/172 C/);
+  });
+  test("the Uncoated data is still there, to bring back", () => {
+    expect(lib.PANTONES.filter((p) => !p.coated).length).toBeGreaterThan(2000);
+  });
+});
+

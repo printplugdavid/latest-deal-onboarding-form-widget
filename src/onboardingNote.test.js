@@ -56,3 +56,16 @@ describe("buildOnboardingNote", () => {
     expect(() => buildOnboardingNote({ products: [] })).not.toThrow();
   });
 });
+
+describe("E-69 the note prints the gang sheet's garment colors only when answered", () => {
+  const { buildOnboardingNote } = require("./onboardingNote");
+  const data = (extra) => ({ contactInfo: {}, products: [{ productName: "DTF Gang Sheet", productType: "gangsheet", numberOfGangSheets: "1", gangSheetWidth: "22", gangSheetHeight: "24", numberOfGraphics: "0", gangGraphics: [], ...extra }], productSelector: ["DTF Gang Sheet#gangsheet"] });
+  test("answered -> one line; not answered -> the note is exactly what it was", () => {
+    const withIt = buildOnboardingNote(data({ garmentColors: "Black, White" })).content;
+    expect(withIt).toContain("Garment Colors (what the transfers go on): Black, White");
+    const without = buildOnboardingNote(data({})).content;
+    expect(without).not.toContain("Garment Colors");
+    expect(withIt.replace("Garment Colors (what the transfers go on): Black, White\n\n", "")).toBe(without);
+  });
+});
+
