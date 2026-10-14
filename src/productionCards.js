@@ -9,6 +9,22 @@ import { gangSheetPrints } from "./gangSheet";
 import { readColorSwatches } from "./colorLibrary";
 import { buildColorMatches, COLOR_MATCH_CAVEAT } from "./colorMatch";
 import { sizeBlocks, stylesNotMarked } from "./sizeRows";
+import { formatSizeVariants } from "./sizeVariants";
+
+/*
+ * E-65 (David, 2026-10-14): the Graphic Design card says what FILE each graphic needs for its print method, so the
+ * designer knows the exact deliverable. David's list: embroidery -> DST; screen print -> vector, color-separated (or
+ * run through Action Seps); DTG and DTF -> PNG; HTV -> usually vector ("I think!" -- to confirm). The rest are not
+ * stated yet and show nothing rather than a guess. A "Print Methods" document may feed this later.
+ */
+export const FILE_NEEDED = {
+  Embroidery: "DST - a digitized embroidery file",
+  "Screen Printing": "Vector (AI / EPS / PDF), color-separated - or run through Action Seps",
+  "Direct-to-Garment": "PNG - transparent background, full resolution at print size",
+  "Direct-to-Film": "PNG - transparent background, full resolution at print size",
+  "DTF Gang Sheet": "PNG - transparent background, full resolution at print size",
+  "Heat-Transfer": "Vector cut file (AI / EPS / SVG) - to confirm",
+};
 
 // ===== Production card generator (attached to the Deal as per-department HTML job sheets) =====
 const pcEsc = (s) => String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -76,7 +92,7 @@ function pcSizes(g, bi) {
 }
 function pcGarmentBlock(g, bi, ironPass, productName) {
   const graphics = (g?.secondaryBranches || []).map((gr, i) => {
-    const pl = (gr?.tartiaryBranches || []).map((p) => { if (!pcHas(p?.placementLocation) && !pcHas(p?.placementSize) && !pcHas(p?.sizeAndDimensions)) return ""; const bits = [pcHas(p?.placementSize) ? pcEsc(p.placementSize) : "", pcHas(p?.sizeAndDimensions) ? pcEsc(p.sizeAndDimensions) : ""].filter(Boolean).join(" · "); return `<div class="prow"><span class="ploc">${pcEsc(p?.placementLocation || "Placement")}</span>${bits ? " · " + bits : ""}</div>`; }).join("");
+    const pl = (gr?.tartiaryBranches || []).map((p) => { if (!pcHas(p?.placementLocation) && !pcHas(p?.placementSize) && !pcHas(p?.sizeAndDimensions)) return ""; const bits = [pcHas(p?.placementSize) ? pcEsc(p.placementSize) : "", pcHas(p?.sizeAndDimensions) ? pcEsc(p.sizeAndDimensions) : "", formatSizeVariants(p?.sizeVariants) ? "<b>by garment size:</b> " + pcEsc(formatSizeVariants(p.sizeVariants)) : ""].filter(Boolean).join(" · "); return `<div class="prow"><span class="ploc">${pcEsc(p?.placementLocation || "Placement")}</span>${bits ? " · " + bits : ""}</div>`; }).join("");
     return `<div class="graphic"><div class="grtitle">${bi ? "Graphic / Gráfico" : "Graphic"} ${i + 1}${pcHas(gr?.graphicDescription) ? ": " + pcEsc(gr.graphicDescription) : ""}</div>${pcRow("Colors", "Colores", gr?.numberOfColorsUsed, { crit: true, bi })}${pcRow("Colors Used", "Colores", gr?.colorsUsed, { bi })}${pcSwatches(productName, gr?.colorsUsed)}${pcRow("Underbase", "Base", gr?.underbase, { bi })}${pcHas(ironPass) ? pcRow("Premium Iron Pass", "Planchado", ironPass, { bi }) : ""}${pl ? `<div class="plc">${pl}</div>` : ""}</div>`;
   }).join("");
   const also = (g?.isUsedInOtherAppTypes === "Yes" && pcHas(g?.chooseApplicationType)) ? `<div class="alsonote">${bi ? "Also used with / También con" : "Also used with"}: <b>${pcEsc(g.chooseApplicationType)}</b></div>` : "";
@@ -161,12 +177,12 @@ function buildProductionCards(data, counts, dealInfo) {
   }
   const gcm = PC_META.graphicdesign; const art = [];
   products.forEach((p) => {
-    if (p.productType === "garment") (p.primaryBranches || []).forEach((g) => (g.secondaryBranches || []).forEach((gr) => art.push({ src: `${p.productName} — ${g.garmentType || ""}`, gr })));
-    else if (p.productType === "nongarment") (p.branches || []).forEach((gr) => art.push({ src: p.productName, gr }));
-    else if (p.productType === "gangsheet") (p.gangGraphics || []).forEach((gr) => art.push({ src: `${p.productName} — ${gr?.graphicWidth || "?"}" x ${gr?.graphicHeight || "?"}"`, gr }));
+    if (p.productType === "garment") (p.primaryBranches || []).forEach((g) => (g.secondaryBranches || []).forEach((gr) => art.push({ src: `${p.productName} — ${g.garmentType || ""}`, gr, need: FILE_NEEDED[p.productName] })));
+    else if (p.productType === "nongarment") (p.branches || []).forEach((gr) => art.push({ src: p.productName, gr, need: FILE_NEEDED[p.productName] }));
+    else if (p.productType === "gangsheet") (p.gangGraphics || []).forEach((gr) => art.push({ src: `${p.productName} — ${gr?.graphicWidth || "?"}" x ${gr?.graphicHeight || "?"}"`, gr, need: FILE_NEEDED["DTF Gang Sheet"] }));
     else if (p.productType === "graphic") art.push({ src: "Graphic Design", gr: { graphicDescription: p.graphicDescription, currentGraphicFormat: p.desiredGraphicApplication, fontsUsed: p.fontsUsed, _design: p } });
   });
-  const artBody = art.length ? art.map((a, i) => `<div class="job"><div class="jhead"><span>Artwork ${i + 1}</span><span class="omute">${pcEsc(a.src)}</span></div><div class="garment">${pcRow("Description", "", a.gr?.graphicDescription, { crit: true })}${pcRow("Print Ready?", "", a.gr?.isGraphicPrintReady)}${pcRow("Format", "", a.gr?.currentGraphicFormat, { crit: true })}${pcRow("Fine Detail?", "", a.gr?.fineDetail)}${pcRow("Colors", "", a.gr?.numberOfColorsUsed)}${pcRow("Colors Used", "", a.gr?.colorsUsed)}${pcRow("Fonts", "", a.gr?.fontsUsed)}${a.gr?._design ? pcRow("Design Hours", "", a.gr._design.estimatedDesignHours) : ""}${a.gr?._design ? pcRow("Assets Provided", "", a.gr._design.designAssetsProvided) : ""}</div></div>`).join("") : `<div class="job"><div class="garment"><i>No artwork details captured on this deal.</i></div></div>`;
+  const artBody = art.length ? art.map((a, i) => `<div class="job"><div class="jhead"><span>Artwork ${i + 1}</span><span class="omute">${pcEsc(a.src)}</span></div><div class="garment">${pcRow("File needed", "", a.need, { crit: true })}${pcRow("Description", "", a.gr?.graphicDescription, { crit: true })}${pcRow("Print Ready?", "", a.gr?.isGraphicPrintReady)}${pcRow("Format", "", a.gr?.currentGraphicFormat, { crit: true })}${pcRow("Fine Detail?", "", a.gr?.fineDetail)}${pcRow("Colors", "", a.gr?.numberOfColorsUsed)}${pcRow("Colors Used", "", a.gr?.colorsUsed)}${pcRow("Fonts", "", a.gr?.fontsUsed)}${a.gr?._design ? pcRow("Design Hours", "", a.gr._design.estimatedDesignHours) : ""}${a.gr?._design ? pcRow("Assets Provided", "", a.gr._design.designAssetsProvided) : ""}</div></div>`).join("") : `<div class="job"><div class="garment"><i>No artwork details captured on this deal.</i></div></div>`;
   files.push({ name: gcm.file, html: pcDoc(gcm, strip(gcm, null, "") + `<div class="cbody">${artBody}</div>` + footer("Graphics")) });
   // E-48: the Color Matching card -- each color on the order with its best counterparts in the other
   // departments. Only made when at least one color is recognized, so an order without any gets exactly

@@ -12,6 +12,7 @@
  * Hard rule 5: line breaks are the `newLine` variable (hex 0A), never a literal "\n".
  * Hard rule 7: the print-count calculation stays at the TOP; everything below reads its locals.
  */
+import { formatSizeVariants } from "./sizeVariants";
 import { computePrints } from "./printMath";
 import { gangSheetPrints } from "./gangSheet";
 import { checkGarmentQuantity } from "./quantityCheck";
@@ -312,7 +313,11 @@ export function buildOnboardingNote(data) {
                           "Placement Size: " +
                           subSubBranch?.placementSize +
                           newLine +
-                          newLine;
+                          newLine +
+                          // E-67: only when given, so an ordinary placement reads exactly as before.
+                          (formatSizeVariants(subSubBranch?.sizeVariants)
+                            ? "Size by Garment Size: " + formatSizeVariants(subSubBranch?.sizeVariants) + newLine + newLine
+                            : "");
                       },
                     );
                   }

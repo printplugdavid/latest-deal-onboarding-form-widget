@@ -1,6 +1,7 @@
-import { Autocomplete, Box, IconButton, TextField, Tooltip } from "@mui/material";
+import { Autocomplete, Box, Button, IconButton, TextField, Tooltip } from "@mui/material";
 import React from "react";
 import { Controller, useFormContext } from "react-hook-form";
+import { SIZE_GROUPS } from "../sizeVariants";
 
 /*
  * One placement = ONE ROW (E-40, 2026-10-06): location · dimensions · size · remove -- laid out
@@ -41,11 +42,9 @@ const GarmentTartiaryBranch = ({
   const base = `products.${index}.primaryBranches.${branchIndex}.secondaryBranches.${secBranchIndex}.tartiaryBranches.${tarBranchIndex}`;
 
   return (
+    <Box sx={{ width: "95%", ml: "auto", mb: "0.6rem" }}>
     <Box
       sx={{
-        width: "95%",
-        ml: "auto",
-        mb: "0.6rem",
         display: "flex",
         gap: "0.5rem",
         alignItems: "flex-start",
@@ -150,6 +149,52 @@ const GarmentTartiaryBranch = ({
           </IconButton>
         </Tooltip>
       )}
+    </Box>
+
+      {/* E-67: a different size on some garment sizes -- picked groups, not prose. */}
+      <Controller
+        control={control}
+        name={`${base}.sizeVariants`}
+        defaultValue={[]}
+        render={({ field }) => {
+          const rows = Array.isArray(field.value) ? field.value : [];
+          const setRows = (next) => field.onChange(next);
+          return (
+            <Box sx={{ pl: "0.5rem", mt: rows.length ? "0.4rem" : 0 }}>
+              {rows.map((r, i) => (
+                <Box key={i} sx={{ display: "flex", gap: "0.5rem", mb: "0.4rem", alignItems: "flex-start" }}>
+                  <Autocomplete
+                    freeSolo
+                    size="small"
+                    options={SIZE_GROUPS}
+                    value={r?.sizes || ""}
+                    onChange={(_, v) => setRows(rows.map((x, n) => (n === i ? { ...x, sizes: v || "" } : x)))}
+                    onInputChange={(_, v, reason) => {
+                      if (reason === "input") setRows(rows.map((x, n) => (n === i ? { ...x, sizes: v } : x)));
+                    }}
+                    sx={{ flex: "1 1 0" }}
+                    renderInput={(params) => <TextField {...params} label="On these garment sizes" />}
+                  />
+                  <TextField
+                    size="small"
+                    label="Size & Dimensions there"
+                    placeholder='e.g. 8 in wide'
+                    value={r?.dimensions || ""}
+                    onChange={(e) => setRows(rows.map((x, n) => (n === i ? { ...x, dimensions: e.target.value } : x)))}
+                    sx={{ flex: "1 1 0" }}
+                  />
+                  <IconButton aria-label="Remove this size" onClick={() => setRows(rows.filter((_, n) => n !== i))} sx={{ mt: "2px" }}>
+                    ✕
+                  </IconButton>
+                </Box>
+              ))}
+              <Button size="small" onClick={() => setRows([...rows, { sizes: "", dimensions: "" }])} sx={{ textTransform: "none", p: 0, minWidth: 0 }}>
+                + Different size on some garment sizes
+              </Button>
+            </Box>
+          );
+        }}
+      />
     </Box>
   );
 };
