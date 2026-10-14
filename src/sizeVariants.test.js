@@ -46,3 +46,24 @@ describe("E-65 the Graphic Design card says what file each graphic needs", () =>
     expect(gd("Vinyl")).not.toContain("File needed");
   });
 });
+
+// E-66 -- the onboarding note edited by hand after the saved order (Jeb Shippy Deal 1: 3:20 PM saved, 3:50 PM edited).
+describe("E-66 note edited after the order was saved", () => {
+  const { noteEditedAfterSave } = require("./zohoFiles");
+  const saved = { Created_Time: "2026-09-23T15:20:30-06:00" };
+  test("Jeb Shippy's real times -> warned, with the edit time", () => {
+    const d = noteEditedAfterSave({ Created_Time: "2026-09-23T15:20:49-06:00", Modified_Time: "2026-09-23T15:50:16-06:00" }, saved);
+    expect(d).toBeInstanceOf(Date);
+    expect(d.toISOString()).toBe("2026-09-23T21:50:16.000Z");
+  });
+  test("written once by the form, or touched within the grace minutes -> nothing", () => {
+    expect(noteEditedAfterSave({ Created_Time: "2026-09-23T15:20:49-06:00", Modified_Time: "2026-09-23T15:20:49-06:00" }, saved)).toBe(null);
+    expect(noteEditedAfterSave({ Created_Time: "2026-09-23T15:20:49-06:00", Modified_Time: "2026-09-23T15:23:00-06:00" }, saved)).toBe(null);
+    expect(noteEditedAfterSave(null, saved)).toBe(null);
+    expect(noteEditedAfterSave({ Modified_Time: "2026-09-23T15:50:16-06:00" }, null)).toBe(null);
+  });
+  test("an amendment's newer note does not trip it -- the saved order is newer too", () => {
+    expect(noteEditedAfterSave({ Created_Time: "2026-10-06T10:00:00-06:00", Modified_Time: "2026-10-06T10:00:05-06:00" }, { Created_Time: "2026-10-06T10:00:01-06:00" })).toBe(null);
+  });
+});
+

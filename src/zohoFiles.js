@@ -37,3 +37,28 @@ export async function readFileText(fileId) {
     (size != null ? `, ${size} bytes` : "");
   return { text, shape };
 }
+
+/*
+ * E-66 (2026-10-14). Jeb Shippy Deal 1: the onboarding form saved Graphic 3's colors as "TBD" at 3:20 PM; the rep
+ * edited the onboarding NOTE by hand at 3:50 PM to add the threads. Everything that shows the order (the cards, the
+ * Quality Check form) is built from the saved order, so the hand edit never reached them. This reads only times --
+ * nothing anyone typed: if the live onboarding note was modified more than `graceMinutes` after the saved order was
+ * attached, return the note's edit time (a Date); otherwise null.
+ */
+export function noteEditedAfterSave(note, savedOrder, graceMinutes = 5) {
+  const t = (v) => {
+    const d = new Date(v == null ? "" : v);
+    return isNaN(d) ? null : d;
+  };
+  const edited = t(note && note.Modified_Time);
+  const created = t(note && note.Created_Time);
+  const saved = t(savedOrder && savedOrder.Created_Time);
+  if (!edited || !saved) return null;
+  const grace = graceMinutes * 60 * 1000;
+  if (edited - saved <= grace) return null;
+  if (created && edited - created <= grace) return null; // written once, by the form, and never touched
+  return edited;
+}
+export const NOTE_EDITED_WARNING =
+  "The onboarding note was edited by hand after this order was saved, and these cards are built from the saved order. Check the note for anything newer, and make order changes with the Amendment Form so the cards follow.";
+
