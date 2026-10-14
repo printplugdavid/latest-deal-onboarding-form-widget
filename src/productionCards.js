@@ -126,7 +126,7 @@ export function workDriveTarget(deal) {
   const dealFolder = pcLink(deal?.[DEAL_FOLDER_FIELD]);
   if (dealFolder) return { kind: "deal", href: dealFolder, label: "Open the Deal folder" };
   const mockUp = pcLink(deal?.WorkDrive_Link);
-  if (mockUp) return { kind: "mockup", href: mockUp, label: "Open the Mock Up folder" };
+  if (mockUp) return { kind: "mockup", href: mockUp, label: "Open the Mockups folder" }; // folder renamed "Mockups" in the 2026-10-14 layout
   return { kind: "", href: "", label: "" };
 }
 function buildProductionCards(data, counts, dealInfo) {
