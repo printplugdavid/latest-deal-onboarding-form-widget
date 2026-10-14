@@ -28,6 +28,7 @@ import { computePrints } from "./printMath";
 import { buildOnboardingNote } from "./onboardingNote";
 import { lumpedConcerns, LUMPED_QUESTION } from "./lumpedOrder";
 import { applyGarmentSplits } from "./garmentSplit";
+import { requestDealFolders, shouldRequestFolders } from "./dealFolders";
 import { buildColorMatches } from "./colorMatch";
 import {
   CUSTOMER_NOTES_QUESTION,
@@ -235,6 +236,12 @@ function App() {
     } catch (err) {
           console.log("Print count fields not yet on layout — skipping field update:", err);
     }
+
+    // E-56: ask the CRM to create this Deal's WorkDrive folders. AFTER the print fields above (the
+    // function reads the onboarded departments from them) and NOT awaited -- a real run takes about
+    // 13 seconds and the rep is not made to wait for it. It cannot throw (see dealFolders.js).
+    // Not sent for a Deal that already has a hand-made folder (David: no back-fill).
+    if (shouldRequestFolders(recordData)) requestDealFolders(entityId);
 
     // Attach the full form submission as a minified JSON file on the Deal (create-only;
     // machine-readable handoff for downstream production tooling). Own try/catch so a

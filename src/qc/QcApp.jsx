@@ -533,7 +533,7 @@ const QcApp = () => {
               {folder.label}
             </Button>
             {folder.kind === "mockup" && (
-              <Typography sx={{ fontSize: 11, color: "#666", mt: 0.5 }}>This Deal has no Deal-folder link yet, so this opens its Mock Up folder.</Typography>
+              <Typography sx={{ fontSize: 11, color: "#666", mt: 0.5 }}>This Deal has no Deal-folder link yet, so this opens its Mockups folder.</Typography>
             )}
           </Box>
         ) : (
