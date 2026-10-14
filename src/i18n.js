@@ -101,6 +101,11 @@ const STRINGS = {
     es: "Escriba un número debajo de cada talla, o todas de una vez en la casilla de arriba: un rango como L-2XL 2 pone 2 en cada talla. El total se suma solo. Use Otra talla para niños pequeños, gorras u otras tallas.",
   },
   "g.details": { en: "Garment Details (optional)", es: "Detalles de la prenda (opcional)" },
+  // E-68 (the team, 2026-10-14): a revised garment color, as its own answer rather than buried in the details.
+  "g.newColor": { en: "Does the garment color change?", es: "¿Cambia el color de la prenda?" },
+  "g.newColorNo": { en: "No — same color", es: "No — mismo color" },
+  "g.newColorYes": { en: "Yes — new color:", es: "Sí — color nuevo:" },
+  "g.newColorPh": { en: "e.g. Heather Gray", es: "p. ej. Gris jaspeado" },
   "g.detailsPh": {
     en: "Anything about this garment worth knowing — the blank, particular pieces, special handling.",
     es: "Cualquier dato de esta prenda que convenga saber — la prenda en blanco, piezas específicas, manejo especial.",

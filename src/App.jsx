@@ -580,6 +580,9 @@ export default function App() {
         L.push("  Garment details:");
         det.split("\n").forEach((line) => L.push("    " + line.trimEnd()));
       }
+      // E-68: the revised garment color, only when one was given -- a revision without it reads as before.
+      const newColor = item.colorChanges ? String(item.newGarmentColor || "").trim() : "";
+      if (newColor) L.push("  Revised garment color: " + newColor);
 
       L.push("  Prints: Screen Print " + result.SD + " | Embroidery " + result.ED + " | Vinyl " + result.VD);
       if (audit) {
@@ -1242,6 +1245,32 @@ export default function App() {
                     placeholder={t("g.detailsPh")}
                     style={S.textarea}
                   />
+
+                  {/* E-68: picked, not buried in the details text */}
+                  <Label>{t("g.newColor")}</Label>
+                  <div style={{ display: "flex", gap: "12px", alignItems: "center", flexWrap: "wrap" }}>
+                    <label>
+                      <input type="radio" checked={!item.colorChanges} onChange={() => patchItem(i, { colorChanges: false })} /> {t("g.newColorNo")}
+                    </label>
+                    <label>
+                      <input type="radio" checked={!!item.colorChanges} onChange={() => patchItem(i, { colorChanges: true })} /> {t("g.newColorYes")}
+                    </label>
+                    {item.colorChanges && (
+                      <input
+                        type="text"
+                        list="e68-garment-colors"
+                        value={item.newGarmentColor || ""}
+                        onChange={(e) => patchItem(i, { newGarmentColor: e.target.value })}
+                        placeholder={t("g.newColorPh")}
+                        style={{ ...S.input, maxWidth: 260 }}
+                      />
+                    )}
+                    <datalist id="e68-garment-colors">
+                      {["Black", "White", "Navy", "Royal Blue", "Light Blue", "Red", "Maroon", "Cardinal", "Forest Green", "Kelly Green", "Military Green", "Olive", "Charcoal", "Heather Gray", "Sport Gray", "Purple", "Orange", "Gold", "Yellow", "Pink", "Brown", "Tan / Sand", "Natural / Cream", "Safety Green", "Safety Orange", "Camo"].map((c) => (
+                        <option key={c} value={c} />
+                      ))}
+                    </datalist>
+                  </div>
                 </>
               )}
 
