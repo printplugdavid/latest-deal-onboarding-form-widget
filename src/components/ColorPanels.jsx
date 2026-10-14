@@ -240,7 +240,7 @@ export const InkColors = ({ field, box, typedCount }) => {
               title={pantoneLabel(tp)}
               detail={`HEX ${tp.hex}${tp.metallic ? " · metallic - cannot be shown faithfully" : ""}${tp.neon ? " · pastel / neon - shown roughly" : ""}${
                 typedPantone.assumed ? " · no C or U typed - Coated shown" : ""
-              }${tp.coated ? "" : " · UNCOATED code - this form matches plastisol to the Coated book; confirm"}`}
+              }${typedPantone.typedUncoated ? ` · typed as ${typedPantone.typedUncoated} - screen print always matches to Coated` : ""}${tp.coated ? "" : " · UNCOATED code - this form matches plastisol to the Coated book; confirm"}`}
               onAdd={() => add(pantoneLabel(tp))}
               addLabel="Add this Pantone"
             />
@@ -316,6 +316,7 @@ export const InkColors = ({ field, box, typedCount }) => {
               <span>
                 <b>{pantoneLabel(it.color)}</b> <span style={{ color: "#888" }}>· {it.color.hex} · custom mix</span>
                 {it.assumed && <span style={{ color: "#b26a00" }}> · no C or U written - Coated shown</span>}
+                {it.typedUncoated && <span style={{ color: "#b26a00" }}> · typed as {it.typedUncoated} - screen print always matches to Coated</span>}
                 {!it.color.coated && <span style={{ color: "#b26a00" }}> · uncoated code - confirm against the Coated book</span>}
                 {it.color.metallic && <span style={{ color: "#b26a00" }}> · metallic - not shown faithfully</span>}
                 {hint && <span style={{ color: "#2e7d32" }}> · {hint}</span>}

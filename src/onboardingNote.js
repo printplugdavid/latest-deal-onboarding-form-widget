@@ -466,6 +466,10 @@ export function buildOnboardingNote(data) {
           '" tall' +
           newLine +
           newLine +
+          // E-69: only when answered, so a note without it reads exactly as before.
+          (String(product?.garmentColors || "").trim()
+            ? "Garment Colors (what the transfers go on): " + String(product.garmentColors).trim() + newLine + newLine
+            : "") +
           "Number of Graphics on the Sheet: " +
           product?.numberOfGraphics +
           newLine +

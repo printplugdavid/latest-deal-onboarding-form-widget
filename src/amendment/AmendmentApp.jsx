@@ -74,6 +74,7 @@ import { parseNoteToForm, toPlainText } from "./noteToForm";
 import { countFieldForTask, planTaskRestamp } from "./taskRestamp";
 import {
   copyGarment,
+  moveGarmentToMethod,
   withoutGraphic,
   APPEND_FIELD,
   LIVE_NOTE_TITLE,
@@ -96,6 +97,7 @@ const ZOHO = window.ZOHO;
 const WHAT_CHANGED = [
   { key: "quantity", label: "Quantity / sizes" },
   { key: "garment", label: "Garment swapped" },
+  { key: "method", label: "Print method changed (e.g. DTF → Embroidery)" }, // E-63
   { key: "graphic", label: "Graphic or placement" },
   { key: "added", label: "Product added" },
   { key: "removed", label: "Product removed" },
@@ -407,7 +409,20 @@ const AmendmentApp = () => {
     const qty = gar?.garmentQuantity ? ` · ${gar.garmentQuantity} pcs` : "";
     return `Garment ${g + 1}` + (type ? ` · ${type.slice(0, 40)}` : "") + qty;
   };
-  const anyFieldTick = has("quantity") || has("garment") || has("graphic");
+  const anyFieldTick = has("quantity") || has("garment") || has("graphic") || has("method");
+  // E-63: move the chosen garment type to another garment print method (see amendmentDiff.moveGarmentToMethod).
+  const garmentMethods = (loaded?.options || []).filter((o) => String(o).endsWith("#garment"));
+  const moveGarment = (g, target) => {
+    const plan = moveGarmentToMethod({ products: getValues("products") || [], removed, removedGarments, from: productIdx, g, target });
+    if (!plan) return;
+    setValue("products", plan.products, { shouldDirty: true });
+    setRemoved(plan.removed);
+    setRemovedGarments(plan.removedGarments);
+    setProductIdx(plan.to);
+    setGarmentIdx(plan.garmentIdx);
+    setShowAll(false);
+    setRev((n) => n + 1);
+  };
   const countLines = (before || [])
     .map(([label, was], i) => [label, was, after?.[i]?.[1]])
     .filter(([, was, now]) => was || now);
@@ -846,6 +861,15 @@ The panel at the bottom shows exactly what will be recorded. Saving posts a new 
                 <Typography variant="body2" fontWeight="bold" sx={{ mb: 1 }}>
                   Which garment?
                 </Typography>
+                {has("method") && (
+                  <Alert severity="info" sx={{ mb: 1 }}>
+                    Pick the garment, then "Move to print method…". Its quantity, sizes and graphics move with it, and
+                    the print counts are worked out again. Then check each graphic's colors for the new method (thread
+                    numbers for embroidery, ink for screen print). Production tasks are not moved: the old method's open
+                    task is given the new count; tell the production manager to start the new method's task, and
+                    update the Deal's category if it named the old method.
+                  </Alert>
+                )}
                 <ToggleButtonGroup
                   exclusive
                   size="small"
@@ -883,6 +907,18 @@ The panel at the bottom shows exactly what will be recorded. Saving posts a new 
                           <Button type="button" size="small" onClick={() => setShowAll((v) => !v)}>
                             {showAll ? "Show only what changed" : "Show every field"}
                           </Button>
+                        )}
+                        {has("method") && !garmentRemoved(garmentIdx) && (
+                          <Autocomplete
+                            size="small"
+                            sx={{ minWidth: 240 }}
+                            options={garmentMethods.filter((o) => o.split("#")[0] !== product?.productName)}
+                            value={null}
+                            blurOnSelect
+                            getOptionLabel={(o) => o.split("#")[0]}
+                            onChange={(_, v) => v && moveGarment(garmentIdx, v)}
+                            renderInput={(params) => <TextField {...params} label="Move to print method…" />}
+                          />
                         )}
                         {!garmentRemoved(garmentIdx) &&
                           !garmentIsNew(garmentIdx) &&
