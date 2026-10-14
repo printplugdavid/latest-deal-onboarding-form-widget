@@ -31,7 +31,8 @@ import {
 } from "@mui/material";
 import { ALWAYS_BUILT, buildCardsFromData, labelFor, orderOf } from "./cardBuild";
 import { workDriveTarget } from "./productionCards";
-import { newestFirst, readFileText } from "./zohoFiles";
+import { NOTE_EDITED_WARNING, newestFirst, noteEditedAfterSave, readFileText } from "./zohoFiles";
+import { LIVE_NOTE_TITLE } from "./amendment/amendmentDiff";
 
 const ZOHO = window.ZOHO;
 
@@ -57,6 +58,13 @@ async function loadCards(entity, recordId) {
     ZOHO.CRM.API.getRecord({ Entity: entity, RecordID: recordId, approved: "both" }),
   ]);
   const t1 = performance.now();
+  // E-66: was the onboarding note edited by hand after the saved order? Never fatal.
+  let notesResp = null;
+  try {
+    notesResp = await ZOHO.CRM.API.getRelatedRecords({ Entity: entity, RecordID: recordId, RelatedList: "Notes", page: 1, per_page: 200 });
+  } catch (e) {
+    notesResp = null;
+  }
 
   const all = resp?.data || [];
   const attachments = all
@@ -111,7 +119,9 @@ async function loadCards(entity, recordId) {
   // E-53: the folder link for the toolbar -- https only, so nothing typed into the field can run.
   // E-55: the Deal's own folder when the Deal carries its link, otherwise the Mock Up folder, named as such.
   const folder = workDriveTarget(deal);
-  return { cards: cards.sort((a, b) => orderOf(a.name) - orderOf(b.name)), info, workDrive: folder.href, workDriveLabel: folder.label };
+  const liveNote = (notesResp?.data || []).filter((n) => n?.Note_Title === LIVE_NOTE_TITLE).sort(newestFirst)[0];
+  const noteEdited = noteEditedAfterSave(liveNote, json);
+  return { cards: cards.sort((a, b) => orderOf(a.name) - orderOf(b.name)), info, workDrive: folder.href, workDriveLabel: folder.label, noteEdited: noteEdited ? pcStamp(noteEdited.toISOString()) : "" };
 }
 
 const CardViewer = () => {
@@ -137,8 +147,8 @@ const CardViewer = () => {
       const entity = data?.Entity;
       const recordId = data?.EntityId?.[0] ?? data?.EntityId;
       try {
-        const { cards, info, workDrive, workDriveLabel } = await loadCards(entity, recordId);
-        setState({ status: "ready", cards, message: "", info, workDrive, workDriveLabel });
+        const { cards, info, workDrive, workDriveLabel, noteEdited } = await loadCards(entity, recordId);
+        setState({ status: "ready", cards, message: "", info, workDrive, workDriveLabel, noteEdited });
       } catch (e) {
         setState({ status: "error", cards: [], message: String(e?.message || e) });
       }
@@ -251,6 +261,12 @@ const CardViewer = () => {
         <Typography sx={{ px: 2, py: 0.5, fontSize: 11, color: "#666", borderBottom: 1, borderColor: "divider" }}>
           {state.info}
         </Typography>
+      )}
+
+      {state.noteEdited && (
+        <Alert severity="warning" sx={{ borderRadius: 0 }}>
+          {NOTE_EDITED_WARNING} (Note last edited {state.noteEdited}.)
+        </Alert>
       )}
 
       {current?.olderCopies > 0 && (

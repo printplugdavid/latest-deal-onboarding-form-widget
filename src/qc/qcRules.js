@@ -13,6 +13,7 @@
  */
 import { VINYL_DEPT, departmentFor } from "../printMath";
 import { stylesNotMarked } from "../sizeRows";
+import { formatSizeVariants } from "../sizeVariants";
 
 // The only boxes QC has to tick (David's list, quality-check/03 section 4). Expected to grow:
 // add a line here and the form, the note and the tests pick it up.
@@ -198,7 +199,7 @@ export function orderLines(json) {
               gr,
               (gr.tartiaryBranches || [])
                 .filter(Boolean)
-                .map((pl) => [str(pl.placementLocation), str(pl.placementSize), str(pl.sizeAndDimensions)].filter(Boolean).join(" · "))
+                .map((pl) => [str(pl.placementLocation), str(pl.placementSize), str(pl.sizeAndDimensions), formatSizeVariants(pl.sizeVariants) ? "by garment size: " + formatSizeVariants(pl.sizeVariants) : ""].filter(Boolean).join(" · "))
                 .filter(Boolean)
             )
           ),

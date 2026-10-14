@@ -36,7 +36,7 @@ import {
   ToggleButtonGroup,
   Typography,
 } from "@mui/material";
-import { newestFirst, readFileText } from "../zohoFiles";
+import { NOTE_EDITED_WARNING, newestFirst, noteEditedAfterSave, readFileText } from "../zohoFiles";
 import { buildCardsFromData, labelFor, orderOf } from "../cardBuild";
 import { workDriveTarget } from "../productionCards";
 import { readColorSwatches } from "../colorLibrary";
@@ -161,7 +161,10 @@ async function loadQc(entity, recordId) {
       cards = [];
     }
   }
-  return { deal, json, fromNote, orderProblem, cards, tasks: tasks?.data || [], tasksRead: !!tasks };
+  // E-66: the onboarding note edited by hand after the saved order was attached (read from times only).
+  const liveNote = (notes?.data || []).filter((n) => n?.Note_Title === LIVE_NOTE_TITLE).sort(newestFirst)[0];
+  const noteEdited = !fromNote && newest ? noteEditedAfterSave(liveNote, newest) : null;
+  return { deal, json, fromNote, orderProblem, cards, tasks: tasks?.data || [], tasksRead: !!tasks, noteEdited };
 }
 
 const Section = ({ title, children, sx }) => (
@@ -554,6 +557,11 @@ const QcApp = () => {
 
       {/* ---- 1. overview, read-only: the order snapshot (E-54) ---- */}
       <Section title="1 · What this order should have">
+        {loaded.noteEdited && (
+          <Alert severity="warning" sx={{ mb: 1.5 }}>
+            {NOTE_EDITED_WARNING.replace("these cards are", "this page is")} (Note last edited {loaded.noteEdited.toLocaleString([], { dateStyle: "medium", timeStyle: "short" })}.)
+          </Alert>
+        )}
         {loaded.orderProblem && <Alert severity="error" sx={{ mb: 1.5 }}>The saved order could not be read ({loaded.orderProblem}). Use the onboarding note on the Deal.</Alert>}
         {!json && !loaded.orderProblem && (
           <Alert severity="info" sx={{ mb: 1.5 }}>
