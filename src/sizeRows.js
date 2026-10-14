@@ -268,6 +268,18 @@ export function insertSizeBelow(rows, i) {
  * Everything below is for showing and picking that link. The saved field is still ONE string.
  */
 
+/*
+ * Does `text` contain the code `code` as a WHOLE code (capitals ignored)? The Zoho Books thread, 2026-10-14: under
+ * the SKU convention two real styles can look alike -- Bella+Canvas 6400 and Gildan 64000, 146 and 1466 -- so a code is
+ * matched exactly, never as part of a longer one, and never by trimming digits.
+ */
+export function hasCode(text, code) {
+  const c = String(code == null ? "" : code).trim().toLowerCase();
+  if (!c) return false;
+  const esc = c.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp("(^|[^a-z0-9])" + esc + "([^a-z0-9]|$)").test(String(text == null ? "" : text).toLowerCase());
+}
+
 /* What a rep can pick as a line's style: each line of Garment Type, then any SKU not already in one. */
 export function styleOptionsFor(garmentType, garmentSkus) {
   const out = [];
@@ -278,7 +290,7 @@ export function styleOptionsFor(garmentType, garmentSkus) {
   String(garmentType == null ? "" : garmentType).split(/\r?\n/).forEach(add);
   (garmentSkus || []).forEach((r) => {
     const sku = String((r && r.sku) == null ? "" : r.sku).trim();
-    if (sku && !out.some((o) => o.toLowerCase().indexOf(sku.toLowerCase()) >= 0)) add(sku);
+    if (sku && !out.some((o) => hasCode(o, sku))) add(sku); // exact code only (6400 is not in "Gildan 64000")
   });
   return out;
 }

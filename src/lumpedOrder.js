@@ -14,7 +14,7 @@
  *
  * Pure: no React, no ZOHO.
  */
-import { parseSizeText } from "./sizeRows";
+import { hasCode, parseSizeText } from "./sizeRows";
 
 export const LUMPED_FIELD = "everyGraphicOnEveryGarment";
 export const LUMPED_QUESTION = "Does every graphic go on every garment listed here?";
@@ -65,7 +65,7 @@ export function lumpedSignals(garment) {
   list.forEach((gr, i) => {
     const d = lower(gr && gr.graphicDescription);
     if (!d) return;
-    const namesSku = skus.some((s) => s.length >= 3 && d.indexOf(s) >= 0);
+    const namesSku = skus.some((s) => s.length >= 3 && hasCode(d, s)); // exact code -- see sizeRows.hasCode
     const namesColor = ownColors.length >= 2 && ownColors.some((w) => new RegExp("\\b" + w + "\\b").test(d));
     const countsOut = /(^|\n)\s*\d+\s*[-–x×]\s*\S/.test(d) || /\bon\s*:/.test(d);
     if (namesSku || namesColor || countsOut) scoped.push(i + 1);
