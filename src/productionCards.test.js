@@ -74,7 +74,7 @@ describe("E-55 which WorkDrive folder the button opens", () => {
   test("the Deal folder when the Deal carries its link; otherwise the Mock Up folder, named as that; otherwise nothing", () => {
     expect(DEAL_FOLDER_FIELD).toBe("Deal_Folder_Link");
     expect(workDriveTarget({ Deal_Folder_Link: DEAL_FOLDER, WorkDrive_Link: FOLDER })).toEqual({ kind: "deal", href: DEAL_FOLDER, label: "Open the Deal folder" });
-    expect(workDriveTarget({ WorkDrive_Link: FOLDER })).toEqual({ kind: "mockup", href: FOLDER, label: "Open the Mock Up folder" });
+    expect(workDriveTarget({ WorkDrive_Link: FOLDER })).toEqual({ kind: "mockup", href: FOLDER, label: "Open the Mockups folder" });
     expect(workDriveTarget({ Deal_Folder_Link: "  ", WorkDrive_Link: " " + FOLDER + " " }).href).toBe(FOLDER);
     [{}, null, undefined, { WorkDrive_Link: null }].forEach((d) => expect(workDriveTarget(d)).toEqual({ kind: "", href: "", label: "" }));
   });
@@ -86,7 +86,7 @@ describe("E-55 which WorkDrive folder the button opens", () => {
     const mock = buildCardsFromData(DATA, { WorkDrive_Link: FOLDER });
     const deal = buildCardsFromData(DATA, { WorkDrive_Link: FOLDER, Deal_Folder_Link: DEAL_FOLDER });
     expect(mock.size).toBeGreaterThanOrEqual(2);
-    mock.forEach((html) => expect(html).toContain(`href="${FOLDER}" target="_blank" rel="noopener noreferrer">Open the Mock Up folder`));
+    mock.forEach((html) => expect(html).toContain(`href="${FOLDER}" target="_blank" rel="noopener noreferrer">Open the Mockups folder`));
     deal.forEach((html) => {
       expect(html).toContain(`href="${DEAL_FOLDER}" target="_blank" rel="noopener noreferrer">Open the Deal folder`);
       expect(html).not.toContain(FOLDER);
