@@ -1,0 +1,56 @@
+{
+  "summary": {
+    "ID": 1000248,
+    "DateCreated": "2026-10-14T12:46:47.159Z",
+    "StoreId": 502240,
+    "StoreName": "Music Association of Canyon County",
+    "OrderType": "WebOrder",
+    "PaymentStatus": "Paid",
+    "TotalQuantity": 2,
+    "ShippingVendorName": "INTERNAL-PickUp",
+    "ShippingMethodName": "The Print Plug",
+    "EstimatedShipDate": "2026-11-11T12:46:47.178Z",
+    "EstimatedDeliveryDate_Min": "2026-11-11T12:46:47.178Z",
+    "EstimatedDeliveryDate_Max": "2026-11-11T12:46:47.178Z",
+    "FirstName": "Fixture",
+    "LastName": "Customer248",
+    "Email": "customer248@example.com",
+    "ProductionCards": [
+      {
+        "ID": 1000377,
+        "Number": "1000248-1",
+        "ProductId": 1000226,
+        "ProductName": "Children's Chorus (Youth / XS-XL)",
+        "ProductSku": "KP55YMACCCCY",
+        "ProductStyleName": "Jet Black",
+        "Side": "Front",
+        "SideInternalName": "front",
+        "DesignName": "MusicAssociationLogo5",
+        "PrintMethod": "Embroidery",
+        "ColorCount": 13,
+        "Quantity": 2,
+        "RegionName": "Left Chest",
+        "ArtUrl": "/images/Embroidery/thumb/19595/theprintplugofidahogmailcom/MusicAssociationLogo5.png"
+      }
+    ]
+  },
+  "package": {
+    "Orders": [
+      {
+        "Items": [
+          {
+            "FullName": "Children's Chorus (Youth / XS-XL) - Jet Black - S",
+            "Quantity": 2,
+            "ProductId": 1000226,
+            "ProductStyleId": 1003446
+          }
+        ],
+        "Notes": null,
+        "ShippingAddress": null,
+        "User": {
+          "Phone": "208-555-0148"
+        }
+      }
+    ]
+  }
+}

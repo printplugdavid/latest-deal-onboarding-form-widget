@@ -1,0 +1,15 @@
+{
+  "ok": false,
+  "held": [
+    "\"ShirtFrontWhite\" has only been described on Navy garments, not White",
+    "\"ShirtBackWhite\" has only been described on Navy garments, not White"
+  ],
+  "due": {
+    "expected": "2026-11-02",
+    "expectedLong": "November 2, 2026",
+    "due": "2026-10-30",
+    "pickup": true
+  },
+  "printFields": null,
+  "cards": []
+}

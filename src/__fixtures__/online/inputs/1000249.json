@@ -1,0 +1,148 @@
+{
+  "summary": {
+    "ID": 1000249,
+    "DateCreated": "2026-10-14T22:19:23.647Z",
+    "StoreId": 577549,
+    "StoreName": "Buhler Christan Academy",
+    "OrderType": "WebOrder",
+    "PaymentStatus": "Paid",
+    "TotalQuantity": 3,
+    "ShippingVendorName": "INTERNAL-PickUp",
+    "ShippingMethodName": "Buhler Christian Academy",
+    "EstimatedShipDate": "2026-11-03T22:19:23.666Z",
+    "EstimatedDeliveryDate_Min": "2026-11-03T22:19:23.666Z",
+    "EstimatedDeliveryDate_Max": "2026-11-03T22:19:23.666Z",
+    "FirstName": "Fixture",
+    "LastName": "Customer249",
+    "Email": "customer249@example.com",
+    "ProductionCards": [
+      {
+        "ID": 1000370,
+        "Number": "1000249-1",
+        "ProductId": 1002796,
+        "ProductName": "BCA Long-Sleeve T-Shirt (Youth)",
+        "ProductSku": "PC90YBCAT",
+        "ProductStyleName": "Navy",
+        "Side": "Front",
+        "SideInternalName": "front",
+        "DesignName": "LongsleeveLeftChestWhite",
+        "PrintMethod": "ScreenPrint",
+        "ColorCount": 2,
+        "Quantity": 1,
+        "RegionName": "Left Chest",
+        "ArtUrl": "/images/clipart/thumb/19595/theprintplugofidahogmailcom/LongsleeveLeftChestWhite.png"
+      },
+      {
+        "ID": 1000371,
+        "Number": "1000249-2",
+        "ProductId": 1002796,
+        "ProductName": "BCA Long-Sleeve T-Shirt (Youth)",
+        "ProductSku": "PC90YBCAT",
+        "ProductStyleName": "Navy",
+        "Side": "Back",
+        "SideInternalName": "back",
+        "DesignName": "LongsleeveBackWhite",
+        "PrintMethod": "ScreenPrint",
+        "ColorCount": 2,
+        "Quantity": 1,
+        "RegionName": "Full",
+        "ArtUrl": "/images/clipart/thumb/19595/theprintplugofidahogmailcom/LongsleeveBackWhite.png"
+      },
+      {
+        "ID": 1000372,
+        "Number": "1000249-3",
+        "ProductId": 1002796,
+        "ProductName": "BCA Long-Sleeve T-Shirt (Youth)",
+        "ProductSku": "PC90YBCAT",
+        "ProductStyleName": "White",
+        "Side": "Front",
+        "SideInternalName": "front",
+        "DesignName": "LongsleeveLeftChestWhite",
+        "PrintMethod": "ScreenPrint",
+        "ColorCount": 2,
+        "Quantity": 1,
+        "RegionName": "Left Chest",
+        "ArtUrl": "/images/clipart/thumb/19595/theprintplugofidahogmailcom/LongsleeveLeftChestWhite-100046.png"
+      },
+      {
+        "ID": 1000373,
+        "Number": "1000249-4",
+        "ProductId": 1002796,
+        "ProductName": "BCA Long-Sleeve T-Shirt (Youth)",
+        "ProductSku": "PC90YBCAT",
+        "ProductStyleName": "White",
+        "Side": "Back",
+        "SideInternalName": "back",
+        "DesignName": "LongsleeveBackWhite",
+        "PrintMethod": "ScreenPrint",
+        "ColorCount": 2,
+        "Quantity": 1,
+        "RegionName": "Full",
+        "ArtUrl": "/images/clipart/thumb/19595/theprintplugofidahogmailcom/LongsleeveBackWhite-100047.png"
+      },
+      {
+        "ID": 1000374,
+        "Number": "1000249-5",
+        "ProductId": 1002797,
+        "ProductName": "BCA Long-Sleeve T-Shirt",
+        "ProductSku": "PC78BCA",
+        "ProductStyleName": "White",
+        "Side": "Front",
+        "SideInternalName": "front",
+        "DesignName": "LongsleeveLeftChestWhite",
+        "PrintMethod": "ScreenPrint",
+        "ColorCount": 2,
+        "Quantity": 1,
+        "RegionName": "Left Chest",
+        "ArtUrl": "/images/clipart/thumb/19595/theprintplugofidahogmailcom/LongsleeveLeftChestWhite-100046.png"
+      },
+      {
+        "ID": 1000375,
+        "Number": "1000249-6",
+        "ProductId": 1002797,
+        "ProductName": "BCA Long-Sleeve T-Shirt",
+        "ProductSku": "PC78BCA",
+        "ProductStyleName": "White",
+        "Side": "Back",
+        "SideInternalName": "back",
+        "DesignName": "LongsleeveBackWhite",
+        "PrintMethod": "ScreenPrint",
+        "ColorCount": 2,
+        "Quantity": 1,
+        "RegionName": "Back",
+        "ArtUrl": "/images/clipart/thumb/19595/theprintplugofidahogmailcom/LongsleeveBackWhite-100047.png"
+      }
+    ]
+  },
+  "package": {
+    "Orders": [
+      {
+        "Items": [
+          {
+            "FullName": "BCA Long-Sleeve T-Shirt (Youth) - Navy - XS",
+            "Quantity": 1,
+            "ProductId": 1002796,
+            "ProductStyleId": 1013735
+          },
+          {
+            "FullName": "BCA Long-Sleeve T-Shirt (Youth) - White - XS",
+            "Quantity": 1,
+            "ProductId": 1002796,
+            "ProductStyleId": 1013736
+          },
+          {
+            "FullName": "BCA Long-Sleeve T-Shirt - White - L",
+            "Quantity": 1,
+            "ProductId": 1002797,
+            "ProductStyleId": 1013738
+          }
+        ],
+        "Notes": null,
+        "ShippingAddress": null,
+        "User": {
+          "Phone": "208-555-0149"
+        }
+      }
+    ]
+  }
+}

@@ -1,0 +1,143 @@
+CONTACT INFO
+---------------------------
+
+Account Name: Fixture Customer250
+
+Contact Name: Fixture Customer250
+
+Contact Phone: 208-555-0150
+
+Contact Email: customer250@example.com
+
+Deal Name: 1000250 - Fixture Customer250 - Online Order
+
+Sales Person: Korie Byrd
+
+
+PRODUCT INFORMATION
+---------------------------
+
+Selected Product Types: Embroidery
+
+Product 1: Embroidery
+---------------------------
+
+Garment & Graphic Information
+---------------------------
+
+Number of Garment Types: 1
+
+Garment 1:
+---------------------------
+
+Garment Type (Brand / Style): 8800 Gildan Polo
+
+SKU(s): 8800
+
+Total Count, Colors & Sizes: Black
+1- XL
+
+Total Garment Quantity: 1
+
+Graphic & Placement Information
+---------------------------
+
+Number of Graphics: 1
+
+Graphic 1:
+---------------------------
+
+Graphic Description: Canyon winds logo left chest 3.5" wide
+
+Is Graphic Print Ready?: Yes
+
+Current Graphic Format: DST
+
+Fine Detail?: No
+
+Upcharge Acknowledged?: No
+
+Number Of Colors Used: 3
+
+Underbase Needed?: None
+
+Colors Used (Threads / PANTONES): 1821 Terra Cotta (Madeira Polyneon)
+1652 Mermaid (Madeira Polyneon)
+1964 Stormy Sky Blue (Madeira Polyneon)
+
+Color Change?: No
+
+Fonts Used: NA
+
+Number Of Placements: 1
+
+Placement 1:
+---------------------------
+
+Placement Location: Left Chest
+
+Sizes & Dimensions: 3.5" W × height in proportion
+
+Placement Size: Small
+
+Is This Garment Used With Other Application Types?: No
+
+Vendors Used: Inventory
+
+Special Instructions / Considerations: 
+
+Other Information: 
+
+
+OTHER INFORMATION
+---------------------------
+
+How Did You Hear About Us?: Online Order
+
+Supplies / Materials Needed: 1821 Terra Cotta
+1652 Mermaid
+1964 Stormy Sky Blue
+
+Outsourced Products Ordered: 0
+
+Special Instructions: Due for PICK UP by November 11, 2026 (InkSoft order 1000250)
+
+Is This a Repeat Order?: No
+
+Do Products Need Shipped?: No
+
+Customer Consents to Email and Text?: Yes
+
+Round up for Charity?: No
+
+
+TURNAROUND TIME
+---------------------------
+
+Does Customer Have A Hard Due Date?: Yes
+
+Due Date: 2026-11-09
+
+Upcharged For Rush Turnaround Time?: No
+
+Custmer Acknowledged 24-48 Hour Mock-Up?: No
+
+PRINT COUNT SUMMARY
+---------------------------
+
+Actual = base design prints. Projected = extra prints from process steps (underbase, premium iron, heat press). Total = Actual + Projected.
+
+Screen Print
+   Actual: 0  |  Projected: 0  |  Total: 0
+
+Vinyl
+   Actual: 0  |  Projected: 0  |  Total: 0
+
+Embroidery
+   Actual: 1  |  Projected: 0  |  Total: 1
+   Placement sizes — Small: 1  |  Medium: 0  |  Large: 0
+
+---------------------------
+
+ALL DEPARTMENTS
+   Actual: 1  |  Projected: 0  |  Total: 1

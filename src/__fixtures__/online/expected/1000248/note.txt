@@ -1,0 +1,145 @@
+CONTACT INFO
+---------------------------
+
+Account Name: Fixture Customer248
+
+Contact Name: Fixture Customer248
+
+Contact Phone: 208-555-0148
+
+Contact Email: customer248@example.com
+
+Deal Name: 1000248 - Fixture Customer248 - Online Order
+
+Sales Person: Korie Byrd
+
+
+PRODUCT INFORMATION
+---------------------------
+
+Selected Product Types: Embroidery
+
+Product 1: Embroidery
+---------------------------
+
+Garment & Graphic Information
+---------------------------
+
+Number of Garment Types: 1
+
+Garment 1:
+---------------------------
+
+Garment Type (Brand / Style): KP55Y Port & Company Youth Polo
+
+SKU(s): KP55Y
+
+Total Count, Colors & Sizes: Jet Black
+2- S
+
+Total Garment Quantity: 2
+
+Graphic & Placement Information
+---------------------------
+
+Number of Graphics: 1
+
+Graphic 1:
+---------------------------
+
+Graphic Description: Children's Chorus Left chest 3.5" wide
+
+Is Graphic Print Ready?: Yes
+
+Current Graphic Format: DST
+
+Fine Detail?: No
+
+Upcharge Acknowledged?: No
+
+Number Of Colors Used: 4
+
+Underbase Needed?: None
+
+Colors Used (Threads / PANTONES): 1645 Light Mint (Madeira Polyneon)
+1964 Stormy Sky Blue (Madeira Polyneon)
+1821 Terra Cotta (Madeira Polyneon)
+1800 Emerald Black (Madeira Polyneon)
+
+Color Change?: No
+
+Fonts Used: NA
+
+Number Of Placements: 1
+
+Placement 1:
+---------------------------
+
+Placement Location: Left Chest
+
+Sizes & Dimensions: 3.5" W × height in proportion
+
+Placement Size: Small
+
+Is This Garment Used With Other Application Types?: No
+
+Vendors Used: Inventory
+
+Special Instructions / Considerations: 
+
+Other Information: 
+
+
+OTHER INFORMATION
+---------------------------
+
+How Did You Hear About Us?: Online Order
+
+Supplies / Materials Needed: 1645 Light Mint
+1964 Stormy Sky Blue
+1821 Terra Cotta
+1800 Emerald Black
+
+Outsourced Products Ordered: 0
+
+Special Instructions: Due for PICK UP by November 11, 2026 (InkSoft order 1000248)
+
+Is This a Repeat Order?: No
+
+Do Products Need Shipped?: No
+
+Customer Consents to Email and Text?: Yes
+
+Round up for Charity?: No
+
+
+TURNAROUND TIME
+---------------------------
+
+Does Customer Have A Hard Due Date?: Yes
+
+Due Date: 2026-11-09
+
+Upcharged For Rush Turnaround Time?: No
+
+Custmer Acknowledged 24-48 Hour Mock-Up?: No
+
+PRINT COUNT SUMMARY
+---------------------------
+
+Actual = base design prints. Projected = extra prints from process steps (underbase, premium iron, heat press). Total = Actual + Projected.
+
+Screen Print
+   Actual: 0  |  Projected: 0  |  Total: 0
+
+Vinyl
+   Actual: 0  |  Projected: 0  |  Total: 0
+
+Embroidery
+   Actual: 2  |  Projected: 0  |  Total: 2
+   Placement sizes — Small: 2  |  Medium: 0  |  Large: 0
+
+---------------------------
+
+ALL DEPARTMENTS
+   Actual: 2  |  Projected: 0  |  Total: 2

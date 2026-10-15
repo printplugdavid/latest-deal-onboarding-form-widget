@@ -1,0 +1,35 @@
+{
+  "ok": true,
+  "held": [],
+  "due": {
+    "expected": "2026-11-11",
+    "expectedLong": "November 11, 2026",
+    "due": "2026-11-09",
+    "pickup": true
+  },
+  "printFields": {
+    "Vinyl_Department_Prints": 0,
+    "Embroidery_Department_Prints": 2,
+    "Embroidery_Small_Prints": 2,
+    "Embroidery_Medium_Prints": 0,
+    "Embroidery_Large_Prints": 0,
+    "Screen_Print_Prints": 0,
+    "Vinyl_Prints": 0,
+    "DTG_Prints": 0,
+    "DTF_Prints": 0,
+    "DTF_Gang_Sheet_Prints": 0,
+    "HTV_Prints": 0,
+    "Stickers_Prints": 0,
+    "Decals_Prints": 0,
+    "Banners_Prints": 0,
+    "Posters_Prints": 0,
+    "Magnets_Prints": 0,
+    "Patches_Prints": 0,
+    "Outsourced_Prints": 0
+  },
+  "cards": [
+    "production-card-embroidery.html",
+    "production-card-graphicdesign.html",
+    "production-card-colormatch.html"
+  ]
+}

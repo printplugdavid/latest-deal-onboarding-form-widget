@@ -1,0 +1,56 @@
+{
+  "summary": {
+    "ID": 1000250,
+    "DateCreated": "2026-10-15T05:35:10.210Z",
+    "StoreId": 502240,
+    "StoreName": "Music Association of Canyon County",
+    "OrderType": "WebOrder",
+    "PaymentStatus": "Paid",
+    "TotalQuantity": 1,
+    "ShippingVendorName": "INTERNAL-PickUp",
+    "ShippingMethodName": "The Print Plug",
+    "EstimatedShipDate": "2026-11-12T05:35:10.226Z",
+    "EstimatedDeliveryDate_Min": "2026-11-12T05:35:10.226Z",
+    "EstimatedDeliveryDate_Max": "2026-11-12T05:35:10.226Z",
+    "FirstName": "Fixture",
+    "LastName": "Customer250",
+    "Email": "customer250@example.com",
+    "ProductionCards": [
+      {
+        "ID": 1000376,
+        "Number": "1000250-1",
+        "ProductId": 1001768,
+        "ProductName": "Canyon Winds (Adult)",
+        "ProductSku": "8800MACCCW",
+        "ProductStyleName": "Black",
+        "Side": "Front",
+        "SideInternalName": "front",
+        "DesignName": "PolosMusicAssociationCanyonWinds",
+        "PrintMethod": "Embroidery",
+        "ColorCount": 3,
+        "Quantity": 1,
+        "RegionName": "Left Chest",
+        "ArtUrl": "/images/Embroidery/thumb/19595/theprintplugofidahogmailcom/PolosMusicAssociationCanyonWinds.png"
+      }
+    ]
+  },
+  "package": {
+    "Orders": [
+      {
+        "Items": [
+          {
+            "FullName": "Canyon Winds (Adult) - Black - XL",
+            "Quantity": 1,
+            "ProductId": 1001768,
+            "ProductStyleId": 1011583
+          }
+        ],
+        "Notes": null,
+        "ShippingAddress": null,
+        "User": {
+          "Phone": "208-555-0150"
+        }
+      }
+    ]
+  }
+}

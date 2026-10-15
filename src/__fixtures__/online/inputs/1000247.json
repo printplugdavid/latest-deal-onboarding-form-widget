@@ -1,0 +1,110 @@
+{
+  "summary": {
+    "ID": 1000247,
+    "DateCreated": "2026-10-13T22:06:38.059Z",
+    "StoreId": 577549,
+    "StoreName": "Buhler Christan Academy",
+    "OrderType": "WebOrder",
+    "PaymentStatus": "Paid",
+    "TotalQuantity": 2,
+    "ShippingVendorName": "INTERNAL-PickUp",
+    "ShippingMethodName": "Buhler Christian Academy",
+    "EstimatedShipDate": "2026-11-02T22:06:38.090Z",
+    "EstimatedDeliveryDate_Min": "2026-11-02T22:06:38.090Z",
+    "EstimatedDeliveryDate_Max": "2026-11-02T22:06:38.090Z",
+    "FirstName": "Fixture",
+    "LastName": "Customer247",
+    "Email": "customer247@example.com",
+    "ProductionCards": [
+      {
+        "ID": 1000366,
+        "Number": "1000247-1",
+        "ProductId": 1002794,
+        "ProductName": "BCA Short Sleeve T-Shirt",
+        "ProductSku": "PC55BCAT",
+        "ProductStyleName": "Navy",
+        "Side": "Front",
+        "SideInternalName": "front",
+        "DesignName": "ShirtFrontWhite",
+        "PrintMethod": "ScreenPrint",
+        "ColorCount": 3,
+        "Quantity": 1,
+        "RegionName": "Full",
+        "ArtUrl": "/images/clipart/thumb/19595/theprintplugofidahogmailcom/ShirtFrontWhite.png"
+      },
+      {
+        "ID": 1000367,
+        "Number": "1000247-2",
+        "ProductId": 1002794,
+        "ProductName": "BCA Short Sleeve T-Shirt",
+        "ProductSku": "PC55BCAT",
+        "ProductStyleName": "Navy",
+        "Side": "Back",
+        "SideInternalName": "back",
+        "DesignName": "ShirtBackWhite",
+        "PrintMethod": "ScreenPrint",
+        "ColorCount": 2,
+        "Quantity": 1,
+        "RegionName": "Back",
+        "ArtUrl": "/images/clipart/thumb/19595/theprintplugofidahogmailcom/ShirtBackWhite.png"
+      },
+      {
+        "ID": 1000368,
+        "Number": "1000247-3",
+        "ProductId": 1002794,
+        "ProductName": "BCA Short Sleeve T-Shirt",
+        "ProductSku": "PC55BCAT",
+        "ProductStyleName": "White",
+        "Side": "Front",
+        "SideInternalName": "front",
+        "DesignName": "ShirtFrontWhite",
+        "PrintMethod": "ScreenPrint",
+        "ColorCount": 3,
+        "Quantity": 1,
+        "RegionName": "Full",
+        "ArtUrl": "/images/clipart/thumb/19595/theprintplugofidahogmailcom/ShirtFrontWhite-100044.png"
+      },
+      {
+        "ID": 1000369,
+        "Number": "1000247-4",
+        "ProductId": 1002794,
+        "ProductName": "BCA Short Sleeve T-Shirt",
+        "ProductSku": "PC55BCAT",
+        "ProductStyleName": "White",
+        "Side": "Back",
+        "SideInternalName": "back",
+        "DesignName": "ShirtBackWhite",
+        "PrintMethod": "ScreenPrint",
+        "ColorCount": 2,
+        "Quantity": 1,
+        "RegionName": "Back",
+        "ArtUrl": "/images/clipart/thumb/19595/theprintplugofidahogmailcom/ShirtBackWhite-100045.png"
+      }
+    ]
+  },
+  "package": {
+    "Orders": [
+      {
+        "Items": [
+          {
+            "FullName": "BCA Short Sleeve T-Shirt - Navy - 4XL",
+            "Quantity": 1,
+            "ProductId": 1002794,
+            "ProductStyleId": 1013731
+          },
+          {
+            "FullName": "BCA Short Sleeve T-Shirt - White - 4XL",
+            "Quantity": 1,
+            "ProductId": 1002794,
+            "ProductStyleId": 1013732
+          }
+        ],
+        "Notes": null,
+        "ShippingAddress": null,
+        "User": {
+          "Phone": "208-555-0147"
+        }
+      }
+    ]
+  }
+}
