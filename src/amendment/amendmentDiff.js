@@ -188,9 +188,6 @@ const FIELD_LABELS = {
   sku: "SKU",
   everyGraphicOnEveryGarment: "Every graphic goes on every garment",
   garmentKind: "Garment Kind",
-  placementLocation: "Placement Location",
-  sizeAndDimensions: "Sizes & Dimensions",
-  placementSize: "Placement Size",
 };
 
 // E-74: the placement picks are saved beside the text they write (placementLocation, sizeAndDimensions,

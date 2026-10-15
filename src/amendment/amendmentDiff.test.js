@@ -533,8 +533,8 @@ describe("E-74 placement picks in What Changed", () => {
       values
     );
     expect(lines).toEqual([
-      "Embroidery › Garment 1 › Graphic 1 › Placement 1 › Placement Location: left chest area → Left Chest",
-      'Embroidery › Garment 1 › Graphic 1 › Placement 1 › Sizes & Dimensions: 3.5" wide → 3.5" W × height in proportion',
+      "Embroidery › Garment 1 › Graphic 1 › Placement 1 › Placement location: left chest area → Left Chest",
+      'Embroidery › Garment 1 › Graphic 1 › Placement 1 › Size and dimensions: 3.5" wide → 3.5" W × height in proportion',
     ]);
   });
 });
