@@ -392,3 +392,27 @@ describe("E-57 the entry screen: one section per style, sizes under it", () => {
   });
 });
 
+// The Zoho Books thread, 2026-10-14: match SKUs EXACTLY -- 6400 / 64000 and 146 / 1466 are different real styles.
+describe("SKUs are matched as whole codes", () => {
+  const { hasCode, styleOptionsFor } = require("./sizeRows");
+  const { lumpedSignals } = require("./lumpedOrder");
+  test("a code inside a longer code is not that code", () => {
+    expect(hasCode("Gildan 64000", "6400")).toBe(false);
+    expect(hasCode("Bella+Canvas 6400", "6400")).toBe(true);
+    expect(hasCode("Richardson 1466", "146")).toBe(false);
+    expect(hasCode("PC55Y youth", "PC55")).toBe(false);
+    expect(hasCode("PC55 adult", "pc55")).toBe(true);
+    expect(hasCode("(PC54) tee", "PC54")).toBe(true);
+    expect(hasCode("anything", "")).toBe(false);
+  });
+  test("the style options keep a SKU that only looks like part of another style", () => {
+    expect(styleOptionsFor("Gildan 64000", [{ sku: "6400" }])).toEqual(["Gildan 64000", "6400"]);
+    expect(styleOptionsFor("Bella+Canvas 6400", [{ sku: "6400" }])).toEqual(["Bella+Canvas 6400"]);
+  });
+  test("the lumped-order signal does not mistake 64000 in a description for SKU 6400", () => {
+    const g = (desc) => ({ garmentSkus: [{ sku: "6400" }, { sku: "PC54" }], garmentType: "Tees", garmentQuantity: "20", secondaryBranches: [{ graphicDescription: desc }, { graphicDescription: "Back" }] });
+    expect(lumpedSignals(g("Front on the Gildan 64000 only")).scoped).toEqual([]);
+    expect(lumpedSignals(g("Front on the 6400 only")).scoped).toEqual([1]);
+  });
+});
+
