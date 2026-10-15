@@ -187,7 +187,15 @@ const FIELD_LABELS = {
   quantityOrdered: "Quantity Ordered",
   sku: "SKU",
   everyGraphicOnEveryGarment: "Every graphic goes on every garment",
+  garmentKind: "Garment Kind",
+  placementLocation: "Placement Location",
+  sizeAndDimensions: "Sizes & Dimensions",
+  placementSize: "Placement Size",
 };
+
+// E-74: the placement picks are saved beside the text they write (placementLocation, sizeAndDimensions,
+// a size variant's dimensions). The text says the change in words; the picks would only repeat it.
+const PICK_LEAF = /\.(placementPick|placementOther|widthIn|heightIn|positionNote)$/;
 
 export const humanize = (key) => {
   const words = key.replace(/_/g, " ").replace(/([a-z0-9])([A-Z])/g, "$1 $2").toLowerCase();
@@ -221,7 +229,7 @@ export function describePath(path, values) {
 // Plain-text lines for the What Changed block. Multi-line values get their own was/now lines.
 export function summariseDiff(changes, values) {
   const show = (v) => (v === "" ? "(empty)" : v);
-  return changes.map(({ path, before, after }) => {
+  return changes.filter(({ path }) => !PICK_LEAF.test(path)).map(({ path, before, after }) => {
     const label = describePath(path, values);
     if (before.includes("\n") || after.includes("\n")) {
       return `${label}:\n  was: ${show(before).replace(/\n/g, "\n       ")}\n  now: ${show(after).replace(/\n/g, "\n       ")}`;

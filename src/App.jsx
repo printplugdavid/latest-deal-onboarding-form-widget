@@ -16,6 +16,7 @@ import { useEffect, useState } from "react";
 import { Controller, FormProvider, useForm, useWatch } from "react-hook-form";
 import { useFieldArray } from "react-hook-form";
 import GarmentForm from "./components/GarmentForm";
+import { StrictEntry } from "./components/strictEntry";
 import NonGarmentForm from "./components/NonGarmentForm";
 import GraphicForm from "./components/GraphicForm";
 import OnlineStorefrontForm from "./components/OnlineStorefrontForm";
@@ -166,6 +167,10 @@ function App() {
     walk(formErrors);
     const label = (nm) =>
       nm.endsWith(".placementSize") ? "Placement Size (required on Embroidery placements)"
+        : nm.endsWith(".garmentKind") ? "Garment Kind (on each garment type)"
+        : nm.endsWith(".placementPick") ? "Placement location (pick one, or Other… and type it)"
+        : nm.endsWith(".placementOther") ? "Placement location — the Other line"
+        : nm.endsWith(".widthIn") || nm.endsWith(".heightIn") ? "Placement size — a width or a height in inches (e.g. 3.5 or 3 1/2)"
         : nm.endsWith(".dateNeededBy") ? "Date Needed By"
         : nm;
     const list = [...new Set(names.filter(Boolean).map(label))];
@@ -351,6 +356,8 @@ function App() {
     return (
       <Box sx={{ width: "100%" }}>
         <FormProvider {...methods}>
+          {/* E-74: Garment kind, placement location and a width or height are required here (not in the Amendment Form). */}
+          <StrictEntry.Provider value={true}>
           <Box
             sx={{
               width: "90%",
@@ -1230,6 +1237,7 @@ function App() {
               </Button>
             </Box>
           </Box>
+          </StrictEntry.Provider>
         </FormProvider>
       </Box>
     );

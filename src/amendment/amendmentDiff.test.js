@@ -518,3 +518,23 @@ describe("E-63 moving a garment type to another print method", () => {
   });
 });
 
+
+describe("E-74 placement picks in What Changed", () => {
+  test("the picks are not listed; the location and size text are", () => {
+    const values = { products: [{ productName: "Embroidery", primaryBranches: [{ secondaryBranches: [{ tartiaryBranches: [{}] }] }] }] };
+    const p = "products.0.primaryBranches.0.secondaryBranches.0.tartiaryBranches.0.";
+    const lines = summariseDiff(
+      [
+        { path: p + "placementPick", before: "", after: "Left Chest" },
+        { path: p + "placementLocation", before: "left chest area", after: "Left Chest" },
+        { path: p + "widthIn", before: "", after: "3.5" },
+        { path: p + "sizeAndDimensions", before: '3.5" wide', after: '3.5" W × height in proportion' },
+      ],
+      values
+    );
+    expect(lines).toEqual([
+      "Embroidery › Garment 1 › Graphic 1 › Placement 1 › Placement Location: left chest area → Left Chest",
+      'Embroidery › Garment 1 › Graphic 1 › Placement 1 › Sizes & Dimensions: 3.5" wide → 3.5" W × height in proportion',
+    ]);
+  });
+});
