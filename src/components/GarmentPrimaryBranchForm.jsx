@@ -209,6 +209,8 @@ const GarmentPrimaryBranchForm = ({
         render={({ field, fieldState }) => (
           <Autocomplete
             options={GARMENT_KINDS}
+            autoHighlight
+            openOnFocus
             value={field.value || null}
             onChange={(_, v) => field.onChange(v || "")}
             renderInput={(params) => (
