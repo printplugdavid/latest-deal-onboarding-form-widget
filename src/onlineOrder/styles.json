@@ -1,0 +1,33 @@
+{
+  "_about": "Garment style catalogue for auto-onboarding (M-14). Keyed by the BASE style code; InkSoft store SKUs add a store suffix (PC55BCAT -> PC55, 8800MACCCW -> 8800), so the longest matching prefix wins. Names follow what staff write on hand-filled onboardings, NOT InkSoft's product names (INK-24). vendor = 'Vendors Used' on the form. kind = the form's required 'Garment Kind' (E-74), one of GARMENT_KINDS in the form's src/placements.js.",
+  "PC55": {
+    "name": "Port & Company Adult T-Shirt",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank"
+  },
+  "PC55Y": {
+    "name": "Port & Company Youth T-Shirt",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank"
+  },
+  "PC78": {
+    "name": "Port & Company Adult Crew Neck Sweater",
+    "vendor": "Sanmar",
+    "kind": "Hoodie / Crew / Zip"
+  },
+  "PC90Y": {
+    "name": "Port & Company Youth Crew Neck Sweater",
+    "vendor": "Sanmar",
+    "kind": "Hoodie / Crew / Zip"
+  },
+  "8800": {
+    "name": "Gildan Polo",
+    "vendor": "Inventory",
+    "kind": "Polo / Button-up"
+  },
+  "KP55Y": {
+    "name": "Port & Company Youth Polo",
+    "vendor": "Inventory",
+    "kind": "Polo / Button-up"
+  }
+}

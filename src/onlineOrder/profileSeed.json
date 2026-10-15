@@ -1,0 +1,21 @@
+{
+  "_about": "Which graphic on which hand-filled onboarding describes which InkSoft art file (M-14). build-profiles.mjs parses each note with the form's own parseNoteToForm and stores that graphic as the profile. Art names are InkSoft's DesignName WITHOUT the '-100044' style suffix InkSoft adds to a per-garment-colour copy. 'colors' = the garment colours that onboarding covered: a profile is only trusted for those (a white shirt is not a navy shirt with the same ink). Newest source wins.",
+  "sources": [
+    { "order": "1000240", "note": "1000240.txt", "graphics": [
+      { "garment": 1, "graphic": 1, "art": "PolosMusicAssociationCanyonWinds", "colors": ["Black"] } ] },
+    { "order": "1000241", "note": "1000241.txt", "graphics": [
+      { "garment": 1, "graphic": 1, "art": "MusicAssociationLogo5", "colors": ["Black", "Jet Black"] },
+      { "garment": 1, "graphic": 2, "art": "MusicAssociationLogo1", "colors": ["Black", "Jet Black"] } ] },
+    { "order": "1000244", "note": "1000244.txt", "graphics": [
+      { "garment": 1, "graphic": 1, "art": "ShirtFrontWhite", "colors": ["Navy"] },
+      { "garment": 1, "graphic": 2, "art": "ShirtBackWhite", "colors": ["Navy"] } ] },
+    { "order": "1000249", "note": "1000249.txt", "graphics": [
+      { "garment": 1, "graphic": 1, "art": "LongsleeveLeftChestWhite", "colors": ["Navy", "White"] },
+      { "garment": 1, "graphic": 2, "art": "LongsleeveBackWhite", "colors": ["Navy", "White"] } ] }
+  ],
+  "products": {
+    "_about": "Store-level answers per form product, from the same onboardings.",
+    "Direct-to-Film": { "supplies": "DTF Powder\nDTF Ink\nDTF Film" },
+    "Embroidery":     { "supplies": "threads" }
+  }
+}
