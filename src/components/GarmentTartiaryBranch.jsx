@@ -61,9 +61,14 @@ const GarmentTartiaryBranch = ({
     set("placementPick", p);
     set("placementOther", o);
     set("placementLocation", locationText(p, o));
-    if (productName === "Embroidery" && !getValues(`${base}.placementSize`)) {
-      const s = embroiderySizeFor(p, kind);
-      if (s) set("placementSize", s);
+    // A suggested size follows the location; one the rep picked by hand is never touched (placementSizeAuto).
+    if (productName === "Embroidery") {
+      const auto = !!getValues(`${base}.placementSizeAuto`);
+      if (!getValues(`${base}.placementSize`) || auto) {
+        const s = embroiderySizeFor(p, kind);
+        set("placementSize", s || (auto ? "" : getValues(`${base}.placementSize`)));
+        set("placementSizeAuto", !!s);
+      }
     }
     recheck("placementPick", "placementOther", "placementSize", "widthIn");
   };
@@ -155,7 +160,10 @@ const GarmentTartiaryBranch = ({
               {...field}
               options={["Small", "Medium", "Large"]}
               value={field.value || ""}
-              onChange={(_, newValue) => field.onChange(newValue)}
+              onChange={(_, newValue) => {
+                field.onChange(newValue);
+                set("placementSizeAuto", false); // picked by hand: a later location change leaves it alone
+              }}
               sx={{ flex: "0 0 10.5rem" }}
               renderInput={(params) => (
                 <TextField

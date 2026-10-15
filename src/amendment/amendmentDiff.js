@@ -192,7 +192,7 @@ const FIELD_LABELS = {
 
 // E-74: the placement picks are saved beside the text they write (placementLocation, sizeAndDimensions,
 // a size variant's dimensions). The text says the change in words; the picks would only repeat it.
-const PICK_LEAF = /\.(placementPick|placementOther|widthIn|heightIn|positionNote)$/;
+const PICK_LEAF = /\.(placementPick|placementOther|widthIn|heightIn|positionNote|placementSizeAuto)$/;
 
 export const humanize = (key) => {
   const words = key.replace(/_/g, " ").replace(/([a-z0-9])([A-Z])/g, "$1 $2").toLowerCase();
