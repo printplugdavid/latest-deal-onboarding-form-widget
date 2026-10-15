@@ -22,16 +22,15 @@ import GraphicForm from "./components/GraphicForm";
 import OnlineStorefrontForm from "./components/OnlineStorefrontForm";
 import DtfGangSheetForm from "./components/DtfGangSheetForm";
 import PrintCountPreview from "./components/PrintCountPreview";
-import { buildProductionCards, workDriveTarget } from "./productionCards";
+import { workDriveTarget } from "./productionCards";
+import { buildSubmission } from "./submission";
 import { gangSheetPrints } from "./gangSheet";
 import { checkGarmentQuantity } from "./quantityCheck";
 import { computePrints } from "./printMath";
-import { buildOnboardingNote } from "./onboardingNote";
 import { lumpedConcerns, LUMPED_QUESTION } from "./lumpedOrder";
 import { applyGarmentSplits } from "./garmentSplit";
 import { requestDealFolders, shouldRequestFolders } from "./dealFolders";
 import { afterRequestLeaves, requestArtCopy, shouldCopyArt } from "./artCopy";
-import { buildColorMatches } from "./colorMatch";
 import {
   CUSTOMER_NOTES_QUESTION,
   CUSTOMER_NOTES_TOOLTIP,
@@ -203,21 +202,19 @@ function App() {
     setLoading(true);
     console.log("Collected Form Data:", data);
 
-    // PRINT COUNT CALCULATION (runs first so counts are available while the note is assembled).
-    // The arithmetic lives in src/printMath.js, shared verbatim with the revision form (E-8 / D-11)
-    // so the two can never disagree, and so the form can show the same numbers before submit.
-    // Hard rule 7 still holds: computed at the top, destructured into the names everything below
-    // already reads.
-    // The note text, the 18 print-count fields and the card counts all come from ONE shared
-    // builder (src/onboardingNote.js) -- the Amendment Form calls the same function, so an amended
-    // order's note can never drift from a fresh onboarding's. Moved verbatim 2026-10-01 (E-24).
-    const { content, printFields, cardCounts } = buildOnboardingNote(data);
+    // PRINT COUNT CALCULATION. The arithmetic lives in src/printMath.js, shared verbatim with the
+    // revision form (E-8 / D-11). The note text, the 18 print-count fields and the card counts come
+    // from ONE shared builder (src/onboardingNote.js), which the Amendment Form also calls (E-24).
+    // Since docs/45 all four outputs (note, print fields, JSON, cards) come from buildSubmission() in
+    // src/submission.js -- the same function the InkSoft order-sync runs headless -- so there is one
+    // path. It runs right after Customer Notes (below), whose saved text the JSON and the cards print,
+    // and before any write (hard rule 7).
 
     // E-38: append the rep's answer to the Account's Customer Notes and make this Deal's field
     // match. saveCustomerNotes() never throws and makes its own calls, so it cannot block the
-    // counts, the JSON, the cards or the note. `data` itself is not changed (D-5); the copy below
+    // counts, the JSON, the cards or the note. `data` itself is not changed (D-5); the copy
     // only adds the text the production cards print.
-    let cardData = data;
+    let savedCustomerNotes = "";
     try {
       const cn = await saveCustomerNotes({
         entity,
@@ -226,11 +223,25 @@ function App() {
         entry: data?.hasCustomerNotes === "Yes" ? data?.customerNotesNew : "",
         dateStr: todayStamp(),
       });
-      if (cn.combined) cardData = { ...data, customerNotes: cn.combined };
+      if (cn.combined) savedCustomerNotes = cn.combined;
       if (cn.problem) window.alert("Customer Notes: " + cn.problem + ". The rest of the form is being saved as normal.");
     } catch (err) {
       console.log("Customer notes step failed - skipping:", err);
     }
+
+    // The print-count calculation and everything built from it (hard rule 7: before any write below).
+    const folderLink = workDriveTarget(recordData);
+    const {
+      note: content,
+      printFields,
+      json: onboardingJson,
+      cards: productionCards,
+    } = buildSubmission(formData, {
+      poNumber: recordData?.PO_Number,
+      workDriveLink: folderLink.href,
+      workDriveLabel: folderLink.label,
+      customerNotes: savedCustomerNotes,
+    });
     
     // go for API call
     // Attempt to update Deal print count fields — silent fallback if fields don't exist yet
@@ -252,25 +263,8 @@ function App() {
     // Attach the full form submission as a minified JSON file on the Deal (create-only;
     // machine-readable handoff for downstream production tooling). Own try/catch so a
     // failure here never blocks the note, the counts, or the form closing.
+    // E-6 stamp, E-48 color matches: built in submission.js (see there); `data` is never retyped (D-5).
     try {
-      // E-6: stamp the payload so the consumers (the revision form today, the production child
-      // module later) can branch on version instead of sniffing for keys. Bumped to 1 with the
-      // gangsheet product type (D-13); history and the per-version shape live in docs/06.
-      // The stamp is added to the attached copy only -- `data` itself is never retyped (D-5).
-      // E-48: the cross-department color matches, worked out from the Colors Used answers. A `_`
-      // key: derived, never an answer -- every reader that rebuilds a form strips `_` keys.
-      let colorMatches = [];
-      try {
-        colorMatches = buildColorMatches(cardData);
-      } catch (e) {
-        console.log("Color matching failed - skipping:", e);
-      }
-      const onboardingJson = JSON.stringify({
-        ...cardData,
-        ...(colorMatches.length ? { _colorMatches: colorMatches } : {}),
-        _schemaVersion: 1,
-        _submittedAt: new Date().toISOString(),
-      });
       const jsonBlob = new Blob([onboardingJson], { type: "application/json" });
       await ZOHO.CRM.API.attachFile({
         Entity: entity,
@@ -287,8 +281,7 @@ function App() {
     // Generate per-department production cards and attach each to the Deal (create-only,
     // human-readable job sheets). Own try/catch so a failure never blocks the note or counts.
     try {
-      // E-53: the Deal's PO number and WorkDrive folder, when it already has them at onboarding.
-      const productionCards = buildProductionCards(cardData, cardCounts, { poNumber: recordData?.PO_Number, workDriveLink: workDriveTarget(recordData).href, workDriveLabel: workDriveTarget(recordData).label });
+      // Built in submission.js with the Deal's PO number and WorkDrive folder as they are at onboarding (E-53).
       for (let c = 0; c < productionCards.length; c++) {
         try {
           const cardBlob = new Blob([productionCards[c].html], { type: "text/html" });

@@ -19,8 +19,11 @@ import { checkGarmentQuantity } from "./quantityCheck";
 import { LUMPED_FIELD, LUMPED_NOTE_LINE, lumpedSignals } from "./lumpedOrder";
 
 /* eslint-disable no-unused-vars */
+  // E-78: a bare "YYYY-MM-DD" is read by new Date() as UTC midnight -- the day BEFORE west of UTC. Pin it to
+  // local midnight, as cardBuild.js does. The form's own dates are picker instants and never hit this; a
+  // headless writer (the InkSoft order-sync) or a fixture can.
   const customDate = (date) => {
-    const dateObj = new Date(date);
+    const dateObj = new Date(/^\d{4}-\d{2}-\d{2}$/.test(String(date)) ? `${date}T00:00:00` : date);
     let year = dateObj.getFullYear();
     let month = dateObj.getMonth();
     let day = dateObj.getDate();

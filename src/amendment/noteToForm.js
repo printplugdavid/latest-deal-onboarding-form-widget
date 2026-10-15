@@ -60,7 +60,123 @@ export function toPlainText(raw) {
 
 const escapeRe = (s) => String(s).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 const DIVIDER = /^[ \t]*-{3,}[ \t]*$/;
-const NEXT_LABEL = /^[ \t]*[^:\n]{1,70}:(?:[ \t]|$)/;
+// E-77: where a field's value ends. Every label the note builder writes (onboardingNote.js; a test keeps this
+// list in step with it) ends a value. So does any other "Label: value" line, which keeps notes from older
+// versions of the form reading as before. A bare line ending in a colon that is NOT one of ours -- the way staff
+// head their own lines ("Navy Garment:", or E-57's style headings "PC78 Port & Company …:") -- is part of the
+// value. It used to end it, which emptied Color Change details and cut sizes short on note-only Deals.
+export const NOTE_LABELS = [
+  "Account Name",
+  "Add 1 Week To Production Time?",
+  "Are There Any Custom Fields or Notes You Would Like on Your Page?",
+  "Are Your Graphics Print-Ready?",
+  "Areas They Would Like to Design",
+  "Color Change?",
+  "Colors Used",
+  "Colors Used (Threads / PANTONES)",
+  "Company Address for Storefront",
+  "Contact Email",
+  "Contact Email for Storefront",
+  "Contact Name",
+  "Contact Phone",
+  "Contact Phone # for Storefront",
+  "Current Graphic Format",
+  "Custmer Acknowledged 24-48 Hour Mock-Up?",
+  "Custom Product Titles",
+  "Custom Product Titles for the Storefront?",
+  "Customer Consents to Email and Text?",
+  "Date Needed By",
+  "Deal Name",
+  "Design Assets Provided?",
+  "Design Service Needed?",
+  "Desired Graphic Application",
+  "Detail Lead Source",
+  "Dimensions",
+  "Discounts for Extended Turnaround Time?",
+  "Display Contact Info on the Storefront?",
+  "Do Products Need Shipped?",
+  "Do You Have a Desired Live Date?",
+  "Do You Have any Banners or Graphics You Want Displayed on Your Website?",
+  "Do You Want Your Products to Be Customizable?",
+  "Does Customer Have A Hard Due Date?",
+  "Due Date",
+  "Estimated Design Hours",
+  "Estimated Prints",
+  "Fine Detail?",
+  "Fonts Used",
+  "Gang Sheet Size",
+  "Garment Colors (what the transfers go on)",
+  "Garment Type (Brand / Style)",
+  "Graphic Description",
+  "Graphic Size",
+  "How Did You Hear About Us?",
+  "How Many Per Sheet",
+  "How Would You Like To Fulfill Orders?",
+  "Is Graphic Print Ready?",
+  "Is Outsourced?",
+  "Is This Garment Used With Other Application Types?",
+  "Is This a Repeat Order?",
+  "Is the Header Banner Print-Ready?",
+  "Is the Logo Print-Ready?",
+  "Is the Storefront Temporary or Evergreen?",
+  "Mark Up Products?",
+  "Number Of Colors Used",
+  "Number Of Placements",
+  "Number of Colors Used",
+  "Number of Gang Sheets",
+  "Number of Garment Types",
+  "Number of Graphics",
+  "Number of Graphics on the Sheet",
+  "Other Information",
+  "Other Shipping Details",
+  "Outsourced Products Ordered",
+  "Percentage to Mark Up",
+  "Placement Location",
+  "Placement Size",
+  "Please Choose Application Type",
+  "Please List Special Fields",
+  "Please Provide Details Of Color Change",
+  "Please Provide Links",
+  "Preferred Online Suffix",
+  "Premium Iron Pass?",
+  "Print Applications for Products",
+  "Quantity Ordered",
+  "Round up for Charity?",
+  "SKU(s)",
+  "Sales Person",
+  "Selected Product Types",
+  "Service Cost Acknowledged?",
+  "Shipping Contact & Address",
+  "Size by Garment Size",
+  "Sizes & Dimensions",
+  "Special Instructions",
+  "Special Instructions / Considerations",
+  "Specific Product Base Pricing",
+  "Specific Products on Storefront",
+  "Storefront End Date",
+  "Storefront Live Date",
+  "Supplies / Materials Needed",
+  "Total Count, Colors & Sizes",
+  "Total Garment Quantity",
+  "Underbase Needed?",
+  "Upcharge Acknowledged?",
+  "Upcharge for Graphic Design?",
+  "Upcharged For Rush Turnaround Time?",
+  "Vendors Used",
+  "Would You Like To Include Any Other Links On Your Storefront?"
+];
+const KNOWN_LABEL = new Set(NOTE_LABELS.map((l) => l.toLowerCase()));
+const LABEL_WITH_VALUE = /^[ \t]*[^:\n]{1,70}:[ \t]/;
+const BARE_LABEL = /^[ \t]*([^:\n]{1,70}):$/; // nothing after the colon, not even a space (the builder writes "Label: ")
+const NEXT_LABEL = {
+  test(line) {
+    const bare = String(line).match(BARE_LABEL);
+    if (bare) return KNOWN_LABEL.has(bare[1].trim().toLowerCase());
+    if (LABEL_WITH_VALUE.test(line)) return true;
+    const head = String(line).match(/^[ \t]*([^:\n]{1,70}):/);
+    return !!head && KNOWN_LABEL.has(head[1].trim().toLowerCase());
+  },
+};
 
 function field(block, label) {
   const lines = String(block || "").split("\n");

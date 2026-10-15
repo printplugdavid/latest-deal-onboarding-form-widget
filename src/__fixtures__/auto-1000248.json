@@ -1,0 +1,317 @@
+{
+ "_about": "InkSoft order 1000248 (MACC youth polo) as the order-sync mapped it and built it with this form's own modules at cc0ba64 (their auto-onboard/previews/1000248, 2026-10-15 11:51). Contact details replaced with fake ones. buildSubmission must reproduce note, json and cards byte for byte.",
+ "form": {
+  "contactInfo": {
+   "Account_Name": "Pat Example",
+   "Contact_Name": "Pat Example",
+   "Contact_Phone": "208-555-0148",
+   "Contact_Email": "pat@example.com",
+   "Deal_Name": "1000248 - Pat Example - Online Order",
+   "Sales_Person": "Korie Byrd"
+  },
+  "howDidYouHearAboutUs": "Online Order",
+  "suppliesMaterialsNeeded": "1645 Light Mint\n1964 Stormy Sky Blue\n1821 Terra Cotta\n1800 Emerald Black",
+  "specialInstructions": "Due for PICK UP by November 11, 2026 (InkSoft order 1000248)",
+  "doProductsNeedShipped": "No",
+  "shippingContactAddress": "",
+  "otherShippingDetails": "",
+  "dueDate": "2026-11-09T07:00:00.000Z",
+  "isRepeatOrder": "No",
+  "customerConsentsToEmailAndText": "Yes",
+  "roundUpForCharity": "No",
+  "hardDueDate": "Yes",
+  "typicalMockup": "No",
+  "upchargedForRushTurnaround": false,
+  "detailLeadSource": "",
+  "discountsForExtendedTurnaround": "",
+  "addOneWeekToProductionTime": false,
+  "tenFourteenBusinessDayTurnaround": false,
+  "products": [
+   {
+    "productName": "Embroidery",
+    "productType": "garment",
+    "primaryBranches": [
+     {
+      "garmentKind": "Polo / Button-up",
+      "garmentType": "KP55Y Port & Company Youth Polo",
+      "countColorSize": "Jet Black\n2- S",
+      "garmentQuantity": "2",
+      "numberOfSkus": "1",
+      "garmentSkus": [
+       {
+        "sku": "KP55Y"
+       }
+      ],
+      "numberOfGraphics": "1",
+      "isUsedInOtherAppTypes": "No",
+      "vendorsUsed": "Inventory",
+      "everyGraphicOnEveryGarment": "Yes",
+      "specialInstructions": "",
+      "secondaryBranches": [
+       {
+        "graphicDescription": "Children's Chorus Left chest 3.5\" wide",
+        "isGraphicPrintReady": true,
+        "currentGraphicFormat": "DST",
+        "fineDetail": "No",
+        "specialtyThread": false,
+        "upchargeAcknowledged": false,
+        "numberOfColorsUsed": "4",
+        "underbase": "None",
+        "colorsUsed": "1645 Light Mint (Madeira Polyneon)\n1964 Stormy Sky Blue (Madeira Polyneon)\n1821 Terra Cotta (Madeira Polyneon)\n1800 Emerald Black (Madeira Polyneon)",
+        "colorChange": "No",
+        "detailsOfColorChange": "",
+        "fontsUsed": "NA",
+        "numberOfPlacements": "1",
+        "tartiaryBranches": [
+         {
+          "placementLocation": "Left Chest",
+          "sizeAndDimensions": "3.5\" W × height in proportion",
+          "placementSize": "Small",
+          "placementPick": "Left Chest",
+          "placementOther": "",
+          "widthIn": "3.5",
+          "heightIn": "",
+          "positionNote": ""
+         }
+        ]
+       }
+      ]
+     }
+    ],
+    "numberOfGarmentTypes": "1",
+    "otherInformation": ""
+   }
+  ]
+ },
+ "dealInfo": {
+  "source": "online-order-auto",
+  "inksoftOrderId": "1000248",
+  "submittedAt": "2026-10-15T17:51:22.073Z"
+ },
+ "expected": {
+  "note": "CONTACT INFO\n---------------------------\n\nAccount Name: Pat Example\n\nContact Name: Pat Example\n\nContact Phone: 208-555-0148\n\nContact Email: pat@example.com\n\nDeal Name: 1000248 - Pat Example - Online Order\n\nSales Person: Korie Byrd\n\n\nPRODUCT INFORMATION\n---------------------------\n\nSelected Product Types: Embroidery\n\nProduct 1: Embroidery\n---------------------------\n\nGarment & Graphic Information\n---------------------------\n\nNumber of Garment Types: 1\n\nGarment 1:\n---------------------------\n\nGarment Type (Brand / Style): KP55Y Port & Company Youth Polo\n\nSKU(s): KP55Y\n\nTotal Count, Colors & Sizes: Jet Black\n2- S\n\nTotal Garment Quantity: 2\n\nGraphic & Placement Information\n---------------------------\n\nNumber of Graphics: 1\n\nGraphic 1:\n---------------------------\n\nGraphic Description: Children's Chorus Left chest 3.5\" wide\n\nIs Graphic Print Ready?: Yes\n\nCurrent Graphic Format: DST\n\nFine Detail?: No\n\nUpcharge Acknowledged?: No\n\nNumber Of Colors Used: 4\n\nUnderbase Needed?: None\n\nColors Used (Threads / PANTONES): 1645 Light Mint (Madeira Polyneon)\n1964 Stormy Sky Blue (Madeira Polyneon)\n1821 Terra Cotta (Madeira Polyneon)\n1800 Emerald Black (Madeira Polyneon)\n\nColor Change?: No\n\nFonts Used: NA\n\nNumber Of Placements: 1\n\nPlacement 1:\n---------------------------\n\nPlacement Location: Left Chest\n\nSizes & Dimensions: 3.5\" W × height in proportion\n\nPlacement Size: Small\n\nIs This Garment Used With Other Application Types?: No\n\nVendors Used: Inventory\n\nSpecial Instructions / Considerations: \n\nOther Information: \n\n\nOTHER INFORMATION\n---------------------------\n\nHow Did You Hear About Us?: Online Order\n\nSupplies / Materials Needed: 1645 Light Mint\n1964 Stormy Sky Blue\n1821 Terra Cotta\n1800 Emerald Black\n\nOutsourced Products Ordered: 0\n\nSpecial Instructions: Due for PICK UP by November 11, 2026 (InkSoft order 1000248)\n\nIs This a Repeat Order?: No\n\nDo Products Need Shipped?: No\n\nCustomer Consents to Email and Text?: Yes\n\nRound up for Charity?: No\n\n\nTURNAROUND TIME\n---------------------------\n\nDoes Customer Have A Hard Due Date?: Yes\n\nDue Date: 2026-11-09\n\nUpcharged For Rush Turnaround Time?: No\n\nCustmer Acknowledged 24-48 Hour Mock-Up?: No\n\nPRINT COUNT SUMMARY\n---------------------------\n\nActual = base design prints. Projected = extra prints from process steps (underbase, premium iron, heat press). Total = Actual + Projected.\n\nScreen Print\n   Actual: 0  |  Projected: 0  |  Total: 0\n\nVinyl\n   Actual: 0  |  Projected: 0  |  Total: 0\n\nEmbroidery\n   Actual: 2  |  Projected: 0  |  Total: 2\n   Placement sizes — Small: 2  |  Medium: 0  |  Large: 0\n\n---------------------------\n\nALL DEPARTMENTS\n   Actual: 2  |  Projected: 0  |  Total: 2",
+  "json": {
+   "contactInfo": {
+    "Account_Name": "Pat Example",
+    "Contact_Name": "Pat Example",
+    "Contact_Phone": "208-555-0148",
+    "Contact_Email": "pat@example.com",
+    "Deal_Name": "1000248 - Pat Example - Online Order",
+    "Sales_Person": "Korie Byrd"
+   },
+   "howDidYouHearAboutUs": "Online Order",
+   "suppliesMaterialsNeeded": "1645 Light Mint\n1964 Stormy Sky Blue\n1821 Terra Cotta\n1800 Emerald Black",
+   "specialInstructions": "Due for PICK UP by November 11, 2026 (InkSoft order 1000248)",
+   "doProductsNeedShipped": "No",
+   "shippingContactAddress": "",
+   "otherShippingDetails": "",
+   "dueDate": "2026-11-09T07:00:00.000Z",
+   "isRepeatOrder": "No",
+   "customerConsentsToEmailAndText": "Yes",
+   "roundUpForCharity": "No",
+   "hardDueDate": "Yes",
+   "typicalMockup": "No",
+   "upchargedForRushTurnaround": false,
+   "detailLeadSource": "",
+   "discountsForExtendedTurnaround": "",
+   "addOneWeekToProductionTime": false,
+   "tenFourteenBusinessDayTurnaround": false,
+   "products": [
+    {
+     "productName": "Embroidery",
+     "productType": "garment",
+     "primaryBranches": [
+      {
+       "garmentKind": "Polo / Button-up",
+       "garmentType": "KP55Y Port & Company Youth Polo",
+       "countColorSize": "Jet Black\n2- S",
+       "garmentQuantity": "2",
+       "numberOfSkus": "1",
+       "garmentSkus": [
+        {
+         "sku": "KP55Y"
+        }
+       ],
+       "numberOfGraphics": "1",
+       "isUsedInOtherAppTypes": "No",
+       "vendorsUsed": "Inventory",
+       "everyGraphicOnEveryGarment": "Yes",
+       "specialInstructions": "",
+       "secondaryBranches": [
+        {
+         "graphicDescription": "Children's Chorus Left chest 3.5\" wide",
+         "isGraphicPrintReady": true,
+         "currentGraphicFormat": "DST",
+         "fineDetail": "No",
+         "specialtyThread": false,
+         "upchargeAcknowledged": false,
+         "numberOfColorsUsed": "4",
+         "underbase": "None",
+         "colorsUsed": "1645 Light Mint (Madeira Polyneon)\n1964 Stormy Sky Blue (Madeira Polyneon)\n1821 Terra Cotta (Madeira Polyneon)\n1800 Emerald Black (Madeira Polyneon)",
+         "colorChange": "No",
+         "detailsOfColorChange": "",
+         "fontsUsed": "NA",
+         "numberOfPlacements": "1",
+         "tartiaryBranches": [
+          {
+           "placementLocation": "Left Chest",
+           "sizeAndDimensions": "3.5\" W × height in proportion",
+           "placementSize": "Small",
+           "placementPick": "Left Chest",
+           "placementOther": "",
+           "widthIn": "3.5",
+           "heightIn": "",
+           "positionNote": ""
+          }
+         ]
+        }
+       ]
+      }
+     ],
+     "numberOfGarmentTypes": "1",
+     "otherInformation": ""
+    }
+   ],
+   "_colorMatches": [
+    {
+     "dept": "Embroidery",
+     "color": {
+      "label": "1645 Light Mint (Madeira Polyneon)",
+      "hex": "#76c8bc",
+      "metallic": false
+     },
+     "where": [
+      "Embroidery - Garment 1 - Graphic 1"
+     ],
+     "matches": [
+      {
+       "dept": "Screen Print",
+       "label": "Pantone 317 C",
+       "hex": "#ace4e5",
+       "basis": "official",
+       "quality": "official match",
+       "difference": null
+      },
+      {
+       "dept": "Vinyl",
+       "label": "Turquoise (ORACAL 651-054)",
+       "hex": "#009b97",
+       "basis": "computed",
+       "quality": "not close",
+       "difference": 19.6,
+       "note": "in stock"
+      },
+      {
+       "dept": "Vinyl",
+       "label": "Mint (ORACAL 651-055)",
+       "hex": "#5fcdb7",
+       "basis": "computed",
+       "quality": "visibly different",
+       "difference": 9.5,
+       "note": "order-in"
+      }
+     ]
+    },
+    {
+     "dept": "Embroidery",
+     "color": {
+      "label": "1964 Stormy Sky Blue (Madeira Polyneon)",
+      "hex": "#495b72",
+      "metallic": false
+     },
+     "where": [
+      "Embroidery - Garment 1 - Graphic 1"
+     ],
+     "matches": [
+      {
+       "dept": "Screen Print",
+       "label": "Pantone 2376 C",
+       "hex": "#4c5b73",
+       "basis": "computed",
+       "quality": "near-identical",
+       "difference": 1.3
+      },
+      {
+       "dept": "Vinyl",
+       "label": "Dark Grey (ORACAL 651-073)",
+       "hex": "#4b4c4c",
+       "basis": "computed",
+       "quality": "not close",
+       "difference": 16.2,
+       "note": "in stock"
+      }
+     ]
+    },
+    {
+     "dept": "Embroidery",
+     "color": {
+      "label": "1821 Terra Cotta (Madeira Polyneon)",
+      "hex": "#a43c35",
+      "metallic": false
+     },
+     "where": [
+      "Embroidery - Garment 1 - Graphic 1"
+     ],
+     "matches": [
+      {
+       "dept": "Screen Print",
+       "label": "Pantone 7620 C",
+       "hex": "#bc302e",
+       "basis": "official",
+       "quality": "official match",
+       "difference": null
+      },
+      {
+       "dept": "Vinyl",
+       "label": "Dark Red (ORACAL 651-030)",
+       "hex": "#900e16",
+       "basis": "computed",
+       "quality": "not close",
+       "difference": 14.2,
+       "note": "in stock"
+      }
+     ]
+    },
+    {
+     "dept": "Embroidery",
+     "color": {
+      "label": "1800 Emerald Black (Madeira Polyneon)",
+      "hex": "#2f3032",
+      "metallic": false
+     },
+     "where": [
+      "Embroidery - Garment 1 - Graphic 1"
+     ],
+     "matches": [
+      {
+       "dept": "Screen Print",
+       "label": "Pantone 426 C",
+       "hex": "#24282b",
+       "basis": "official",
+       "quality": "official match",
+       "difference": null
+      },
+      {
+       "dept": "Vinyl",
+       "label": "Matte Black (ORACAL 651-070M)",
+       "hex": "#231f20",
+       "basis": "computed",
+       "quality": "visibly different",
+       "difference": 8,
+       "note": "in stock"
+      }
+     ]
+    }
+   ],
+   "_schemaVersion": 1,
+   "_submittedAt": "2026-10-15T17:51:22.073Z",
+   "_source": "online-order-auto",
+   "_inksoftOrderId": "1000248"
+  },
+  "cards": {
+   "production-card-colormatch.html": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Color Matching</title><style>body{font-family:-apple-system,Segoe UI,Roboto,sans-serif;background:#e9eaec;margin:0;padding:24px;color:#1a1a1a}.pcard{background:#fff;max-width:760px;margin:0 auto 28px;border:1px solid #ccc;border-radius:6px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.08)}.strip{background:#111;color:#fff;padding:14px 18px}.stripline{display:flex;align-items:center;gap:12px;flex-wrap:wrap}.acct{font-size:18px;font-weight:700}.deal{color:#bbb;font-size:14px}.po{background:#ffd54f;color:#111;font-weight:700;padding:2px 10px;border-radius:4px;font-size:14px;white-space:nowrap}.po b{font-size:20px}.wd{color:#8ecbff;font-weight:700}@media print{.wd{display:none}}.rush{margin-left:auto;background:#d32f2f;color:#fff;font-weight:800;padding:3px 12px;border-radius:4px;letter-spacing:.05em}.stripmeta{display:flex;gap:18px;flex-wrap:wrap;margin-top:8px;font-size:14px;align-items:baseline}.dept{font-size:20px;font-weight:800}.pc{margin-left:auto}.pc b{font-size:20px}.due b{color:#ffd54f}.gsummary{background:#f0f7ff;border-bottom:1px solid #cfe3ff;padding:8px 18px;font-size:14px}.cbody{padding:16px 18px}.job{border:1px solid #ddd;border-radius:5px;margin-bottom:14px;overflow:hidden}.jhead{background:#f3f4f6;padding:8px 12px;font-weight:700;display:flex;justify-content:space-between}.jcount{color:#d32f2f}.omute{color:#999;font-weight:400;font-size:13px}.garment{border-left:3px solid #111;padding:10px 12px;margin:10px}.ghead{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px}.gname{font-size:16px;font-weight:700}.gqty{font-weight:700}.graphic{margin:8px 0 8px 10px;padding-left:12px;border-left:2px solid #ddd}.grtitle{font-weight:600;margin-bottom:4px}.row{display:flex;gap:8px;font-size:14px;padding:1px 0}.lbl{color:#666;min-width:170px}.val{font-weight:500}.row.crit .val{font-weight:800}.row.crit .lbl{color:#111}.plc{margin-top:5px}.prow{font-size:14px;background:#fff7e6;border:1px solid #ffe0a3;border-radius:3px;padding:3px 8px;margin:3px 0;display:inline-block}.ploc{font-weight:800}.alsonote{margin-top:6px;font-size:13px;background:#eef2ff;border:1px solid #c7d2fe;border-radius:3px;padding:5px 9px}.orow{padding:5px 12px;font-size:15px;border-bottom:1px solid #eee}.szrow{font-size:14px;padding:3px 0}.szrow .val{padding-left:10px}.szg{font-weight:800;margin-top:6px;padding-bottom:1px;border-bottom:1px solid #ccc}.szc{display:flex;flex-wrap:wrap;gap:4px 6px;align-items:baseline;padding:3px 0}.szn{font-weight:700;min-width:120px}.sz{border:1px solid #bbb;border-radius:3px;padding:0 6px;white-space:nowrap;background:#fafafa}.szt{color:#666;font-size:13px}.szu{color:#444}.szw{margin-top:5px;background:#fff4e5;border:1px solid #ffb74d;border-radius:3px;padding:4px 8px;font-weight:700;-webkit-print-color-adjust:exact;print-color-adjust:exact}.cfooter{background:#f3f4f6;padding:9px 18px;font-size:13px;color:#444;border-top:1px solid #ddd}</style></head><body><section class=\"pcard\"><div class=\"strip\"><div class=\"stripline\"><span class=\"acct\">Pat Example</span><span class=\"deal\">1000248 - Pat Example - Online Order</span></div><div class=\"stripmeta\"><span class=\"dept\">COLOR MATCHING — ALL DEPARTMENTS</span><span class=\"due\">Due: <b>2026-11-09</b></span></div></div><div class=\"cbody\"><div class=\"job\"><div class=\"jhead\"><span>Embroidery colors on this order</span><span class=\"omute\">best matches in the other departments</span></div><div class=\"garment\"><div class=\"ghead\"><span class=\"gname\"><span class=\"swatch\" style=\"display:inline-block;width:20px;height:20px;border:1px solid #777;border-radius:3px;vertical-align:-4px;margin-right:6px;background:#76c8bc;-webkit-print-color-adjust:exact;print-color-adjust:exact\"></span>1645 Light Mint (Madeira Polyneon)</span></div><div class=\"row\"><span class=\"lbl\">Used on</span><span class=\"val\" style=\"font-weight:400\">Embroidery - Garment 1 - Graphic 1</span></div><div class=\"row\"><span class=\"lbl\">Screen print ink</span><span class=\"val\"><div style=\"margin:2px 0\"><span class=\"swatch\" style=\"display:inline-block;width:16px;height:16px;border:1px solid #777;border-radius:3px;vertical-align:-4px;margin-right:6px;background:#ace4e5;-webkit-print-color-adjust:exact;print-color-adjust:exact\"></span><b>Pantone 317 C</b> <span style=\"font-weight:400;color:#1b5e20\">· official match</span></div></span></div><div class=\"row\"><span class=\"lbl\">Vinyl</span><span class=\"val\"><div style=\"margin:2px 0\"><span class=\"swatch\" style=\"display:inline-block;width:16px;height:16px;border:1px solid #777;border-radius:3px;vertical-align:-4px;margin-right:6px;background:#009b97;-webkit-print-color-adjust:exact;print-color-adjust:exact\"></span><b>Turquoise (ORACAL 651-054)</b> <span style=\"font-weight:400;color:#666\">· not close · in stock</span></div><div style=\"margin:2px 0\"><span class=\"swatch\" style=\"display:inline-block;width:16px;height:16px;border:1px solid #777;border-radius:3px;vertical-align:-4px;margin-right:6px;background:#5fcdb7;-webkit-print-color-adjust:exact;print-color-adjust:exact\"></span><b>Mint (ORACAL 651-055)</b> <span style=\"font-weight:400;color:#666\">· visibly different · order-in</span></div></span></div></div><div class=\"garment\"><div class=\"ghead\"><span class=\"gname\"><span class=\"swatch\" style=\"display:inline-block;width:20px;height:20px;border:1px solid #777;border-radius:3px;vertical-align:-4px;margin-right:6px;background:#495b72;-webkit-print-color-adjust:exact;print-color-adjust:exact\"></span>1964 Stormy Sky Blue (Madeira Polyneon)</span></div><div class=\"row\"><span class=\"lbl\">Used on</span><span class=\"val\" style=\"font-weight:400\">Embroidery - Garment 1 - Graphic 1</span></div><div class=\"row\"><span class=\"lbl\">Screen print ink</span><span class=\"val\"><div style=\"margin:2px 0\"><span class=\"swatch\" style=\"display:inline-block;width:16px;height:16px;border:1px solid #777;border-radius:3px;vertical-align:-4px;margin-right:6px;background:#4c5b73;-webkit-print-color-adjust:exact;print-color-adjust:exact\"></span><b>Pantone 2376 C</b> <span style=\"font-weight:400;color:#666\">· near-identical</span></div></span></div><div class=\"row\"><span class=\"lbl\">Vinyl</span><span class=\"val\"><div style=\"margin:2px 0\"><span class=\"swatch\" style=\"display:inline-block;width:16px;height:16px;border:1px solid #777;border-radius:3px;vertical-align:-4px;margin-right:6px;background:#4b4c4c;-webkit-print-color-adjust:exact;print-color-adjust:exact\"></span><b>Dark Grey (ORACAL 651-073)</b> <span style=\"font-weight:400;color:#666\">· not close · in stock</span></div></span></div></div><div class=\"garment\"><div class=\"ghead\"><span class=\"gname\"><span class=\"swatch\" style=\"display:inline-block;width:20px;height:20px;border:1px solid #777;border-radius:3px;vertical-align:-4px;margin-right:6px;background:#a43c35;-webkit-print-color-adjust:exact;print-color-adjust:exact\"></span>1821 Terra Cotta (Madeira Polyneon)</span></div><div class=\"row\"><span class=\"lbl\">Used on</span><span class=\"val\" style=\"font-weight:400\">Embroidery - Garment 1 - Graphic 1</span></div><div class=\"row\"><span class=\"lbl\">Screen print ink</span><span class=\"val\"><div style=\"margin:2px 0\"><span class=\"swatch\" style=\"display:inline-block;width:16px;height:16px;border:1px solid #777;border-radius:3px;vertical-align:-4px;margin-right:6px;background:#bc302e;-webkit-print-color-adjust:exact;print-color-adjust:exact\"></span><b>Pantone 7620 C</b> <span style=\"font-weight:400;color:#1b5e20\">· official match</span></div></span></div><div class=\"row\"><span class=\"lbl\">Vinyl</span><span class=\"val\"><div style=\"margin:2px 0\"><span class=\"swatch\" style=\"display:inline-block;width:16px;height:16px;border:1px solid #777;border-radius:3px;vertical-align:-4px;margin-right:6px;background:#900e16;-webkit-print-color-adjust:exact;print-color-adjust:exact\"></span><b>Dark Red (ORACAL 651-030)</b> <span style=\"font-weight:400;color:#666\">· not close · in stock</span></div></span></div></div><div class=\"garment\"><div class=\"ghead\"><span class=\"gname\"><span class=\"swatch\" style=\"display:inline-block;width:20px;height:20px;border:1px solid #777;border-radius:3px;vertical-align:-4px;margin-right:6px;background:#2f3032;-webkit-print-color-adjust:exact;print-color-adjust:exact\"></span>1800 Emerald Black (Madeira Polyneon)</span></div><div class=\"row\"><span class=\"lbl\">Used on</span><span class=\"val\" style=\"font-weight:400\">Embroidery - Garment 1 - Graphic 1</span></div><div class=\"row\"><span class=\"lbl\">Screen print ink</span><span class=\"val\"><div style=\"margin:2px 0\"><span class=\"swatch\" style=\"display:inline-block;width:16px;height:16px;border:1px solid #777;border-radius:3px;vertical-align:-4px;margin-right:6px;background:#24282b;-webkit-print-color-adjust:exact;print-color-adjust:exact\"></span><b>Pantone 426 C</b> <span style=\"font-weight:400;color:#1b5e20\">· official match</span></div></span></div><div class=\"row\"><span class=\"lbl\">Vinyl</span><span class=\"val\"><div style=\"margin:2px 0\"><span class=\"swatch\" style=\"display:inline-block;width:16px;height:16px;border:1px solid #777;border-radius:3px;vertical-align:-4px;margin-right:6px;background:#231f20;-webkit-print-color-adjust:exact;print-color-adjust:exact\"></span><b>Matte Black (ORACAL 651-070M)</b> <span style=\"font-weight:400;color:#666\">· visibly different · in stock</span></div></span></div></div></div><div class=\"alsonote\">Matches are a place to start, not a guarantee. \"Official match\" is Madeira's own published Pantone-to-thread pair. Everything else is computed from on-screen swatches, which are approximations of the maker's charts - check the physical book, cone or roll before production. Pantone values come from an unofficial reference copy of the Coated book. Metallic colors are not matched.</div></div><div class=\"cfooter\">Other departments on this deal: <b>Embroidery, Graphics</b></div></section></body></html>",
+   "production-card-embroidery.html": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Embroidery</title><style>body{font-family:-apple-system,Segoe UI,Roboto,sans-serif;background:#e9eaec;margin:0;padding:24px;color:#1a1a1a}.pcard{background:#fff;max-width:760px;margin:0 auto 28px;border:1px solid #ccc;border-radius:6px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.08)}.strip{background:#111;color:#fff;padding:14px 18px}.stripline{display:flex;align-items:center;gap:12px;flex-wrap:wrap}.acct{font-size:18px;font-weight:700}.deal{color:#bbb;font-size:14px}.po{background:#ffd54f;color:#111;font-weight:700;padding:2px 10px;border-radius:4px;font-size:14px;white-space:nowrap}.po b{font-size:20px}.wd{color:#8ecbff;font-weight:700}@media print{.wd{display:none}}.rush{margin-left:auto;background:#d32f2f;color:#fff;font-weight:800;padding:3px 12px;border-radius:4px;letter-spacing:.05em}.stripmeta{display:flex;gap:18px;flex-wrap:wrap;margin-top:8px;font-size:14px;align-items:baseline}.dept{font-size:20px;font-weight:800}.pc{margin-left:auto}.pc b{font-size:20px}.due b{color:#ffd54f}.gsummary{background:#f0f7ff;border-bottom:1px solid #cfe3ff;padding:8px 18px;font-size:14px}.cbody{padding:16px 18px}.job{border:1px solid #ddd;border-radius:5px;margin-bottom:14px;overflow:hidden}.jhead{background:#f3f4f6;padding:8px 12px;font-weight:700;display:flex;justify-content:space-between}.jcount{color:#d32f2f}.omute{color:#999;font-weight:400;font-size:13px}.garment{border-left:3px solid #111;padding:10px 12px;margin:10px}.ghead{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px}.gname{font-size:16px;font-weight:700}.gqty{font-weight:700}.graphic{margin:8px 0 8px 10px;padding-left:12px;border-left:2px solid #ddd}.grtitle{font-weight:600;margin-bottom:4px}.row{display:flex;gap:8px;font-size:14px;padding:1px 0}.lbl{color:#666;min-width:170px}.val{font-weight:500}.row.crit .val{font-weight:800}.row.crit .lbl{color:#111}.plc{margin-top:5px}.prow{font-size:14px;background:#fff7e6;border:1px solid #ffe0a3;border-radius:3px;padding:3px 8px;margin:3px 0;display:inline-block}.ploc{font-weight:800}.alsonote{margin-top:6px;font-size:13px;background:#eef2ff;border:1px solid #c7d2fe;border-radius:3px;padding:5px 9px}.orow{padding:5px 12px;font-size:15px;border-bottom:1px solid #eee}.szrow{font-size:14px;padding:3px 0}.szrow .val{padding-left:10px}.szg{font-weight:800;margin-top:6px;padding-bottom:1px;border-bottom:1px solid #ccc}.szc{display:flex;flex-wrap:wrap;gap:4px 6px;align-items:baseline;padding:3px 0}.szn{font-weight:700;min-width:120px}.sz{border:1px solid #bbb;border-radius:3px;padding:0 6px;white-space:nowrap;background:#fafafa}.szt{color:#666;font-size:13px}.szu{color:#444}.szw{margin-top:5px;background:#fff4e5;border:1px solid #ffb74d;border-radius:3px;padding:4px 8px;font-weight:700;-webkit-print-color-adjust:exact;print-color-adjust:exact}.cfooter{background:#f3f4f6;padding:9px 18px;font-size:13px;color:#444;border-top:1px solid #ddd}</style></head><body><section class=\"pcard\"><div class=\"strip\"><div class=\"stripline\"><span class=\"acct\">Pat Example</span><span class=\"deal\">1000248 - Pat Example - Online Order</span></div><div class=\"stripmeta\"><span class=\"dept\">EMBROIDERY</span><span class=\"pc\">Print Count: <b>2</b></span><span class=\"due\">Due: <b>2026-11-09</b></span></div></div><div class=\"gsummary\"><b>Garments:</b> 2× KP55Y Port &amp; Company Youth Polo</div><div class=\"gsummary\"><b>Placement sizes:</b> Small: 2</div><div class=\"cbody\"><div class=\"job\"><div class=\"jhead\"><span>Embroidery</span><span class=\"jcount\">2 prints</span></div><div class=\"garment\"><div class=\"ghead\"><span class=\"gname\">KP55Y Port &amp; Company Youth Polo</span><span class=\"gqty\">Qty: 2</span></div><div class=\"row\"><span class=\"lbl\">SKU(s)</span><span class=\"val\">KP55Y</span></div><div class=\"szrow\"><div class=\"lbl\">Count / Colors / Sizes</div><div class=\"val\"><div class=\"szc\"><span class=\"szn\">Jet Black</span><span class=\"sz\">S <b>2</b></span><span class=\"szt\">= 2</span></div></div></div><div class=\"graphic\"><div class=\"grtitle\">Graphic 1: Children's Chorus Left chest 3.5\" wide</div><div class=\"row crit\"><span class=\"lbl\">Colors</span><span class=\"val\">4</span></div><div class=\"row\"><span class=\"lbl\">Colors Used</span><span class=\"val\">1645 Light Mint (Madeira Polyneon)\n1964 Stormy Sky Blue (Madeira Polyneon)\n1821 Terra Cotta (Madeira Polyneon)\n1800 Emerald Black (Madeira Polyneon)</span></div><div class=\"row\"><span class=\"lbl\">Chart colors (approx.)</span><span class=\"val\"><span class=\"swatch\" style=\"display:inline-block;width:14px;height:14px;border:1px solid #777;border-radius:2px;vertical-align:-2px;margin-right:4px;background:#76c8bc;-webkit-print-color-adjust:exact;print-color-adjust:exact\"></span>1645 Light Mint (Madeira Polyneon) &nbsp; <span class=\"swatch\" style=\"display:inline-block;width:14px;height:14px;border:1px solid #777;border-radius:2px;vertical-align:-2px;margin-right:4px;background:#495b72;-webkit-print-color-adjust:exact;print-color-adjust:exact\"></span>1964 Stormy Sky Blue (Madeira Polyneon) &nbsp; <span class=\"swatch\" style=\"display:inline-block;width:14px;height:14px;border:1px solid #777;border-radius:2px;vertical-align:-2px;margin-right:4px;background:#a43c35;-webkit-print-color-adjust:exact;print-color-adjust:exact\"></span>1821 Terra Cotta (Madeira Polyneon) &nbsp; <span class=\"swatch\" style=\"display:inline-block;width:14px;height:14px;border:1px solid #777;border-radius:2px;vertical-align:-2px;margin-right:4px;background:#2f3032;-webkit-print-color-adjust:exact;print-color-adjust:exact\"></span>1800 Emerald Black (Madeira Polyneon)</span></div><div class=\"row\"><span class=\"lbl\">Underbase</span><span class=\"val\">None</span></div><div class=\"plc\"><div class=\"prow\"><span class=\"ploc\">Left Chest</span> · Small · 3.5\" W × height in proportion</div></div></div><div class=\"row\"><span class=\"lbl\">Vendors</span><span class=\"val\">Inventory</span></div></div></div></div><div class=\"cfooter\">Other departments on this deal: <b>Graphics</b></div></section></body></html>",
+   "production-card-graphicdesign.html": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Graphics</title><style>body{font-family:-apple-system,Segoe UI,Roboto,sans-serif;background:#e9eaec;margin:0;padding:24px;color:#1a1a1a}.pcard{background:#fff;max-width:760px;margin:0 auto 28px;border:1px solid #ccc;border-radius:6px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.08)}.strip{background:#111;color:#fff;padding:14px 18px}.stripline{display:flex;align-items:center;gap:12px;flex-wrap:wrap}.acct{font-size:18px;font-weight:700}.deal{color:#bbb;font-size:14px}.po{background:#ffd54f;color:#111;font-weight:700;padding:2px 10px;border-radius:4px;font-size:14px;white-space:nowrap}.po b{font-size:20px}.wd{color:#8ecbff;font-weight:700}@media print{.wd{display:none}}.rush{margin-left:auto;background:#d32f2f;color:#fff;font-weight:800;padding:3px 12px;border-radius:4px;letter-spacing:.05em}.stripmeta{display:flex;gap:18px;flex-wrap:wrap;margin-top:8px;font-size:14px;align-items:baseline}.dept{font-size:20px;font-weight:800}.pc{margin-left:auto}.pc b{font-size:20px}.due b{color:#ffd54f}.gsummary{background:#f0f7ff;border-bottom:1px solid #cfe3ff;padding:8px 18px;font-size:14px}.cbody{padding:16px 18px}.job{border:1px solid #ddd;border-radius:5px;margin-bottom:14px;overflow:hidden}.jhead{background:#f3f4f6;padding:8px 12px;font-weight:700;display:flex;justify-content:space-between}.jcount{color:#d32f2f}.omute{color:#999;font-weight:400;font-size:13px}.garment{border-left:3px solid #111;padding:10px 12px;margin:10px}.ghead{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px}.gname{font-size:16px;font-weight:700}.gqty{font-weight:700}.graphic{margin:8px 0 8px 10px;padding-left:12px;border-left:2px solid #ddd}.grtitle{font-weight:600;margin-bottom:4px}.row{display:flex;gap:8px;font-size:14px;padding:1px 0}.lbl{color:#666;min-width:170px}.val{font-weight:500}.row.crit .val{font-weight:800}.row.crit .lbl{color:#111}.plc{margin-top:5px}.prow{font-size:14px;background:#fff7e6;border:1px solid #ffe0a3;border-radius:3px;padding:3px 8px;margin:3px 0;display:inline-block}.ploc{font-weight:800}.alsonote{margin-top:6px;font-size:13px;background:#eef2ff;border:1px solid #c7d2fe;border-radius:3px;padding:5px 9px}.orow{padding:5px 12px;font-size:15px;border-bottom:1px solid #eee}.szrow{font-size:14px;padding:3px 0}.szrow .val{padding-left:10px}.szg{font-weight:800;margin-top:6px;padding-bottom:1px;border-bottom:1px solid #ccc}.szc{display:flex;flex-wrap:wrap;gap:4px 6px;align-items:baseline;padding:3px 0}.szn{font-weight:700;min-width:120px}.sz{border:1px solid #bbb;border-radius:3px;padding:0 6px;white-space:nowrap;background:#fafafa}.szt{color:#666;font-size:13px}.szu{color:#444}.szw{margin-top:5px;background:#fff4e5;border:1px solid #ffb74d;border-radius:3px;padding:4px 8px;font-weight:700;-webkit-print-color-adjust:exact;print-color-adjust:exact}.cfooter{background:#f3f4f6;padding:9px 18px;font-size:13px;color:#444;border-top:1px solid #ddd}</style></head><body><section class=\"pcard\"><div class=\"strip\"><div class=\"stripline\"><span class=\"acct\">Pat Example</span><span class=\"deal\">1000248 - Pat Example - Online Order</span></div><div class=\"stripmeta\"><span class=\"dept\">GRAPHIC DESIGN / ARTWORK</span><span class=\"due\">Due: <b>2026-11-09</b></span></div></div><div class=\"cbody\"><div class=\"job\"><div class=\"jhead\"><span>Artwork 1</span><span class=\"omute\">Embroidery — KP55Y Port &amp; Company Youth Polo</span></div><div class=\"garment\"><div class=\"row crit\"><span class=\"lbl\">File needed</span><span class=\"val\">DST - a digitized embroidery file</span></div><div class=\"row crit\"><span class=\"lbl\">Description</span><span class=\"val\">Children's Chorus Left chest 3.5\" wide</span></div><div class=\"row\"><span class=\"lbl\">Print Ready?</span><span class=\"val\">true</span></div><div class=\"row crit\"><span class=\"lbl\">Format</span><span class=\"val\">DST</span></div><div class=\"row\"><span class=\"lbl\">Fine Detail?</span><span class=\"val\">No</span></div><div class=\"row\"><span class=\"lbl\">Colors</span><span class=\"val\">4</span></div><div class=\"row\"><span class=\"lbl\">Colors Used</span><span class=\"val\">1645 Light Mint (Madeira Polyneon)\n1964 Stormy Sky Blue (Madeira Polyneon)\n1821 Terra Cotta (Madeira Polyneon)\n1800 Emerald Black (Madeira Polyneon)</span></div><div class=\"row\"><span class=\"lbl\">Fonts</span><span class=\"val\">NA</span></div></div></div></div><div class=\"cfooter\">Other departments on this deal: <b>Embroidery</b></div></section></body></html>"
+  }
+ }
+}
