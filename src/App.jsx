@@ -30,6 +30,7 @@ import { buildOnboardingNote } from "./onboardingNote";
 import { lumpedConcerns, LUMPED_QUESTION } from "./lumpedOrder";
 import { applyGarmentSplits } from "./garmentSplit";
 import { requestDealFolders, shouldRequestFolders } from "./dealFolders";
+import { afterRequestLeaves, requestArtCopy, shouldCopyArt } from "./artCopy";
 import { buildColorMatches } from "./colorMatch";
 import {
   CUSTOMER_NOTES_QUESTION,
@@ -317,37 +318,38 @@ function App() {
       const noteId = response?.data?.[0]?.details?.id;
       if (noteId !== null || noteId !== undefined) {
         // work on uploading attachments
-        if (attachments.length > 0) {
-          for (let i = 0; i < attachments.length; i++) {
-            const file = attachments[i];
-            const fileName = file.name;
-            const blob = await file.arrayBuffer(); // Convert to Blob content
+        let filesOnNote = 0;
+        for (let i = 0; i < attachments.length; i++) {
+          const file = attachments[i];
+          const fileName = file.name;
+          const blob = await file.arrayBuffer(); // Convert to Blob content
 
-            const fileContent = new Blob([blob], { type: file.type });
+          const fileContent = new Blob([blob], { type: file.type });
 
-            try {
-              const response = await ZOHO.CRM.API.attachFile({
-                Entity: "Notes",
-                RecordID: noteId,
-                File: {
-                  Name: fileName,
-                  Content: fileContent,
-                },
-              });
-
-              if (i === attachments.length - 1) {
-                ZOHO.CRM.UI.Popup.closeReload();
-                setLoading(false);
-              }
-            } catch (err) {
-              console.error("Upload failed for", fileName, err);
-            }
+          try {
+            await ZOHO.CRM.API.attachFile({
+              Entity: "Notes",
+              RecordID: noteId,
+              File: {
+                Name: fileName,
+                Content: fileContent,
+              },
+            });
+            filesOnNote++;
+          } catch (err) {
+            console.error("Upload failed for", fileName, err);
           }
-        } else {
-          // No attachments, just close
-          ZOHO.CRM.UI.Popup.closeReload();
-          setLoading(false);
         }
+
+        // E-72: ask the CRM to copy the note's files into the Deal's WorkDrive Art Assets. AFTER the
+        // last upload (the function reads them from the note). Only when a file arrived, and only on a
+        // Deal the folder automation owns (see artCopy.js). The copy itself is not waited for; the close
+        // waits at most 2 s so the request leaves before closeReload() reloads the Deal page.
+        if (noteId && shouldCopyArt(recordData, filesOnNote)) {
+          await afterRequestLeaves(requestArtCopy(entityId, noteId));
+        }
+        ZOHO.CRM.UI.Popup.closeReload();
+        setLoading(false);
       }
     }
   };
