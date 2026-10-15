@@ -8,7 +8,7 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
-import React, { useEffect } from "react";
+import React, { useContext, useEffect } from "react";
 import {
   Controller,
   useFieldArray,
@@ -21,6 +21,8 @@ import { styleOptionsFor } from "../sizeRows";
 import { checkGarmentQuantity } from "../quantityCheck";
 import LumpedGuard from "./LumpedGuard";
 import { ON_GARMENT, SPLIT_LABEL } from "../garmentSplit";
+import { GARMENT_KINDS } from "../placements";
+import { StrictEntry } from "./strictEntry";
 
 const GarmentPrimaryBranchForm = ({
   index,
@@ -32,6 +34,7 @@ const GarmentPrimaryBranchForm = ({
   onUndoSplit,
 }) => {
   const { control } = useFormContext();
+  const strict = useContext(StrictEntry); // E-74: the onboarding form requires the Garment kind
   // E-58: this garment is part of a split when it has copies or is one (garmentSplit.splitInfo).
   const inSplit = !!split && split.group.length > 1;
   const hasCopies = !!split && split.copies.length > 0;
@@ -193,6 +196,34 @@ const GarmentPrimaryBranchForm = ({
             label="Garment Type (Brand / Style)"
             {...field}
             sx={{ mb: "1rem", mt: "5px" }}
+          />
+        )}
+      />
+
+      {/* E-74: what kind of garment it is -- picked, so each placement offers only the spots that garment has. */}
+      <Controller
+        control={control}
+        name={`products.${index}.primaryBranches.${branchIndex}.garmentKind`}
+        defaultValue=""
+        rules={{ validate: (v) => !strict || !!v || "Pick the garment kind" }}
+        render={({ field, fieldState }) => (
+          <Autocomplete
+            options={GARMENT_KINDS}
+            autoHighlight
+            openOnFocus
+            value={field.value || null}
+            onChange={(_, v) => field.onChange(v || "")}
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                label={strict ? "Garment Kind *" : "Garment Kind"}
+                size="small"
+                inputRef={field.ref}
+                error={!!fieldState.error}
+                helperText={fieldState.error ? fieldState.error.message : "Sets which placements are offered below"}
+              />
+            )}
+            sx={{ mb: "1rem" }}
           />
         )}
       />
