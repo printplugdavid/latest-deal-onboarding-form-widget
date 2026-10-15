@@ -157,7 +157,8 @@ export function sizeText(width, height, note) {
   const w = sizeOk(width) && str(width) ? side(width) : "";
   const h = sizeOk(height) && str(height) ? side(height) : "";
   const size = w && h ? `${w}" W × ${h}" H` : w ? `${w}" W × height in proportion` : h ? `width in proportion × ${h}" H` : "";
-  const n = str(note);
+  // Placement details may run over several lines; the size line stays one line (the note parsers read it as one).
+  const n = str(note).split(/\s*\n\s*/).filter(Boolean).join(" / ");
   return [size, n].filter(Boolean).join(" · ");
 }
 
