@@ -333,7 +333,9 @@ const GarmentPrimaryBranchForm = ({
       {secondaryBranches?.map((_, secBranchIndex) => {
         const off = inSplit && graphicTicks?.[secBranchIndex]?.[ON_GARMENT] === false;
         return (
-          <Box key={`${index}-${branchIndex}-${secBranchIndex}`}>
+          // display flow-root: GarmentSecondaryBranchForm floats right, so without it the NEXT graphic's tick
+          // (E-58) slid up into the gap beside this graphic and overlapped its heading (David's screenshot, 10-15).
+          <Box key={`${index}-${branchIndex}-${secBranchIndex}`} sx={{ display: "flow-root" }}>
             {/* E-58: in a split, each graphic has its own tick for this garment. Unticked = left out
                 of this garment when the form is submitted (garmentSplit.applyGarmentSplits). */}
             {inSplit && (

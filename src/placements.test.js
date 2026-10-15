@@ -89,6 +89,7 @@ describe("sizes", () => {
     expect(sizeText("3", "", "3 in down from collar")).toBe('3" W × height in proportion · 3 in down from collar');
     expect(sizeText("", "", "centered on pocket")).toBe("centered on pocket");
     expect(sizeText("", "")).toBe("");
+    expect(sizeText("8", "", "name 8 in wide\n  number 4 in tall ")).toBe('8" W × height in proportion · name 8 in wide / number 4 in tall');
     expect(sizeText("wide", "")).toBe(""); // an unreadable size is never written
   });
 });

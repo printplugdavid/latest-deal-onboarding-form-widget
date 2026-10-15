@@ -19,7 +19,7 @@ import { StrictEntry } from "./strictEntry";
  * One placement = ONE ROW (E-40, 2026-10-06), now PICKED, not typed (E-74, David 2026-10-15):
  *   location -- a list for this garment's kind (Garment Kind on the garment type), or "Other…" + one line
  *   size     -- Width and Height in inches; one side alone reads "… in proportion"
- *   an optional one-line Position note (an offset like "3 in down from collar")
+ *   optional Placement details (free text, for nuance the picks cannot say -- David, 2026-10-15)
  *   Small / Medium / Large as before (required on Embroidery), pre-filled from the location when clear.
  *
  * ⚠️ What is SAVED for every reader is unchanged: `placementLocation` and `sizeAndDimensions` stay text, written
@@ -233,24 +233,29 @@ const GarmentTartiaryBranch = ({
             />
           )}
         />
-        <Controller
-          control={control}
-          name={`${base}.positionNote`}
-          defaultValue=""
-          render={({ field }) => (
-            <TextField
-              size="small"
-              label="Position note (optional)"
-              placeholder="e.g. 3 in down from collar"
-              value={field.value || ""}
-              inputRef={field.ref}
-              onChange={(e) => resize("positionNote", e.target.value)}
-              inputProps={{ maxLength: 80 }}
-              sx={{ flex: "1 1 0", minWidth: 0 }}
-            />
-          )}
-        />
       </Box>
+      {/* David, 2026-10-15: keep an optional spot for placement / size nuance the picks cannot say. */}
+      <Controller
+        control={control}
+        name={`${base}.positionNote`}
+        defaultValue=""
+        render={({ field }) => (
+          <TextField
+            size="small"
+            multiline
+            minRows={1}
+            maxRows={4}
+            fullWidth
+            label="Placement details (optional)"
+            placeholder="Anything the boxes above don't cover, e.g. 3 in down from collar · name 8 in wide, number 4 in tall"
+            value={field.value || ""}
+            inputRef={field.ref}
+            onChange={(e) => resize("positionNote", e.target.value)}
+            inputProps={{ maxLength: 300 }}
+            sx={{ mt: "0.5rem" }}
+          />
+        )}
+      />
       <Typography variant="caption" sx={{ display: "block", color: "text.secondary", mt: "0.2rem", pl: "0.2rem" }}>
         {reads
           ? `Reads: ${reads}`
