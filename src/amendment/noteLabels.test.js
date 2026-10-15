@@ -40,3 +40,15 @@ describe("E-77 Korie's note: staff-headed lines stay inside their value", () => 
     expect(parseNoteToForm(note, KNOWN).values.specialInstructions).toBe("call first");
   });
 });
+
+describe("docs/45: the automatic-onboarding line at the end of a note is ignored", () => {
+  test("Amendment / QC reader: same values with or without it", () => {
+    const { buildSubmission } = require("../submission");
+    const golden = require("../__fixtures__/auto-1000248.json");
+    const form = JSON.parse(JSON.stringify(golden.form));
+    const withLine = buildSubmission(form, golden.dealInfo).note;
+    const without = buildSubmission(form, {}).note;
+    expect(withLine).not.toBe(without);
+    expect(parseNoteToForm(withLine, ["Embroidery#garment"])).toEqual(parseNoteToForm(without, ["Embroidery#garment"]));
+  });
+});
