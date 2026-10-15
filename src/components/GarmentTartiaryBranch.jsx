@@ -40,7 +40,7 @@ const GarmentTartiaryBranch = ({
   productName,
   onRemove,
 }) => {
-  const { control, setValue, getValues } = useFormContext();
+  const { control, setValue, getValues, trigger } = useFormContext();
   const strict = useContext(StrictEntry);
   const garmentBase = `products.${index}.primaryBranches.${branchIndex}`;
   const base = `${garmentBase}.secondaryBranches.${secBranchIndex}.tartiaryBranches.${tarBranchIndex}`;
@@ -50,6 +50,9 @@ const GarmentTartiaryBranch = ({
   const choices = locationsFor(kind);
 
   const set = (name, v) => setValue(`${base}.${name}`, v, { shouldDirty: true });
+  // The picks are written with setValue, which does not re-check a field -- so an error shown earlier would stay
+  // after the rep fixed it. Re-check this row's fields whenever one of them changes.
+  const recheck = (...names) => trigger(names.map((n) => `${base}.${n}`));
 
   // A pick writes the location text; on Embroidery an empty Small/Medium/Large is suggested from it.
   const choose = (next) => {
@@ -62,6 +65,7 @@ const GarmentTartiaryBranch = ({
       const s = embroiderySizeFor(p, kind);
       if (s) set("placementSize", s);
     }
+    recheck("placementPick", "placementOther", "placementSize", "widthIn");
   };
 
   // Any size box writes the size line from all three.
@@ -69,6 +73,7 @@ const GarmentTartiaryBranch = ({
     set(name, v);
     const now = { widthIn: getValues(`${base}.widthIn`), heightIn: getValues(`${base}.heightIn`), positionNote: getValues(`${base}.positionNote`), [name]: v };
     set("sizeAndDimensions", sizeText(now.widthIn, now.heightIn, now.positionNote));
+    recheck("widthIn", "heightIn");
   };
 
   const legacySize =
@@ -124,6 +129,7 @@ const GarmentTartiaryBranch = ({
                   set("placementPick", OTHER);
                   set("placementOther", t);
                   set("placementLocation", str(t));
+                  recheck("placementOther", "placementPick");
                 }}
                 inputProps={{ maxLength: 80 }}
                 error={!!fieldState.error}
