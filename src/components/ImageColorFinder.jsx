@@ -103,7 +103,7 @@ const ImageColorFinder = ({ mode, onAdd }) => {
   if (!open) {
     return (
       <Button size="small" variant="outlined" onClick={() => setOpen(true)} sx={{ textTransform: "none", mt: "0.4rem", mb: "0.2rem", fontSize: "0.8rem" }}>
-        🖼️ Find colors from an image (logo / art)
+        Find colors from an image (logo / art)
       </Button>
     );
   }
