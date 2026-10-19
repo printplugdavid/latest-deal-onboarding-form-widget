@@ -12,7 +12,7 @@ import {
   Alert,
   CircularProgress,
 } from "@mui/material";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Controller, FormProvider, useForm, useWatch } from "react-hook-form";
 import { useFieldArray } from "react-hook-form";
 import GarmentForm from "./components/GarmentForm";
@@ -31,6 +31,8 @@ import { lumpedConcerns, LUMPED_QUESTION } from "./lumpedOrder";
 import { applyGarmentSplits } from "./garmentSplit";
 import { requestDealFolders, shouldRequestFolders } from "./dealFolders";
 import { afterRequestLeaves, requestArtCopy, shouldCopyArt } from "./artCopy";
+import { ArtFilesContext } from "./components/GraphicArt";
+import { MAX_UPLOAD_BYTES, artKey, collectArtFiles } from "./graphicArt";
 import {
   CUSTOMER_NOTES_QUESTION,
   CUSTOMER_NOTES_TOOLTIP,
@@ -57,6 +59,8 @@ function App() {
 
   const [attachments, setAttachments] = useState([]);
   const [fileError, setFileError] = useState("");
+  // E-95: art attached per graphic. The File objects stay here (keyed); the graphic saves { name, size, key }.
+  const artFilesRef = useRef(new Map());
 
   const [loading, setLoading] = useState(false);
 
@@ -116,6 +120,25 @@ function App() {
     setValue,
     formState: { errors },
   } = methods;
+
+  // E-95: one 15MB total for everything on the note -- every graphic's art plus the "Other files".
+  const artBytes = () => collectArtFiles(methods.getValues("products")).reduce((n, a) => n + (a.size || 0), 0);
+  const otherBytes = (list) => (list || []).reduce((n, f) => n + f.size, 0);
+  const artFiles = useMemo(
+    () => ({
+      get: (key) => artFilesRef.current.get(key),
+      put: (file) => {
+        const key = artKey(file);
+        artFilesRef.current.set(key, file);
+        return key;
+      },
+      room: (addBytes) =>
+        artBytes() + otherBytes(attachments) + addBytes > MAX_UPLOAD_BYTES
+          ? `All files together (art + other files) cannot exceed 15MB.`
+          : "",
+    }),
+    [attachments] // eslint-disable-line react-hooks/exhaustive-deps
+  );
 
   const {
     fields: productFields,
@@ -310,10 +333,14 @@ function App() {
       // ZOHO.CRM.UI.Popup.closeReload();
       const noteId = response?.data?.[0]?.details?.id;
       if (noteId !== null || noteId !== undefined) {
-        // work on uploading attachments
+        // work on uploading attachments: every graphic's art (E-95) and the "Other files", each file once
+        const uploads = [
+          ...collectArtFiles(data?.products).map((a) => artFilesRef.current.get(a.key)).filter(Boolean),
+          ...attachments,
+        ].filter((f, i, all) => all.findIndex((g) => artKey(g) === artKey(f)) === i);
         let filesOnNote = 0;
-        for (let i = 0; i < attachments.length; i++) {
-          const file = attachments[i];
+        for (let i = 0; i < uploads.length; i++) {
+          const file = uploads[i];
           const fileName = file.name;
           const blob = await file.arrayBuffer(); // Convert to Blob content
 
@@ -353,6 +380,7 @@ function App() {
         <FormProvider {...methods}>
           {/* E-74: Garment kind, placement location and a width or height are required here (not in the Amendment Form). */}
           <StrictEntry.Provider value={true}>
+          <ArtFilesContext.Provider value={artFiles}>
           <Box
             sx={{
               width: "90%",
@@ -974,7 +1002,7 @@ function App() {
                   mb: 1,
                 }}
               >
-                File Upload (Max total: 15MB)
+                Other files (PO, reference photos, mock-ups) -- art goes with each graphic above (max total for all files: 15MB)
               </Typography>
 
               <input
@@ -987,8 +1015,8 @@ function App() {
                     0,
                   );
 
-                  if (totalSize > 15 * 1024 * 1024) {
-                    setFileError("Total file size cannot exceed 15MB.");
+                  if (totalSize + artBytes() > MAX_UPLOAD_BYTES) {
+                    setFileError("All files together (art + other files) cannot exceed 15MB.");
                     setAttachments([]);
                   } else {
                     setFileError("");
@@ -1232,6 +1260,7 @@ function App() {
               </Button>
             </Box>
           </Box>
+          </ArtFilesContext.Provider>
           </StrictEntry.Provider>
         </FormProvider>
       </Box>

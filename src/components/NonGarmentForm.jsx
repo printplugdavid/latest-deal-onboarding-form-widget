@@ -14,6 +14,7 @@ import {
   useWatch,
 } from "react-hook-form";
 import ColorsUsedField from "./ColorsUsedField";
+import GraphicArt from "./GraphicArt";
 
 const NonGarmentForm = ({ index }) => {
   const { control } = useFormContext();
@@ -123,6 +124,11 @@ const NonGarmentForm = ({ index }) => {
               />
             )}
           />
+
+          {/* E-95: this graphic's own art file(s) and its colors, read from the file */}
+          <Box sx={{ mt: "1rem" }}>
+            <GraphicArt base={`products.${index}.branches.${branchIndex}`} productIndex={index} />
+          </Box>
 
           <Box>
             <Controller

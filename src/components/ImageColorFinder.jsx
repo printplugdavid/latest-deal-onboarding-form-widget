@@ -1,6 +1,6 @@
 /*
- * ImageColorFinder -- E-87. "Find colors from an image", inside each color panel (screen print ink,
- * embroidery thread, cut vinyl).
+ * ImageColorFinder -- E-87. "Find colors from an image". Since E-95 it lives in each graphic's "Art for this graphic"
+ * row: it reads the art file attached to that graphic (`file`), or a picture the rep picks (Amendment Form, not saved).
  *
  * The rep picks a logo / art file; its main colors are found in the browser (imageColors.js) and each
  * is shown with its closest Pantone (Coated) + house ink, thread and ORACAL vinyl -- all four charts,
@@ -13,6 +13,7 @@
 import React, { useEffect, useState } from "react";
 import { Box, Button, Typography } from "@mui/material";
 import { IMAGE_COLOR_CAVEAT, findImageColors, imageColorMatches, readImageFile } from "../imageColors";
+import { hexLine } from "../graphicArt";
 
 const Dot = ({ background, size = 16 }) => (
   <Box
@@ -21,7 +22,7 @@ const Dot = ({ background, size = 16 }) => (
   />
 );
 const ACCEPT = "image/png,image/jpeg,image/gif,image/webp,image/svg+xml,image/bmp";
-const DEPT_FOR = { ink: "Screen print", thread: "Embroidery", vinyl: "Vinyl" };
+const DEPT_FOR = { ink: "Screen print", thread: "Embroidery", vinyl: "Vinyl", hex: "DTF / DTG / print" };
 
 const Match = ({ m, onAdd, addLabel }) => (
   <Box component="span" sx={{ display: "inline-flex", alignItems: "center", gap: "0.3rem", mr: "0.9rem" }}>
@@ -50,21 +51,26 @@ const Line = ({ dept, mine, children }) => (
 );
 
 /*
- * mode   -- "ink" | "thread" | "vinyl": which chart this panel writes into
- * onAdd  -- (picks) => void, picks = [{ kind, match }], kind "pantone" | "house" | "thread" | "vinyl".
- *           The panel types one line per pick into its box (all in one change, so "add all" keeps every line).
+ * mode     -- "ink" | "thread" | "vinyl" | "hex" (E-95: DTF / DTG / printable vinyl): which chart Add writes in
+ * onAdd    -- (picks) => void, picks = [{ kind, match }], kind "pantone" | "house" | "thread" | "vinyl" | "hex".
+ *             The caller types one line per pick into the graphic's box (all in one change).
+ * file     -- E-95: read this File straight away (the graphic's attached art) instead of asking for one
+ * onClose  -- E-95: called by Close (the art row hides the finder)
  */
-const ImageColorFinder = ({ mode, onAdd }) => {
-  const [open, setOpen] = useState(false);
+const ImageColorFinder = ({ mode, onAdd, file: givenFile, onClose, startOpen }) => {
+  const [open, setOpen] = useState(!!(startOpen || givenFile));
   const [state, setState] = useState(null); // { name, preview, colors: [{ hex, share, background, matches }] } | { error }
   const [busy, setBusy] = useState(false);
   const [showBackground, setShowBackground] = useState(false);
 
   useEffect(() => () => state && state.preview && URL.revokeObjectURL(state.preview), [state]);
 
-  const pick = async (e) => {
+  const pick = (e) => {
     const file = e.target.files && e.target.files[0];
     e.target.value = ""; // the same file can be picked again
+    read(file);
+  };
+  const read = async (file) => {
     if (!file) return;
     if (/\.(ai|eps|pdf|psd|cdr)$/i.test(file.name)) {
       setState({ error: `${file.name} is a design file, not a picture. Export it as PNG, JPG or SVG first, then pick that.` });
@@ -82,7 +88,12 @@ const ImageColorFinder = ({ mode, onAdd }) => {
     setBusy(false);
   };
 
+  useEffect(() => {
+    if (givenFile) read(givenFile);
+  }, [givenFile]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const mine = (kind) => (mode === "ink" ? kind === "pantone" || kind === "house" : kind === mode);
+  const hexMatch = (c) => ({ label: hexLine(c.hex), hex: c.hex, quality: "exact from the art" });
   const add = (kind, m) => (mine(kind) ? () => onAdd([{ kind, match: m }]) : null);
   // "Add all": the closest match in this panel's own chart for every color that is not the background.
   // On screen print a near-identical house ink wins: it is in stock, no mixing.
@@ -96,6 +107,7 @@ const ImageColorFinder = ({ mode, onAdd }) => {
         else if (mode === "ink" && mt.pantone[0]) picks.push({ kind: "pantone", match: mt.pantone[0] });
         else if (mode === "thread" && mt.threads[0]) picks.push({ kind: "thread", match: mt.threads[0] });
         else if (mode === "vinyl" && mt.vinyls[0]) picks.push({ kind: "vinyl", match: mt.vinyls[0] });
+        else if (mode === "hex") picks.push({ kind: "hex", match: hexMatch(c) });
       });
     if (picks.length) onAdd(picks);
   };
@@ -113,16 +125,21 @@ const ImageColorFinder = ({ mode, onAdd }) => {
     <Box sx={{ border: "1px solid #c5d5ea", borderRadius: 1, p: 1.25, mt: "0.4rem", mb: "0.5rem", bgcolor: "#f6f9fd" }}>
       <Box sx={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
         <Typography sx={{ fontSize: "0.85rem", fontWeight: 700 }}>Find colors from an image</Typography>
-        <Button size="small" variant="contained" component="label" sx={{ textTransform: "none", py: "1px", fontSize: "0.8rem" }} disabled={busy}>
-          {busy ? "Reading…" : state && state.colors ? "Pick another image" : "Pick an image"}
-          <input hidden type="file" accept={ACCEPT} onChange={pick} aria-label="Pick an image to find its colors" />
-        </Button>
+        {givenFile ? (
+          busy && <Typography sx={{ fontSize: "0.8rem", color: "#555" }}>Reading…</Typography>
+        ) : (
+          <Button size="small" variant="contained" component="label" sx={{ textTransform: "none", py: "1px", fontSize: "0.8rem" }} disabled={busy}>
+            {busy ? "Reading…" : state && state.colors ? "Pick another image" : "Pick an image"}
+            <input hidden type="file" accept={ACCEPT} onChange={pick} aria-label="Pick an image to find its colors" />
+          </Button>
+        )}
         <Button
           size="small"
           variant="text"
           onClick={() => {
             setState(null);
             setOpen(false);
+            if (onClose) onClose();
           }}
           sx={{ textTransform: "none", py: 0, fontSize: "0.8rem", ml: "auto" }}
         >
@@ -155,7 +172,8 @@ const ImageColorFinder = ({ mode, onAdd }) => {
               )}
               {nonBackground > 0 && (
                 <Button size="small" variant="outlined" onClick={addAll} sx={{ textTransform: "none", mt: "0.4rem", py: "1px", fontSize: "0.8rem" }}>
-                  Add the closest {mode === "ink" ? "Pantone / house ink" : mode === "thread" ? `${(shown[0].matches.threads[0] || {}).brand || ""} thread` : "vinyl"} for all {nonBackground}
+                  {mode === "hex" ? "Add the HEX code" : "Add the closest"}{" "}
+                  {mode === "ink" ? "Pantone / house ink" : mode === "thread" ? `${(shown[0].matches.threads[0] || {}).brand || ""} thread` : mode === "hex" ? "" : "vinyl"} for all {nonBackground}
                   {shown.some((c) => c.background) ? " (not the background)" : ""}
                 </Button>
               )}
@@ -177,6 +195,9 @@ const ImageColorFinder = ({ mode, onAdd }) => {
               </Box>
               {(!c.background || showBackground) && (
               <>
+              <Line dept="HEX (DTF / DTG)" mine={mode === "hex"}>
+                <Match m={hexMatch(c)} onAdd={add("hex", hexMatch(c))} />
+              </Line>
               <Line dept="Screen print" mine={mode === "ink"}>
                 {c.matches.pantone.slice(0, mode === "ink" ? 3 : 1).map((m) => (
                   <Match key={m.label} m={m} onAdd={add("pantone", m)} />

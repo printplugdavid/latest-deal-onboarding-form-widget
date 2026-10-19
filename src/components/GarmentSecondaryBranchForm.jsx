@@ -17,6 +17,7 @@ import {
 } from "react-hook-form";
 import GarmentTartiaryBranch from "./GarmentTartiaryBranch";
 import ColorsUsedField from "./ColorsUsedField";
+import GraphicArt from "./GraphicArt";
 
 const GarmentSecondaryBranchForm = ({
   index,
@@ -118,6 +119,13 @@ const GarmentSecondaryBranchForm = ({
             sx={{ mb: "1rem", mt: "5px" }}
           />
         )}
+      />
+
+      {/* E-95: this graphic's own art file(s) and its colors, read from the file */}
+      <GraphicArt
+        base={`products.${index}.primaryBranches.${branchIndex}.secondaryBranches.${secBranchIndex}`}
+        productName={productName}
+        productIndex={index}
       />
 
       <Box>

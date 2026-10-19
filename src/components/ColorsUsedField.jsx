@@ -12,7 +12,6 @@ import { useFormContext, useWatch } from "react-hook-form";
 import { addColorToText, catalogFor, readColors, swatchBackground } from "../colorCatalogs";
 import { colorModeFor } from "../colorLibrary";
 import { InkColors, ThreadColors } from "./ColorPanels";
-import ImageColorFinder from "./ImageColorFinder";
 
 const Dot = ({ color, size = 16 }) => (
   <Box
@@ -82,10 +81,6 @@ const ColorsUsedField = ({ field, productIndex, countName, label, sx }) => {
         renderInput={(params) => (
           <TextField {...params} label={`Pick a ${catalog.label} color to add`} sx={{ mt: "5px" }} />
         )}
-      />
-      <ImageColorFinder
-        mode="vinyl"
-        onAdd={(picks) => field.onChange(picks.reduce((t, p) => addColorToText(t, p.match.name, catalog), field.value))}
       />
       {box}
       {matched.length > 0 && (
