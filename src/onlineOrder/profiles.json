@@ -89,62 +89,130 @@
     "from": "onboarding of order 1000241"
   },
   "ShirtFrontWhite": {
-    "product": "Direct-to-Film",
-    "colors": [
-      "Navy"
-    ],
-    "graphic": {
-      "graphicDescription": "Buhler chest image 10\" wide",
-      "isGraphicPrintReady": true,
-      "currentGraphicFormat": "ai",
-      "fineDetail": "No",
-      "specialtyThread": false,
-      "upchargeAcknowledged": false,
-      "numberOfColorsUsed": "2",
-      "underbase": "None",
-      "colorsUsed": "Gold\nWHite",
-      "colorChange": "No",
-      "detailsOfColorChange": "",
-      "fontsUsed": "NA",
-      "numberOfPlacements": "1",
-      "tartiaryBranches": [
-        {
-          "placementLocation": "Chest",
-          "sizeAndDimensions": "10\" wide",
-          "placementSize": "Large"
-        }
-      ]
-    },
-    "from": "onboarding of order 1000244"
+    "variants": [
+      {
+        "product": "Direct-to-Film",
+        "colors": [
+          "Navy"
+        ],
+        "graphic": {
+          "graphicDescription": "Buhler chest image 10\" wide",
+          "isGraphicPrintReady": true,
+          "currentGraphicFormat": "ai",
+          "fineDetail": "No",
+          "specialtyThread": false,
+          "upchargeAcknowledged": false,
+          "numberOfColorsUsed": "2",
+          "underbase": "None",
+          "colorsUsed": "Gold\nWHite",
+          "colorChange": "No",
+          "detailsOfColorChange": "",
+          "fontsUsed": "NA",
+          "numberOfPlacements": "1",
+          "tartiaryBranches": [
+            {
+              "placementLocation": "Chest",
+              "sizeAndDimensions": "10\" wide",
+              "placementSize": "Large"
+            }
+          ]
+        },
+        "from": "onboarding of order 1000244"
+      },
+      {
+        "product": "Direct-to-Film",
+        "colors": [
+          "White",
+          "Navy"
+        ],
+        "graphic": {
+          "graphicDescription": "Buhler full chest image 10\" wide",
+          "isGraphicPrintReady": true,
+          "currentGraphicFormat": "ai",
+          "fineDetail": "No",
+          "specialtyThread": false,
+          "upchargeAcknowledged": false,
+          "numberOfColorsUsed": "3",
+          "underbase": "None",
+          "colorsUsed": "Black #000000\nWhite #FEFEFE\nGold #BF8B28\nNavy #010161",
+          "colorChange": "Yes",
+          "detailsOfColorChange": "Navy Garment gets the white/gold and black ink\n\nWhite garmetn gets the Navy/ gold and white ink",
+          "fontsUsed": "NA",
+          "numberOfPlacements": "1",
+          "tartiaryBranches": [
+            {
+              "placementLocation": "Center Chest",
+              "sizeAndDimensions": "10\" W × height in proportion",
+              "placementSize": "Large"
+            }
+          ]
+        },
+        "from": "onboarding of order 1000247"
+      }
+    ]
   },
   "ShirtBackWhite": {
-    "product": "Direct-to-Film",
-    "colors": [
-      "Navy"
-    ],
-    "graphic": {
-      "graphicDescription": "Suit up back image 10\" wide",
-      "isGraphicPrintReady": true,
-      "currentGraphicFormat": "ai",
-      "fineDetail": "No",
-      "specialtyThread": false,
-      "upchargeAcknowledged": false,
-      "numberOfColorsUsed": "2",
-      "underbase": "None",
-      "colorsUsed": "White\nGold",
-      "colorChange": "No",
-      "detailsOfColorChange": "",
-      "fontsUsed": "NA",
-      "numberOfPlacements": "1",
-      "tartiaryBranches": [
-        {
-          "placementLocation": "Back",
-          "sizeAndDimensions": "10\" wide",
-          "placementSize": "Large"
-        }
-      ]
-    },
-    "from": "onboarding of order 1000244"
+    "variants": [
+      {
+        "product": "Direct-to-Film",
+        "colors": [
+          "Navy"
+        ],
+        "graphic": {
+          "graphicDescription": "Suit up back image 10\" wide",
+          "isGraphicPrintReady": true,
+          "currentGraphicFormat": "ai",
+          "fineDetail": "No",
+          "specialtyThread": false,
+          "upchargeAcknowledged": false,
+          "numberOfColorsUsed": "2",
+          "underbase": "None",
+          "colorsUsed": "White\nGold",
+          "colorChange": "No",
+          "detailsOfColorChange": "",
+          "fontsUsed": "NA",
+          "numberOfPlacements": "1",
+          "tartiaryBranches": [
+            {
+              "placementLocation": "Back",
+              "sizeAndDimensions": "10\" wide",
+              "placementSize": "Large"
+            }
+          ]
+        },
+        "from": "onboarding of order 1000244"
+      },
+      {
+        "product": "Direct-to-Film",
+        "colors": [
+          "White",
+          "Navy"
+        ],
+        "graphic": {
+          "graphicDescription": "Suit up back image 10\" wide",
+          "isGraphicPrintReady": true,
+          "currentGraphicFormat": "ai",
+          "fineDetail": "No",
+          "specialtyThread": false,
+          "upchargeAcknowledged": false,
+          "numberOfColorsUsed": "3",
+          "underbase": "None",
+          "colorsUsed": "Black #000000\nWhite #FEFEFE\nGold #BF8B28\nNavy #010161",
+          "colorChange": "Yes",
+          "detailsOfColorChange": "Navy Garment gets the white/gold and black ink\n\nWhite garmetn gets the Navy/ gold and white ink",
+          "fontsUsed": "NA",
+          "numberOfPlacements": "1",
+          "tartiaryBranches": [
+            {
+              "placementLocation": "Upper Back (Yoke)",
+              "sizeAndDimensions": "10\" W × height in proportion",
+              "placementSize": ""
+            }
+          ]
+        },
+        "from": "onboarding of order 1000247"
+      }
+    ]
   },
   "LongsleeveLeftChestWhite": {
     "product": "Direct-to-Film",

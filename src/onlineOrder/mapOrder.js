@@ -181,10 +181,19 @@ export function inksoftToFormData(order, deal, profiles, styles, rules = RULES, 
     let product = null;
     const arts = [...g.arts].sort((a, b) => (SIDE_ORDER[a[1]] ?? 9) - (SIDE_ORDER[b[1]] ?? 9));
     for (const [art] of arts) {
-      const p = profiles[art];
-      if (!p) { held.push(`new design "${art}" -- no onboarding describes it yet`); continue; }
-      const uncovered = [...g.colors].filter((c) => !p.colors.includes(c));
-      if (uncovered.length) held.push(`"${art}" has only been described on ${p.colors.join(' / ')} garments, not ${uncovered.join(' / ')}`);
+      const found = profiles[art];
+      if (!found) { held.push(`new design "${art}" -- no onboarding describes it yet`); continue; }
+      // E-79: an art may be described separately per set of garment colors (navy only; white + navy). Use the most
+      // specific description that covers every color in this garment entry; none covers them -> held, as before.
+      const variants = found.variants || [found];
+      const fits = variants.filter((v) => [...g.colors].every((c) => v.colors.includes(c)))
+        .sort((a, b) => a.colors.length - b.colors.length);
+      const p = fits[0] || variants[variants.length - 1];
+      if (!fits.length) {
+        const known = [...new Set(variants.flatMap((v) => v.colors))];
+        const uncovered = [...g.colors].filter((c) => !known.includes(c));
+        held.push(`"${art}" has only been described on ${known.join(' / ')} garments, not ${(uncovered.length ? uncovered : [...g.colors]).join(' / ')}`);
+      }
       if (product && product !== p.product) held.push(`one garment mixes ${product} and ${p.product} art`);
       product = product || p.product;
       graphics.push(JSON.parse(JSON.stringify(p.graphic))); // a copy; was structuredClone, which the test runner lacks (plain JSON, same result)

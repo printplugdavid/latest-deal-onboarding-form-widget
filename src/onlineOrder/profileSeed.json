@@ -1,5 +1,5 @@
 {
-  "_about": "Which graphic on which hand-filled onboarding describes which InkSoft art file (M-14). build-profiles.mjs parses each note with the form's own parseNoteToForm and stores that graphic as the profile. Art names are InkSoft's DesignName WITHOUT the '-100044' style suffix InkSoft adds to a per-garment-colour copy. 'colors' = the garment colours that onboarding covered: a profile is only trusted for those (a white shirt is not a navy shirt with the same ink). Newest source wins.",
+  "_about": "Which graphic on which hand-filled onboarding describes which InkSoft art file (M-14). build-profiles.mjs parses each note with the form's own parseNoteToForm and stores that graphic as the profile. Art names are InkSoft's DesignName WITHOUT the '-100044' style suffix InkSoft adds to a per-garment-colour copy. 'colors' = the garment colours that onboarding covered: a profile is only trusted for those (a white shirt is not a navy shirt with the same ink). Newest source wins for the same color set; an art described for different color sets keeps each as a variant (E-79).",
   "sources": [
     { "order": "1000240", "note": "1000240.txt", "graphics": [
       { "garment": 1, "graphic": 1, "art": "PolosMusicAssociationCanyonWinds", "colors": ["Black"] } ] },
@@ -11,7 +11,10 @@
       { "garment": 1, "graphic": 2, "art": "ShirtBackWhite", "colors": ["Navy"] } ] },
     { "order": "1000249", "note": "1000249.txt", "graphics": [
       { "garment": 1, "graphic": 1, "art": "LongsleeveLeftChestWhite", "colors": ["Navy", "White"] },
-      { "garment": 1, "graphic": 2, "art": "LongsleeveBackWhite", "colors": ["Navy", "White"] } ] }
+      { "garment": 1, "graphic": 2, "art": "LongsleeveBackWhite", "colors": ["Navy", "White"] } ] },
+    { "order": "1000247", "note": "1000247.txt", "graphics": [
+      { "garment": 1, "graphic": 1, "art": "ShirtFrontWhite", "colors": ["White", "Navy"] },
+      { "garment": 1, "graphic": 2, "art": "ShirtBackWhite", "colors": ["White", "Navy"] } ] }
   ],
   "products": {
     "_about": "Store-level answers per form product, from the same onboardings.",

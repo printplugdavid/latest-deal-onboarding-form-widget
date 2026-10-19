@@ -158,3 +158,27 @@ describe("E-89 match by product, not by SKU prefix", () => {
   });
 });
 
+
+// E-79: an art described separately per set of garment colors uses the most specific description that covers the order.
+describe("E-79 descriptions per garment color", () => {
+  const graphic = (d) => ({ graphicDescription: d, tartiaryBranches: [] });
+  const profs = {
+    Art: { variants: [
+      { product: "Direct-to-Film", colors: ["Navy"], graphic: graphic("navy only"), from: "onboarding of order 1" },
+      { product: "Direct-to-Film", colors: ["White", "Navy"], graphic: graphic("white and navy"), from: "onboarding of order 2" },
+    ] },
+  };
+  const card = (color) => ({ ProductName: "Tee", ProductStyleName: color, DesignName: "Art", SideInternalName: "front", ProductSku: "PC55", ProductId: 1 });
+  const ord = (colors) => ({
+    summary: { ID: 1, ProductionCards: colors.map(card), EstimatedDeliveryDate_Max: "2026-11-02T12:00:00Z", ShippingMethodName: "Pick-up" },
+    package: { Items: colors.map((c) => ({ FullName: `Tee - ${c} - L`, Quantity: 1, ProductId: 1 })) },
+  });
+  const run = (colors) => inksoftToFormData(ord(colors), deal, profs, { PC55: { name: "Tee", vendor: "Sanmar", kind: "Polo" } }, undefined, { 1: "PC55" });
+  const desc = (r) => r.data.products[0].primaryBranches[0].secondaryBranches[0].graphicDescription;
+  test("navy alone keeps the navy-only description", () => expect(desc(run(["Navy"]))).toBe("navy only"));
+  test("white uses the description that covers white", () => expect(desc(run(["White"]))).toBe("white and navy"));
+  test("white and navy together use the one that covers both", () => expect(desc(run(["White", "Navy"]))).toBe("white and navy"));
+  test("a color no description covers is still held, naming every color described", () => {
+    expect(run(["Red"]).held).toContain('"Art" has only been described on Navy / White garments, not Red');
+  });
+});
