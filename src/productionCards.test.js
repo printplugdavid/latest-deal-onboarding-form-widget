@@ -103,8 +103,8 @@ describe("E-57 sizes on the production cards", () => {
   test("each style is a heading; each color is one line with its sizes and its count", () => {
     const html = card(order({ ...KC, countColorSize: "Gildan Long Sleeve G2400:\nSafety Green\n10- M\n30- L\n\nGildan Hoodie 18500:\nSafety Green\n3- M\nBlack\n1- 2XL" }), "production-card-screenprint.html");
     expect(html).toContain('<span class="gname">Gildan Long Sleeve / Gildan Hoodie</span>');
-    expect(html).toContain('<div class="szg">Gildan Long Sleeve G2400</div><div class="szc"><span class="szn">Safety Green</span><span class="sz">M <b>10</b></span><span class="sz">L <b>30</b></span><span class="szt">= 40</span></div>');
-    expect(html).toContain('<div class="szg">Gildan Hoodie 18500</div><div class="szc"><span class="szn">Safety Green</span><span class="sz">M <b>3</b></span><span class="szt">= 3</span></div><div class="szc"><span class="szn">Black</span><span class="sz">2XL <b>1</b></span><span class="szt">= 1</span></div>');
+    expect(html).toContain('<div class="szg">Gildan Long Sleeve G2400<span class="szgt">40 pcs / pzas</span></div><div class="szc"><span class="szn">Safety Green</span><span class="sz">M <b>10</b></span><span class="sz">L <b>30</b></span><span class="szt">= 40</span></div>');
+    expect(html).toContain('<div class="szg">Gildan Hoodie 18500<span class="szgt">4 pcs / pzas</span></div><div class="szc"><span class="szn">Safety Green</span><span class="sz">M <b>3</b></span><span class="szt">= 3</span></div><div class="szc"><span class="szn">Black</span><span class="sz">2XL <b>1</b></span><span class="szt">= 1</span></div>');
     expect(html).not.toContain('class="szw"');
   });
   test("several styles with unmarked sizes: the card says so (in both languages on the screen-print card)", () => {
@@ -137,6 +137,27 @@ describe("E-69 a gang sheet says what color garments it goes on", () => {
     expect(withIt).toContain("Black, Heather Gray");
     const without = buildProductionCards(sheet({}), {}).find((c) => c.name === "production-card-vinyl.html").html;
     expect(without).not.toContain("Goes on garments");
+  });
+});
+
+// E-83 -- Angela: with two garments in one entry, each garment's count beside its name.
+describe("E-83 count per garment on the card", () => {
+  const order = (garment) => ({ contactInfo: { Account_Name: "A", Deal_Name: "D" }, products: [{ productName: "Embroidery", productType: "garment", primaryBranches: [garment] }] });
+  const card = (data) => buildProductionCards(data, {}).find((c) => c.name === "production-card-embroidery.html").html;
+  const twoPolos = { garmentType: "Adidas Polo\nTravis Mathew Polo", garmentQuantity: "10", garmentSkus: [{ sku: "A514" }, { sku: "TM1MU410" }], secondaryBranches: [] };
+  test("two polos, sizes entered per polo: each heading shows its own count", () => {
+    const html = card(order({ ...twoPolos, countColorSize: "Adidas Polo A514:\nBlack\n3- M\n2- L\n1- XL\n\nTravis Mathew Polo TM1MU410:\nBlack\n2- XL\n2- 2XL" }));
+    expect(html).toMatch(/Adidas Polo A514<span class="szgt">6 pcs( \/ pzas)?<\/span>/);
+    expect(html).toMatch(/Travis Mathew Polo TM1MU410<span class="szgt">4 pcs( \/ pzas)?<\/span>/);
+  });
+  test("one style: no extra count (its color total already says it)", () => {
+    const html = card(order({ garmentType: "Adidas Polo", garmentQuantity: "5", secondaryBranches: [], countColorSize: "Adidas Polo:\nBlack\n5- M" }));
+    expect(html).not.toContain('class="szgt"');
+  });
+  test("Mountain West Roofing as entered 10-02 (sizes not tied to a polo): no counts invented, the warning stays", () => {
+    const html = card(order({ ...twoPolos, countColorSize: "Black\n3- M\n2- L\n3- XL\n2- XL" }));
+    expect(html).not.toContain('class="szgt"');
+    expect(html).toContain('class="szw"');
   });
 });
 
