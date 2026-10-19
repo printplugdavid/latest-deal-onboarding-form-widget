@@ -37,12 +37,16 @@ export const SIZE_OPTIONS = [
   // 5249739000123007161. Without them every youth line would fall to `unparsed`.
   // The two lists have deliberately diverged here; the revision form should catch
   // up rather than this one being trimmed back. Recorded in docs/04 E-29.
+  // Toddler sizes (E-81, David 2026-10-19: 2T, 3T, 4T; no 5T). Before youth, smallest first. The digit is part
+  // of the size, not a count: "1- 2T" is one 2T (quantityCheck reads it that way -- no word break inside "2T").
+  "2T", "3T", "4T",
   "YXS", "YS", "YM", "YL", "YXL",
 ];
 
 // How a youth size reads on screen; the stored value stays the short form.
 export const SIZE_LABELS = {
   YXS: "Youth XS", YS: "Youth S", YM: "Youth M", YL: "Youth L", YXL: "Youth XL",
+  "2T": "2T (Toddler)", "3T": "3T (Toddler)", "4T": "4T (Toddler)",
   OSFA: "OSFA (one size)",
   LT: "LT (Large Tall)", XLT: "XLT (XL Tall)", "2XLT": "2XLT (2XL Tall)", "3XLT": "3XLT (3XL Tall)", "4XLT": "4XLT (4XL Tall)",
 };
@@ -69,6 +73,10 @@ const SIZE_ALIASES = {
   yl: "YL", youthl: "YL", youthlarge: "YL", ylarge: "YL",
   yxl: "YXL", youthxl: "YXL", youthxlarge: "YXL", youthextralarge: "YXL",
   y2xl: "YXL",
+  // Toddler (E-81). Agents write "2T", "Toddler 2", "2 Toddler", "T2".
+  "2t": "2T", toddler2: "2T", "2toddler": "2T", toddler2t: "2T", t2: "2T",
+  "3t": "3T", toddler3: "3T", "3toddler": "3T", toddler3t: "3T", t3: "3T",
+  "4t": "4T", toddler4: "4T", "4toddler": "4T", toddler4t: "4T", t4: "4T",
   // Tall. Agents write "LT", "Large Tall", "Tall Large", "XL Tall", "2XLT", "2X Tall", "XXLT".
   lt: "LT", largetall: "LT", ltall: "LT", talllarge: "LT", talll: "LT",
   xlt: "XLT", xltall: "XLT", xlargetall: "XLT", extralargetall: "XLT", tallxl: "XLT",

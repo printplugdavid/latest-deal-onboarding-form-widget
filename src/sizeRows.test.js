@@ -416,3 +416,26 @@ describe("SKUs are matched as whole codes", () => {
   });
 });
 
+
+describe("E-81 toddler sizes 2T / 3T / 4T", () => {
+  test("offered, smallest first, before youth; no 5T", () => {
+    const i = SIZE_OPTIONS.indexOf("2T");
+    expect(SIZE_OPTIONS.slice(i, i + 4)).toEqual(["2T", "3T", "4T", "YXS"]);
+    expect(SIZE_OPTIONS).not.toContain("5T");
+  });
+  test("the spellings agents type", () => {
+    ["2T", "2t", "Toddler 2", "2 Toddler", "T2", "toddler 2T"].forEach((t) => expect(normalizeSize(t)).toBe("2T"));
+    expect(normalizeSize("3t")).toBe("3T");
+    expect(normalizeSize("4 Toddler")).toBe("4T");
+  });
+  test("round trip: rows -> note text -> rows, and the digit in the size is never counted", () => {
+    const text = "Pink\n1- 2T\n2- 3T\n3- 4T";
+    const { rows, unparsed } = parseSizeText(text);
+    expect(unparsed).toEqual([]);
+    expect(rows.map((r) => [r.size, Number(r.count)])).toEqual([["2T", 1], ["3T", 2], ["4T", 3]]);
+    expect(formatSizeRows(rows)).toBe(text);
+    expect(sumRows(rows)).toBe(6);
+    expect(sumSizeCounts(text).sum).toBe(6); // the sizes-vs-total warning agrees
+    expect(sumSizeCounts("Navy\n1- 2T, 1- 4T, 2- YS").sum).toBe(4);
+  });
+});
