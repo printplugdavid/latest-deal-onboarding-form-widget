@@ -46,6 +46,13 @@ describe("E-41 thread by number", () => {
     expect(r.matched.map((m) => m.code)).toEqual(["1821"]);
     expect(r.unknown).toEqual([]);
   });
+  test("E-87 fix: a thread whose name starts with C or U is still a thread (\"1508 Cherry Pie\"); \"3955 C\" is still a Pantone", () => {
+    const r = readThreadText("1508 Cherry Pie (Madeira Polyneon)\n1068 Canary (Madeira Classic Rayon)\nYellow 3955 C\n3955c");
+    expect(r.matched.map((m) => m.code)).toEqual(["1508", "1068"]);
+    // every thread, written the way the pickers write it, reads back as itself
+    const lost = THREADS.filter((t) => !readThreadText(threadLabel(t)).matched.some((m) => m.options.indexOf(t) >= 0));
+    expect(lost.map((t) => t.code + " " + t.brand)).toEqual([]);
+  });
   test("a number two brands share offers both, so the rep confirms the brand", () => {
     const r = readThreadText("2001");
     expect(r.matched[0].options.map((o) => o.brand).sort()).toEqual(["Madeira Classic Rayon", "Marathon Polyester"]);

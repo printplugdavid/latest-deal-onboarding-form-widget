@@ -103,9 +103,11 @@ export function readThreadText(text) {
         const tok = m[0];
         if (!/^\d{4}$/.test(tok)) continue;
         const before = s.charAt(m.index - 1);
-        const after = s.slice(m.index + 4, m.index + 6);
+        const after = s.slice(m.index + 4, m.index + 7);
         if (before === "#" || before === ".") continue;
-        if (/^\s?[cu]\b/i.test(after)) continue; // "3955C" is a Pantone, not a thread
+        // "3955C" / "3955 C" is a Pantone, not a thread -- but "1508 Cherry Pie" is a thread (E-87 fix:
+        // the old two-character look-ahead skipped every thread whose name starts with C or U, 105 of them).
+        if (/^\s?[cu](?![a-z])/i.test(after)) continue;
         if (seen[tok]) continue;
         seen[tok] = true;
         const options = narrowByWords(findThread(tok), s);
