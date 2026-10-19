@@ -21,7 +21,7 @@ import { styleOptionsFor } from "../sizeRows";
 import { checkGarmentQuantity } from "../quantityCheck";
 import LumpedGuard from "./LumpedGuard";
 import { ON_GARMENT, SPLIT_LABEL } from "../garmentSplit";
-import { GARMENT_KINDS } from "../placements";
+import { GARMENT_KINDS, canonicalKind } from "../placements";
 import { StrictEntry } from "./strictEntry";
 
 const GarmentPrimaryBranchForm = ({
@@ -211,7 +211,7 @@ const GarmentPrimaryBranchForm = ({
             options={GARMENT_KINDS}
             autoHighlight
             openOnFocus
-            value={field.value || null}
+            value={canonicalKind(field.value) || null}
             onChange={(_, v) => field.onChange(v || "")}
             renderInput={(params) => (
               <TextField

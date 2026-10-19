@@ -2,6 +2,7 @@ import {
   GARMENT_KINDS,
   OTHER,
   PRINT_ONLY,
+  canonicalKind,
   embroiderySizeFor,
   locationGroup,
   locationText,
@@ -21,7 +22,7 @@ describe("locationsFor", () => {
     });
   });
   test("tops get chest, back and both sleeves; hats get hat spots only", () => {
-    const tee = locationsFor("Tee / Long Sleeve / Tank");
+    const tee = locationsFor("Tee / Long Sleeve / Tank / Button-up");
     ["Left Chest", "Full Back", "Left Sleeve – Upper", "Right Sleeve – Lower / Cuff", "Over Right Pocket"].forEach((l) => expect(tee).toContain(l));
     expect(tee).not.toContain("Hood");
     const hat = locationsFor("Hat / Cap");
@@ -36,9 +37,9 @@ describe("locationsFor", () => {
     ["Left Chest", "Hood", "Under Bill", "Front (Cuff)", "Waistband", "Strap", PRINT_ONLY].forEach((l) => expect(all).toContain(l));
   });
   test("groups", () => {
-    expect(locationGroup("Polo / Button-up", "Left Chest")).toBe("Front");
-    expect(locationGroup("Polo / Button-up", "Nape (Back of Neck)")).toBe("Back");
-    expect(locationGroup("Polo / Button-up", OTHER)).toBe("Other");
+    expect(locationGroup("Polo", "Left Chest")).toBe("Front");
+    expect(locationGroup("Polo", "Nape (Back of Neck)")).toBe("Back");
+    expect(locationGroup("Polo", OTHER)).toBe("Other");
   });
 });
 
@@ -47,11 +48,11 @@ describe("shownPick — old typed values open without being rewritten", () => {
     expect(shownPick({ placementPick: OTHER, placementOther: "under left eye", placementLocation: "under left eye" }, "Beanie")).toEqual({ pick: OTHER, other: "under left eye" });
   });
   test("typed text matching an option (any case) shows as that option", () => {
-    expect(shownPick({ placementLocation: "left chest" }, "Tee / Long Sleeve / Tank")).toEqual({ pick: "Left Chest", other: "" });
+    expect(shownPick({ placementLocation: "left chest" }, "Tee / Long Sleeve / Tank / Button-up")).toEqual({ pick: "Left Chest", other: "" });
   });
   test("anything else shows as Other… with the text", () => {
     expect(shownPick({ placementLocation: "center of backpack below the nike sign" }, "Bag / Tote / Backpack")).toEqual({ pick: OTHER, other: "center of backpack below the nike sign" });
-    expect(shownPick({ placementLocation: "back" }, "Tee / Long Sleeve / Tank")).toEqual({ pick: OTHER, other: "back" });
+    expect(shownPick({ placementLocation: "back" }, "Tee / Long Sleeve / Tank / Button-up")).toEqual({ pick: OTHER, other: "back" });
   });
   test("blank stays blank", () => expect(shownPick({}, "")).toEqual({ pick: "", other: "" }));
 });
@@ -96,15 +97,34 @@ describe("sizes", () => {
 
 describe("embroiderySizeFor — only where the survey is clear", () => {
   test("chest, sleeves and hat spots are Small; full front/back and center chest are Large", () => {
-    expect(embroiderySizeFor("Left Chest", "Polo / Button-up")).toBe("Small");
-    expect(embroiderySizeFor("Right Sleeve – Upper", "Tee / Long Sleeve / Tank")).toBe("Small");
+    expect(embroiderySizeFor("Left Chest", "Polo")).toBe("Small");
+    expect(embroiderySizeFor("Right Sleeve – Upper", "Tee / Long Sleeve / Tank / Button-up")).toBe("Small");
     expect(embroiderySizeFor("Front", "Hat / Cap")).toBe("Small");
     expect(embroiderySizeFor("Full Back", "Hoodie / Crew / Zip")).toBe("Large");
-    expect(embroiderySizeFor("Center Chest", "Tee / Long Sleeve / Tank")).toBe("Large");
+    expect(embroiderySizeFor("Center Chest", "Tee / Long Sleeve / Tank / Button-up")).toBe("Large");
   });
   test("no guess elsewhere", () => {
     expect(embroiderySizeFor("Front", "Bag / Tote / Backpack")).toBe("");
-    expect(embroiderySizeFor("Upper Back (Yoke)", "Tee / Long Sleeve / Tank")).toBe("");
+    expect(embroiderySizeFor("Upper Back (Yoke)", "Tee / Long Sleeve / Tank / Button-up")).toBe("");
     expect(embroiderySizeFor(OTHER, "")).toBe("");
+  });
+});
+
+describe("E-91 / D-43: kinds renamed, old saved names still open", () => {
+  test("the two renamed kinds", () => {
+    expect(GARMENT_KINDS).toContain("Polo");
+    expect(GARMENT_KINDS).toContain("Tee / Long Sleeve / Tank / Button-up");
+    expect(GARMENT_KINDS).not.toContain("Polo / Button-up");
+  });
+  test("an order saved with an old name gets the same placements as the new name", () => {
+    expect(canonicalKind("Polo / Button-up")).toBe("Polo");
+    expect(canonicalKind("Tee / Long Sleeve / Tank")).toBe("Tee / Long Sleeve / Tank / Button-up");
+    expect(locationsFor("Polo / Button-up")).toEqual(locationsFor("Polo"));
+    expect(locationsFor("Tee / Long Sleeve / Tank")).toEqual(locationsFor("Tee / Long Sleeve / Tank / Button-up"));
+    expect(shownPick({ placementLocation: "left chest" }, "Polo / Button-up")).toEqual({ pick: "Left Chest", other: "" });
+  });
+  test("a current or unknown kind is returned as is", () => {
+    expect(canonicalKind("Beanie")).toBe("Beanie");
+    expect(canonicalKind("")).toBe("");
   });
 });

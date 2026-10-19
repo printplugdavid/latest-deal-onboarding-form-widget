@@ -23,9 +23,9 @@ export const PRINT_ONLY = "Print Only (no garment)";
 
 /* The Garment kind picked on each garment type. "" (not picked) offers every location. */
 export const GARMENT_KINDS = [
-  "Tee / Long Sleeve / Tank",
+  "Tee / Long Sleeve / Tank / Button-up",
   "Hoodie / Crew / Zip",
-  "Polo / Button-up",
+  "Polo",
   "Jacket / Vest",
   "Hat / Cap",
   "Beanie",
@@ -34,6 +34,17 @@ export const GARMENT_KINDS = [
   "Apron",
   "Other item",
 ];
+
+/*
+ * E-91 / D-43 (2026-10-19): kinds follow the Books report categories -- woven button-ups report as Tops, polos as Polos --
+ * so "Polo / Button-up" became "Polo" and button-ups joined the tees. Orders saved before that keep the old text; it
+ * still opens with the same placements (shown as the new name, nothing rewritten).
+ */
+export const KIND_ALIASES = {
+  "Tee / Long Sleeve / Tank": "Tee / Long Sleeve / Tank / Button-up",
+  "Polo / Button-up": "Polo",
+};
+export const canonicalKind = (kind) => KIND_ALIASES[kind] || kind;
 
 const sleeves = (side) => [
   side + " Sleeve – Upper",
@@ -52,9 +63,9 @@ const TOPS = [
 const HOODIE_EXTRA = ["Hoodie", ["Hood", "Front Pouch Pocket"]];
 
 const BY_KIND = {
-  "Tee / Long Sleeve / Tank": TOPS,
+  "Tee / Long Sleeve / Tank / Button-up": TOPS,
   "Hoodie / Crew / Zip": [...TOPS.slice(0, 3), HOODIE_EXTRA, TOPS[3]],
-  "Polo / Button-up": TOPS,
+  Polo: TOPS,
   "Jacket / Vest": TOPS,
   "Hat / Cap": [["Hat", ["Front", "Left Side Panel", "Right Side Panel", "Back (over strap / snapback)", "Top of Bill", "Under Bill"]]],
   Beanie: [["Beanie", ["Front (Cuff)", "Back", "Left Side", "Right Side"]]],
@@ -83,7 +94,7 @@ const ALL_GROUPS = (() => {
   return out;
 })();
 
-const groupsFor = (kind) => BY_KIND[kind] || ALL_GROUPS;
+const groupsFor = (kind) => BY_KIND[canonicalKind(kind)] || ALL_GROUPS;
 
 /* The options for a garment kind, in order, ending with "Other…". */
 export function locationsFor(kind) {

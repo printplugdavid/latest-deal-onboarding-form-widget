@@ -98,7 +98,7 @@ describe("helpers", () => {
 // E-88 (InkSoft M-15, 2026-10-19): the store SKU prefix picked the ADULT polo for MACC's youth polo.
 describe("E-88 the youth polo 8800B is its own style", () => {
   test("8800B… reads as the youth polo; 8800… stays the adult polo", () => {
-    expect(styleOf("8800BMACCY", styles)).toMatchObject({ code: "8800B", name: "Gildan Youth Polo", kind: "Polo / Button-up" });
+    expect(styleOf("8800BMACCY", styles)).toMatchObject({ code: "8800B", name: "Gildan Youth Polo", kind: "Polo" });
     expect(styleOf("8800BMACC25", styles).code).toBe("8800B");
     expect(styleOf("8800MACCCW", styles).code).toBe("8800");
   });
@@ -124,24 +124,32 @@ describe("E-89 match by product, not by SKU prefix", () => {
     expect(PRODUCT_STYLES_PULLED).toBe("2026-10-19");
     const pulledIds = Object.keys(pulled).filter((k) => !k.startsWith("_"));
     const carriedIds = Object.keys(carried).filter((k) => !k.startsWith("_"));
-    expect(pulledIds.length).toBe(693);
+    expect(pulledIds.length).toBe(708); // 693 + the 15 sunset products, keyed to the style they are on now (D-42)
     carriedIds.forEach((id) => expect(pulled[id]).toBeUndefined());
     carriedIds.forEach((id) => expect(carried["_" + id]).toMatch(/Drop when/)); // every carried row says why
     expect(Object.keys(PRODUCT_STYLES).length).toBe(pulledIds.length + carriedIds.length);
   });
-  test("every style we can onboard is reachable from at least one product", () => {
+  test("every style in the catalogue is reachable from a product, except the 11 waiting on InkSoft's brand fix (D5)", () => {
     const reachable = new Set(Object.values(PRODUCT_STYLES));
-    Object.keys(styles).filter((k) => !k.startsWith("_")).forEach((k) => expect(reachable.has(k)).toBe(true));
+    const unreachable = Object.keys(styles).filter((k) => !k.startsWith("_") && !reachable.has(k)).sort();
+    expect(unreachable).toEqual(["1566", "1567", "B0750", "B100", "B400", "BG85", "BG970", "BG980", "CP90", "CP91", "CP91L"]);
   });
   test("a product missing from the table is held, even when its SKU would match by prefix", () => {
     const r = buildForOrder(withProduct(9999999, "8800MACCCW", "Mystery Polo"), deal);
     expect(r.ok).toBe(false);
     expect(r.held.join(" ")).toMatch(/InkSoft product 9999999\) is not in the style table/);
   });
-  test("a listed product whose style is not approved yet is held, naming the style (PC78H hoodie, no longer read as PC78)", () => {
-    const r = buildForOrder(withProduct(1000035, "PC78H", "Core Fleece Hoodie"), deal);
-    expect(r.ok).toBe(false);
+  test("a listed product whose style is not in the catalogue is held, naming the style", () => {
+    const { PC78H, ...without } = styles; // eslint-disable-line no-unused-vars
+    const r = inksoftToFormData(withProduct(1000035, "PC78H", "Core Fleece Hoodie"), deal, profiles, without, undefined, PRODUCT_STYLES);
     expect(r.held.join(" ")).toMatch(/style PC78H of "Core Fleece Hoodie" is not in styles.json yet/);
+  });
+  test("the PC78H hoodie reads as PC78H (not the PC78 crewneck), a hoodie, from SanMar", () => {
+    const r = buildForOrder(withProduct(1000035, "PC78H", "Core Fleece Hoodie"), deal, { submittedAt: AT });
+    expect(r.held).toEqual([]);
+    expect(r.note).toContain("Garment Type (Brand / Style): PC78H ");
+    expect(r.json).toContain('"garmentKind":"Hoodie / Crew / Zip"');
+    expect(r.note).toContain("Vendors Used: Sanmar");
   });
   test("the product decides, whatever the SKU says", () => {
     const r = buildForOrder(withProduct(1000191, "8800MACCCW", "Odd SKU Youth Polo"), deal, { submittedAt: AT });

@@ -1,38 +1,3621 @@
 {
-  "_about": "Garment style catalogue for auto-onboarding (M-14). Keyed by the BASE style code; InkSoft store SKUs add a store suffix (PC55BCAT -> PC55, 8800MACCCW -> 8800), so the longest matching prefix wins. Names follow what staff write on hand-filled onboardings, NOT InkSoft's product names (INK-24). vendor = 'Vendors Used' on the form. kind = the form's required 'Garment Kind' (E-74), one of GARMENT_KINDS in the form's src/placements.js.",
+  "_about": "Garment style catalogue for auto-onboarding (M-14), keyed by the manufacturer style = Books SKU. Built by tools/online-order/build-styles.py from the InkSoft thread's M-15 style proposal (style-catalogue-proposal-2026-10-19.csv); do not hand-edit -- change the overrides in that script. name = what the note writes (staff wording kept where staff already wrote it, INK-24); vendor = 'Vendors Used', always the supplier (D-41); kind = the form's Garment Kind (src/placements.js); age = Adult / Youth / Infant-Toddler; kind + age give the Books report category (src/garmentCategories.js, D-43); successor = the style a sunset one is replaced by (D-42).",
+  "102": {
+    "name": "American Apparel - Women's Fine Jersey Mid-Length Boxy Tee",
+    "vendor": "S&S Activewear",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "110M": {
+    "name": "Flexfit - 110 Mesh-Back Cap",
+    "vendor": "S&S Activewear",
+    "kind": "Hat / Cap",
+    "age": "Adult"
+  },
+  "111": {
+    "name": "Richardson - Garment Washed Trucker",
+    "vendor": "Sanmar",
+    "kind": "Hat / Cap",
+    "age": "Adult"
+  },
+  "112": {
+    "name": "Richardson - Trucker Cap",
+    "vendor": "Sanmar",
+    "kind": "Hat / Cap",
+    "age": "Adult"
+  },
+  "112FP": {
+    "name": "Richardson - Five-Panel Trucker",
+    "vendor": "Sanmar",
+    "kind": "Hat / Cap",
+    "age": "Adult"
+  },
+  "112FPC": {
+    "name": "Richardson - Five-Panel Champ Trucker",
+    "vendor": "Sanmar",
+    "kind": "Hat / Cap",
+    "age": "Adult"
+  },
+  "112FPR": {
+    "name": "Richardson Headwear - Five-Panel with Rope",
+    "vendor": "Sanmar",
+    "kind": "Hat / Cap",
+    "age": "Adult"
+  },
+  "112PFP": {
+    "name": "Richardson Headwear - Printed Five-Panel Trucker",
+    "vendor": "Sanmar",
+    "kind": "Hat / Cap",
+    "age": "Adult"
+  },
+  "112PL": {
+    "name": "Richardson Headwear - 112+ R-Flex Adjustable Trucker",
+    "vendor": "Sanmar",
+    "kind": "Hat / Cap",
+    "age": "Adult"
+  },
+  "112Y": {
+    "name": "Richardson - Youth Trucker Snapback Cap",
+    "vendor": "S&S Activewear",
+    "kind": "Hat / Cap",
+    "age": "Youth"
+  },
+  "115": {
+    "name": "Richardson - Low Pro Trucker",
+    "vendor": "Sanmar",
+    "kind": "Hat / Cap",
+    "age": "Adult"
+  },
+  "12500": {
+    "name": "Gildan - DISCONTINUED Gildan - DryBlend Pullover Hooded Sweatshirt",
+    "vendor": "Sanmar",
+    "kind": "Hoodie / Crew / Zip",
+    "age": "Adult"
+  },
+  "1301": {
+    "name": "American Apparel - Unisex Heavyweight Cotton Tee",
+    "vendor": "S&S Activewear",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "1301GD": {
+    "name": "American Apparel - Unisex Heavyweight Cotton Garment-Dyed Tee",
+    "vendor": "S&S Activewear",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "1301W": {
+    "name": "American Apparel - Unisex Heavyweight Cotton Tee",
+    "vendor": "S&S Activewear",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult",
+    "successor": "1301"
+  },
+  "1304": {
+    "name": "American Apparel - Unisex Heavyweight Cotton Long Sleeve Tee",
+    "vendor": "S&S Activewear",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "1329": {
+    "name": "Dickies - Men's 5-Pocket Jeans",
+    "vendor": "S&S Activewear",
+    "kind": "Pants / Shorts",
+    "age": "Adult"
+  },
+  "1370399": {
+    "name": "Under Armour - Men's Tech Polo",
+    "vendor": "S&S Activewear",
+    "kind": "Polo",
+    "age": "Adult"
+  },
+  "1370431": {
+    "name": "Under Armour - Women's Tech Polo",
+    "vendor": "S&S Activewear",
+    "kind": "Polo",
+    "age": "Adult"
+  },
+  "1376842": {
+    "name": "Under Armour - Men's Team Tech T-Shirt",
+    "vendor": "S&S Activewear",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "1376843": {
+    "name": "Under Armour - Men's Team Tech Long Sleeve T-Shirt",
+    "vendor": "S&S Activewear",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "1376844": {
+    "name": "Under Armour - Men's Team Tech Quarter-Zip Pullover",
+    "vendor": "S&S Activewear",
+    "kind": "Hoodie / Crew / Zip",
+    "age": "Adult"
+  },
+  "1376852": {
+    "name": "Under Armour - Women's Team Tech Long Sleeve T-Shirt",
+    "vendor": "S&S Activewear",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "1376904": {
+    "name": "Under Armour - Men's Tipped Teams Performance Polo",
+    "vendor": "S&S Activewear",
+    "kind": "Polo",
+    "age": "Adult"
+  },
+  "1376905": {
+    "name": "Under Armour - Women's Tipped Teams Performance Polo",
+    "vendor": "S&S Activewear",
+    "kind": "Polo",
+    "age": "Adult"
+  },
+  "1383255": {
+    "name": "Under Armour - Men's Recycled Polo",
+    "vendor": "S&S Activewear",
+    "kind": "Polo",
+    "age": "Adult"
+  },
+  "1386016": {
+    "name": "Under Armour - Men's Rival Fleece Quarter-Zip Pullover",
+    "vendor": "S&S Activewear",
+    "kind": "Hoodie / Crew / Zip",
+    "age": "Adult"
+  },
+  "1387124": {
+    "name": "Under Armour - Men's Drive Midlayer Quarter-Zip Pullover",
+    "vendor": "S&S Activewear",
+    "kind": "Hoodie / Crew / Zip",
+    "age": "Adult"
+  },
+  "1389853": {
+    "name": "Under Armour - Men's Destin Drive \"UA Playoff Team Stripe\" Performance Polo",
+    "vendor": "S&S Activewear",
+    "kind": "Polo",
+    "age": "Adult"
+  },
+  "1566": {
+    "name": "Comfort Colors - Ring Spun Crewneck Sweatshirt",
+    "vendor": "Sanmar",
+    "kind": "Hoodie / Crew / Zip",
+    "age": "Adult"
+  },
+  "1566L": {
+    "name": "Comfort Colors - Women's Mid-Length Crewneck Sweatshirt",
+    "vendor": "Sanmar",
+    "kind": "Hoodie / Crew / Zip",
+    "age": "Adult"
+  },
+  "1567": {
+    "name": "Gildan - Ring Spun Hooded Sweatshirt",
+    "vendor": "Sanmar",
+    "kind": "Hoodie / Crew / Zip",
+    "age": "Adult"
+  },
+  "168": {
+    "name": "Richardson - 7-Panel Trucker",
+    "vendor": "Sanmar",
+    "kind": "Hat / Cap",
+    "age": "Adult"
+  },
+  "168220": {
+    "name": "Columbia - Ale Creek Beanie",
+    "vendor": "S&S Activewear",
+    "kind": "Beanie",
+    "age": "Adult"
+  },
+  "168P": {
+    "name": "Richardson - Printed 7-Panel Trucker",
+    "vendor": "Sanmar",
+    "kind": "Hat / Cap",
+    "age": "Adult"
+  },
+  "169": {
+    "name": "Richardson - Cannon 7-Panel Flatbill",
+    "vendor": "Sanmar",
+    "kind": "Hat / Cap",
+    "age": "Adult"
+  },
+  "1717": {
+    "name": "Comfort Colors - Heavyweight Ring Spun Tee",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "173": {
+    "name": "Richardson Headwear - Hood River",
+    "vendor": "Sanmar",
+    "kind": "Hat / Cap",
+    "age": "Adult"
+  },
+  "1745": {
+    "name": "Comfort Colors - Heavyweight Color Blast Tee",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "1745Y": {
+    "name": "Comfort Colors - Youth Heavyweight Color Blast Tee",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Youth"
+  },
+  "18000": {
+    "name": "Gildan - Heavy Blend Crewneck Sweatshirt",
+    "vendor": "Sanmar",
+    "kind": "Hoodie / Crew / Zip",
+    "age": "Adult"
+  },
+  "18000B": {
+    "name": "Gildan - Youth Heavy Blend Crewneck Sweatshirt",
+    "vendor": "Sanmar",
+    "kind": "Hoodie / Crew / Zip",
+    "age": "Youth"
+  },
+  "18200": {
+    "name": "Gildan - Heavy Blend Sweatpant",
+    "vendor": "Sanmar",
+    "kind": "Pants / Shorts",
+    "age": "Adult"
+  },
+  "18200B": {
+    "name": "Gildan - Youth Heavy Blend Sweatpant",
+    "vendor": "Sanmar",
+    "kind": "Pants / Shorts",
+    "age": "Youth"
+  },
+  "18400": {
+    "name": "Gildan - Heavy Blend Open Bottom Sweatpant",
+    "vendor": "Sanmar",
+    "kind": "Pants / Shorts",
+    "age": "Adult"
+  },
+  "18500": {
+    "name": "Gildan - Heavy Blend Hooded Sweatshirt",
+    "vendor": "Sanmar",
+    "kind": "Hoodie / Crew / Zip",
+    "age": "Adult"
+  },
+  "18500B": {
+    "name": "Gildan - Youth Heavy Blend Hooded Sweatshirt",
+    "vendor": "Sanmar",
+    "kind": "Hoodie / Crew / Zip",
+    "age": "Youth"
+  },
+  "18600": {
+    "name": "Gildan - Heavy Blend Full-Zip Hooded Sweatshirt",
+    "vendor": "Sanmar",
+    "kind": "Hoodie / Crew / Zip",
+    "age": "Adult"
+  },
+  "186255": {
+    "name": "Columbia - Trail Shaker Beanie",
+    "vendor": "S&S Activewear",
+    "kind": "Beanie",
+    "age": "Adult"
+  },
+  "18900": {
+    "name": "Gildan - Heavy Blend Fleece Stadium Blanket",
+    "vendor": "Sanmar",
+    "kind": "Other item",
+    "age": "Adult"
+  },
+  "191132": {
+    "name": "Columbia - Whirlibird Cuffed Beanie",
+    "vendor": "S&S Activewear",
+    "kind": "Beanie",
+    "age": "Adult"
+  },
+  "19500": {
+    "name": "Gildan - Hammer Maxweight Hooded Sweatshirt",
+    "vendor": "Sanmar",
+    "kind": "Hoodie / Crew / Zip",
+    "age": "Adult"
+  },
+  "1PQ": {
+    "name": "American Apparel - Unisex Pique Mock Neck Tee",
+    "vendor": "S&S Activewear",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "2000": {
+    "name": "Gildan - Ultra Cotton 100% US Cotton T-Shirt",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "2000B": {
+    "name": "Gildan - Youth Ultra Cotton100% US Cotton T-Shirt",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Youth"
+  },
+  "2000L": {
+    "name": "Gildan - Women's Ultra Cotton 100% US Cotton T-Shirt",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "2000T": {
+    "name": "Gildan - Tall 100% US Cotton T-Shirt",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "2001CVC": {
+    "name": "American Apparel - Unisex CVC Tee",
+    "vendor": "S&S Activewear",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "2004CVC": {
+    "name": "American Apparel - Unisex CVC Henley Tee",
+    "vendor": "S&S Activewear",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "2006CVC": {
+    "name": "American Apparel - Unisex CVC V-Neck Tee",
+    "vendor": "S&S Activewear",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "209047": {
+    "name": "Columbia - Men's Ascender II Soft Shell Vest",
+    "vendor": "S&S Activewear",
+    "kind": "Jacket / Vest",
+    "age": "Adult"
+  },
+  "209573": {
+    "name": "Columbia - Men's Alto Pass Fleece Half-Snap Pullover",
+    "vendor": "S&S Activewear",
+    "kind": "Jacket / Vest",
+    "age": "Adult"
+  },
+  "209574": {
+    "name": "Columbia - Men's Alto Pass Fleece Full-Zip Jacket",
+    "vendor": "S&S Activewear",
+    "kind": "Jacket / Vest",
+    "age": "Adult"
+  },
+  "209575": {
+    "name": "Columbia - Men's Alto Pass Fleece Vest",
+    "vendor": "S&S Activewear",
+    "kind": "Jacket / Vest",
+    "age": "Adult"
+  },
+  "209647": {
+    "name": "Columbia - Men's Arctic Crest Sherpa Full-Zip Jacket",
+    "vendor": "S&S Activewear",
+    "kind": "Jacket / Vest",
+    "age": "Adult"
+  },
+  "211892": {
+    "name": "Columbia - Women's Sucker for Summer Shorts",
+    "vendor": "S&S Activewear",
+    "kind": "Pants / Shorts",
+    "age": "Adult"
+  },
+  "212": {
+    "name": "Richardson - Pro Twill Snapback",
+    "vendor": "Sanmar",
+    "kind": "Hat / Cap",
+    "age": "Adult"
+  },
+  "212463": {
+    "name": "Columbia - Men's PFG Bahama II Shirt",
+    "vendor": "S&S Activewear",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "212464": {
+    "name": "Columbia - Men's PFG Bahama II Short Sleeve Shirt",
+    "vendor": "S&S Activewear",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "212465": {
+    "name": "Columbia - Women's PFG Tamiami II Shirt",
+    "vendor": "S&S Activewear",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "212467": {
+    "name": "Columbia - Men's PFG Tamiami II Shirt",
+    "vendor": "S&S Activewear",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "212476": {
+    "name": "Columbia - Men's Glennaker Lake II Rain Jacket",
+    "vendor": "S&S Activewear",
+    "kind": "Jacket / Vest",
+    "age": "Adult"
+  },
+  "212480": {
+    "name": "Columbia - Men's Watertight II Rain Jacket",
+    "vendor": "S&S Activewear",
+    "kind": "Jacket / Vest",
+    "age": "Adult"
+  },
+  "212481": {
+    "name": "Columbia - Women's Arcadia II Rain Jacket",
+    "vendor": "S&S Activewear",
+    "kind": "Jacket / Vest",
+    "age": "Adult"
+  },
+  "212484": {
+    "name": "Columbia - Men's PFG Slack Tide Camp Shirt",
+    "vendor": "S&S Activewear",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "212485": {
+    "name": "Columbia - Women's PFG Tidal Tee II Long Sleeve",
+    "vendor": "S&S Activewear",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "212489": {
+    "name": "Columbia - Men's Powder Lite II Jacket",
+    "vendor": "S&S Activewear",
+    "kind": "Jacket / Vest",
+    "age": "Adult"
+  },
+  "212490": {
+    "name": "Columbia - Women's Powder Lite II Full Zip Jacket",
+    "vendor": "S&S Activewear",
+    "kind": "Jacket / Vest",
+    "age": "Adult"
+  },
+  "212491": {
+    "name": "Columbia - Men's Powder Lite II Vest",
+    "vendor": "S&S Activewear",
+    "kind": "Jacket / Vest",
+    "age": "Adult"
+  },
+  "212492": {
+    "name": "Columbia - Women's Powder Lite Vest",
+    "vendor": "S&S Activewear",
+    "kind": "Jacket / Vest",
+    "age": "Adult"
+  },
+  "212493": {
+    "name": "Columbia - Women’s Kruser Ridge Soft Shell Jacket",
+    "vendor": "S&S Activewear",
+    "kind": "Jacket / Vest",
+    "age": "Adult"
+  },
+  "212494": {
+    "name": "Columbia - Women’s Switchback III Jacket",
+    "vendor": "S&S Activewear",
+    "kind": "Jacket / Vest",
+    "age": "Adult"
+  },
+  "220": {
+    "name": "Richardson Headwear - Relaxed Performance Lite",
+    "vendor": "Sanmar",
+    "kind": "Hat / Cap",
+    "age": "Adult"
+  },
+  "2200": {
+    "name": "Gildan - Ultra Cotton 100% US Cotton Tank Top",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "225": {
+    "name": "Richardson Headwear - Casual Performance Lite",
+    "vendor": "Sanmar",
+    "kind": "Hat / Cap",
+    "age": "Adult"
+  },
+  "2300": {
+    "name": "Gildan - Ultra Cotton 100% US Cotton T-Shirt with Pocket",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "2410": {
+    "name": "Gildan - Ultra Cotton 100% US Cotton Long Sleeve T-Shirt with Pocket",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "2574": {
+    "name": "Dickies - Men's Short Sleeve Work Shirt",
+    "vendor": "S&S Activewear",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "267020": {
+    "name": "Nike - Dri-FIT Classic Polo",
+    "vendor": "Sanmar",
+    "kind": "Polo",
+    "age": "Adult"
+  },
+  "3000": {
+    "name": "Gildan - Light Cotton Tee",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "3000B": {
+    "name": "Gildan - Youth Light Cotton Tee",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Youth"
+  },
+  "3023CL": {
+    "name": "Comfort Colors - Women's Heavyweight Boxy Tee",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "307GD": {
+    "name": "American Apparel - Women's Heavyweight Cotton Garment-Dyed Muscle Tee",
+    "vendor": "S&S Activewear",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "323FPC": {
+    "name": "Richardson - Full Fabric 5-Panel Champ",
+    "vendor": "Sanmar",
+    "kind": "Hat / Cap",
+    "age": "Adult"
+  },
+  "411042": {
+    "name": "Ogio - Rogue Pack",
+    "vendor": "Sanmar",
+    "kind": "Bag / Tote / Backpack",
+    "age": "Adult"
+  },
+  "411065": {
+    "name": "Ogio - Mercur Pack",
+    "vendor": "Sanmar",
+    "kind": "Bag / Tote / Backpack",
+    "age": "Adult"
+  },
+  "411067": {
+    "name": "Ogio - Stratagem Pack",
+    "vendor": "Sanmar",
+    "kind": "Bag / Tote / Backpack",
+    "age": "Adult"
+  },
+  "411092": {
+    "name": "OGIO - Logan Pack",
+    "vendor": "Sanmar",
+    "kind": "Bag / Tote / Backpack",
+    "age": "Adult"
+  },
+  "42000": {
+    "name": "Gildan - Performance T-Shirt",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "42000B": {
+    "name": "Gildan - Youth Gildan Performance T-Shirt",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Youth"
+  },
+  "42400": {
+    "name": "Gildan - Performance Long Sleeve T-Shirt",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "4820": {
+    "name": "Hanes - Unisex Cool DRI Performance T-Shirt",
+    "vendor": "S&S Activewear",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "4980": {
+    "name": "Hanes - Unisex Perfect-T T-Shirt",
+    "vendor": "S&S Activewear",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "498PT": {
+    "name": "Hanes - Unisex Perfect-T DTG T-Shirt",
+    "vendor": "S&S Activewear",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "498Y": {
+    "name": "Hanes - Youth Perfect-T T-Shirt",
+    "vendor": "S&S Activewear",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Youth"
+  },
+  "5000": {
+    "name": "Gildan - Heavy Cotton 100% Cotton T-Shirt",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "5000B": {
+    "name": "Gildan - Youth Heavy Cotton 100% Cotton T-Shirt",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Youth"
+  },
+  "5000L": {
+    "name": "Gildan - Women's Heavy Cotton 100% Cotton T-Shirt",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "5100P": {
+    "name": "Gildan - Heavy Cotton Toddler T-Shirt",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Infant-Toddler"
+  },
+  "5180": {
+    "name": "Hanes - Unisex Beefy-T T-Shirt",
+    "vendor": "S&S Activewear",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "5186": {
+    "name": "Hanes - Unisex Beefy-T Long Sleeve T-Shirt",
+    "vendor": "S&S Activewear",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "518T": {
+    "name": "Hanes - Unisex Beefy-T Tall T-Shirt",
+    "vendor": "S&S Activewear",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "5190": {
+    "name": "Hanes - Unisex Beefy-T Pocket T-Shirt",
+    "vendor": "S&S Activewear",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "5250": {
+    "name": "Hanes - Unisex Authentic T-Shirt",
+    "vendor": "S&S Activewear",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "5280": {
+    "name": "Hanes - Unisex Essential-T T-Shirt",
+    "vendor": "S&S Activewear",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "5286": {
+    "name": "Hanes - Unisex Essential-T Long Sleeve T-Shirt",
+    "vendor": "S&S Activewear",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "5300": {
+    "name": "Gildan - Heavy Cotton 100% Cotton Pocket T-Shirt",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "5389": {
+    "name": "American Apparel - Unisex Sueded Tee",
+    "vendor": "S&S Activewear",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "5400": {
+    "name": "Gildan - Heavy Cotton 100% Cotton Long Sleeve T-Shirt",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "5400B": {
+    "name": "Gildan - Youth Heavy Cotton 100% Cotton Long Sleeve T-Shirt",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Youth"
+  },
+  "5511UP": {
+    "name": "Flexfit - Unipanel Trucker Cap",
+    "vendor": "S&S Activewear",
+    "kind": "Hat / Cap",
+    "age": "Adult"
+  },
+  "5586": {
+    "name": "Hanes - Unisex Authentic Long Sleeve T-Shirt",
+    "vendor": "S&S Activewear",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "5596": {
+    "name": "Hanes - Unisex Authentic Long Sleeve Pocket T-Shirt",
+    "vendor": "S&S Activewear",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "5700": {
+    "name": "Gildan - Heavy Cotton 3/4-Sleeve Raglan T-Shirt",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "5V00L": {
+    "name": "Gildan - Women's Heavy Cotton 100% Cotton V-Neck T-Shirt",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "6012348": {
+    "name": "Under Armour - Youth Tech Vent Short",
+    "vendor": "S&S Activewear",
+    "kind": "Pants / Shorts",
+    "age": "Youth"
+  },
+  "6014": {
+    "name": "Comfort Colors - Heavyweight Ring Spun Long Sleeve Tee",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "6030": {
+    "name": "Comfort Colors - Heavyweight Ring Spun Pocket Tee",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "6089M": {
+    "name": "YuPoong - Premium Flat Bill Snapback Cap",
+    "vendor": "S&S Activewear",
+    "kind": "Hat / Cap",
+    "age": "Adult"
+  },
+  "632": {
+    "name": "Richardson - Laser Perf R-Flex Snapback",
+    "vendor": "Sanmar",
+    "kind": "Hat / Cap",
+    "age": "Adult"
+  },
+  "64000": {
+    "name": "Gildan - Softstyle T-Shirt",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "64000B": {
+    "name": "Gildan - Youth Softstyle T-Shirt",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Youth"
+  },
+  "64000L": {
+    "name": "Gildan - Softstyle Women's T-Shirt",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "64001LCVC": {
+    "name": "Gildan - Softstyle Women's CVC T-Shirt",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "64200": {
+    "name": "Gildan - Softstyle Tank Top",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "64200L": {
+    "name": "Gildan - Softstyle Junior Fit Tank Top",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "64220LCVC": {
+    "name": "Gildan - Softstyle Women's CVC Racerback Tank",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "64400": {
+    "name": "Gildan - Softstyle Long Sleeve T-Shirt",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "64440CVC": {
+    "name": "Gildan - Softstyle CVC Long Sleeve Tee",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "64800": {
+    "name": "Gildan - Softstyle Pique Polo",
+    "vendor": "Sanmar",
+    "kind": "Polo",
+    "age": "Adult"
+  },
+  "64800L": {
+    "name": "Gildan - Softstyle Women's Pique Polo",
+    "vendor": "Sanmar",
+    "kind": "Polo",
+    "age": "Adult"
+  },
+  "7207": {
+    "name": "Badger Sport - Men's Pro Mesh 7\" Shorts",
+    "vendor": "S&S Activewear",
+    "kind": "Pants / Shorts",
+    "age": "Adult"
+  },
+  "8000": {
+    "name": "Gildan - DryBlend 50 Cotton/50 Poly T-Shirt",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "8000B": {
+    "name": "Gildan - Youth DryBlend 50 Cotton/50 Poly T-Shirt",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Youth"
+  },
+  "8800": {
+    "name": "Gildan Polo",
+    "vendor": "Sanmar",
+    "kind": "Polo",
+    "age": "Adult"
+  },
+  "8800B": {
+    "name": "Gildan Youth Polo",
+    "vendor": "Sanmar",
+    "kind": "Polo",
+    "age": "Youth"
+  },
+  "9360": {
+    "name": "Comfort Colors - Heavyweight Ring Spun Tank Top",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "980": {
+    "name": "Gildan - Unisex Softstyle Lightweight T-Shirt",
+    "vendor": "S&S Activewear",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "A295": {
+    "name": "adidas - Men's Textured Quarter-Zip Pullover",
+    "vendor": "S&S Activewear",
+    "kind": "Hoodie / Crew / Zip",
+    "age": "Adult"
+  },
+  "A324": {
+    "name": "adidas - Men's 3-Stripes Chest Polo",
+    "vendor": "S&S Activewear",
+    "kind": "Polo",
+    "age": "Adult"
+  },
+  "A325": {
+    "name": "adidas - Women's 3-Stripes Shoulder Polo",
+    "vendor": "S&S Activewear",
+    "kind": "Polo",
+    "age": "Adult"
+  },
+  "A401": {
+    "name": "adidas - Men's Ultimate365 Lightweight Quarter-Zip Pullover",
+    "vendor": "S&S Activewear",
+    "kind": "Hoodie / Crew / Zip",
+    "age": "Adult"
+  },
+  "A430": {
+    "name": "adidas - Men's Performance Piqué Polo",
+    "vendor": "S&S Activewear",
+    "kind": "Polo",
+    "age": "Adult"
+  },
+  "A431": {
+    "name": "adidas - Women's Performance Piqué Polo",
+    "vendor": "S&S Activewear",
+    "kind": "Polo",
+    "age": "Adult"
+  },
+  "A432": {
+    "name": "adidas - Unisex Fleece Hooded Sweatshirt",
+    "vendor": "S&S Activewear",
+    "kind": "Hoodie / Crew / Zip",
+    "age": "Adult"
+  },
+  "A482": {
+    "name": "adidas - Men's 3-Stripes Double-Knit Quarter-Zip Pullover",
+    "vendor": "S&S Activewear",
+    "kind": "Hoodie / Crew / Zip",
+    "age": "Adult"
+  },
+  "A498": {
+    "name": "adidas - Men's Ultimate365 Diamond Dot Print Polo",
+    "vendor": "S&S Activewear",
+    "kind": "Polo",
+    "age": "Adult"
+  },
+  "A500": {
+    "name": "Port Authority - Full-Length Apron with Pockets",
+    "vendor": "Sanmar",
+    "kind": "Apron",
+    "age": "Adult"
+  },
+  "A510": {
+    "name": "Port Authority - Medium-Length Apron with Pouch Pockets",
+    "vendor": "Sanmar",
+    "kind": "Apron",
+    "age": "Adult"
+  },
+  "A514": {
+    "name": "Adidas - Men's Ultimate365 Solid Polo",
+    "vendor": "S&S Activewear",
+    "kind": "Polo",
+    "age": "Adult"
+  },
+  "A515": {
+    "name": "Port Authority - Waist Apron with Pockets",
+    "vendor": "Sanmar",
+    "kind": "Apron",
+    "age": "Adult"
+  },
+  "A554": {
+    "name": "adidas - Men's 3-Stripes Quarter-Zip Sweater Pullover",
+    "vendor": "S&S Activewear",
+    "kind": "Hoodie / Crew / Zip",
+    "age": "Adult"
+  },
+  "A570": {
+    "name": "adidas - Men's 3-Stripes Puffer Full-Zip Jacket",
+    "vendor": "S&S Activewear",
+    "kind": "Jacket / Vest",
+    "age": "Adult"
+  },
+  "A572": {
+    "name": "adidas - Men's Puffer Full-Zip Vest",
+    "vendor": "S&S Activewear",
+    "kind": "Jacket / Vest",
+    "age": "Adult"
+  },
+  "A580": {
+    "name": "adidas - Men's Micro Piqué Polo",
+    "vendor": "S&S Activewear",
+    "kind": "Polo",
+    "age": "Adult"
+  },
+  "A581": {
+    "name": "adidas - Women's Micro Piqué Polo",
+    "vendor": "S&S Activewear",
+    "kind": "Polo",
+    "age": "Adult"
+  },
+  "A582": {
+    "name": "adidas - Men's Heathered Polo",
+    "vendor": "S&S Activewear",
+    "kind": "Polo",
+    "age": "Adult"
+  },
+  "A583": {
+    "name": "adidas - Women's Heathered Polo",
+    "vendor": "S&S Activewear",
+    "kind": "Polo",
+    "age": "Adult"
+  },
+  "A586": {
+    "name": "adidas - Men's Terry Loop Crewneck Sweatshirt",
+    "vendor": "S&S Activewear",
+    "kind": "Hoodie / Crew / Zip",
+    "age": "Adult"
+  },
+  "A587": {
+    "name": "adidas - Men's Performance Quarter-Zip Pullover",
+    "vendor": "S&S Activewear",
+    "kind": "Hoodie / Crew / Zip",
+    "age": "Adult"
+  },
+  "AT101": {
+    "name": "adidas - Men's Pregame T-Shirt",
+    "vendor": "S&S Activewear",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "AT104": {
+    "name": "adidas - Men's Pregame Long Sleeve T-Shirt",
+    "vendor": "S&S Activewear",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "AT200": {
+    "name": "adidas - Men's Fleece Crewneck Sweatshirt",
+    "vendor": "S&S Activewear",
+    "kind": "Hoodie / Crew / Zip",
+    "age": "Adult"
+  },
+  "AT203": {
+    "name": "adidas - Men's Fleece Hooded Sweatshirt",
+    "vendor": "S&S Activewear",
+    "kind": "Hoodie / Crew / Zip",
+    "age": "Adult"
+  },
+  "AT208": {
+    "name": "adidas - Men's Game & Go Fleece Full-Zip Hooded Sweatshirt",
+    "vendor": "S&S Activewear",
+    "kind": "Hoodie / Crew / Zip",
+    "age": "Adult"
+  },
+  "AT215": {
+    "name": "adidas - Men's Fleece Sweatpants",
+    "vendor": "S&S Activewear",
+    "kind": "Pants / Shorts",
+    "age": "Adult"
+  },
+  "AT218": {
+    "name": "adidas - Men's Game & Go Fleece 3-Bar Sweatpants",
+    "vendor": "S&S Activewear",
+    "kind": "Pants / Shorts",
+    "age": "Adult"
+  },
+  "AT300": {
+    "name": "adidas - Men's 3-Stripes 7\" Shorts",
+    "vendor": "S&S Activewear",
+    "kind": "Pants / Shorts",
+    "age": "Adult"
+  },
+  "AT304": {
+    "name": "adidas - Men's D4T Woven 7\" Shorts",
+    "vendor": "S&S Activewear",
+    "kind": "Pants / Shorts",
+    "age": "Adult"
+  },
+  "B0750": {
+    "name": "Port & Company - Essential Tote",
+    "vendor": "Sanmar",
+    "kind": "Bag / Tote / Backpack",
+    "age": "Adult"
+  },
+  "B100": {
+    "name": "Port & Company - Ideal Twill Grocery Tote",
+    "vendor": "Sanmar",
+    "kind": "Bag / Tote / Backpack",
+    "age": "Adult"
+  },
+  "B400": {
+    "name": "Port Authority - Ideal Twill Two-Tone Shopping Tote",
+    "vendor": "Sanmar",
+    "kind": "Bag / Tote / Backpack",
+    "age": "Adult"
+  },
+  "BC100B": {
+    "name": "Bella + Canvas - Infant Jersey Short Sleeve One Piece",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Infant-Toddler"
+  },
+  "BC1010": {
+    "name": "BELLA+CANVAS - Women's Micro Rib Baby Tee",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "BC1012": {
+    "name": "Bella + Canvas - Women's Micro Rib Spaghetti Strap Tank",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "BC1019": {
+    "name": "Bella + Canvas - Women's Micro Rib Racer Tank",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "BC1080": {
+    "name": "Bella + Canvas - Women's Baby Rib Tank",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "BC3001": {
+    "name": "BELLA+CANVAS - Unisex Jersey Short Sleeve Tee",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "BC3001B": {
+    "name": "Bella + Canvas - Infant Jersey Short Sleeve Tee",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Infant-Toddler"
+  },
+  "BC3001CVC": {
+    "name": "BELLA+CANVAS - Unisex Heather CVC Short Sleeve Tee",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "BC3480": {
+    "name": "BELLA+CANVAS - Unisex Jersey Tank",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "BC3480CVC": {
+    "name": "Bella+Canvas - Unisex Heather CVC Tank",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "BC3501Y": {
+    "name": "Bella + Canvas - Youth Jersey Long Sleeve Tee",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Youth"
+  },
+  "BC3511": {
+    "name": "Bella + Canvas - Unisex 6-Ounce Heavyweight Long Sleeve Tee",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "BC3512": {
+    "name": "Bella+Canvas - Unisex Jersey Long Sleeve Hoodie",
+    "vendor": "Sanmar",
+    "kind": "Hoodie / Crew / Zip",
+    "age": "Adult"
+  },
+  "BC3513": {
+    "name": "Bella + Canvas - Unisex Triblend Long Sleeve Tee",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "BC3650": {
+    "name": "Bella+Canvas - Unisex Poly-Cotton Short Sleeve Tee",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "BC3725": {
+    "name": "Bella + Canvas - Unisex Sponge Fleece Straight Leg Sweatpant",
+    "vendor": "Sanmar",
+    "kind": "Pants / Shorts",
+    "age": "Adult"
+  },
+  "BC3727": {
+    "name": "Bella+Canvas - Unisex Jogger Sweatpants",
+    "vendor": "Sanmar",
+    "kind": "Pants / Shorts",
+    "age": "Adult"
+  },
+  "BC4711": {
+    "name": "Bella + Canvas - Unisex 10-Ounce Heavyweight Crewneck Sweatshirt",
+    "vendor": "Sanmar",
+    "kind": "Hoodie / Crew / Zip",
+    "age": "Adult"
+  },
+  "BC4719": {
+    "name": "Bella + Canvas - Unisex 10-Ounce Heavyweight Pullover Hoodie",
+    "vendor": "Sanmar",
+    "kind": "Hoodie / Crew / Zip",
+    "age": "Adult"
+  },
+  "BC4737": {
+    "name": "Bella + Canvas - Unisex 10-Ounce Heavyweight Sweatpant",
+    "vendor": "Sanmar",
+    "kind": "Pants / Shorts",
+    "age": "Adult"
+  },
+  "BC6400": {
+    "name": "BELLA+CANVAS - Women's Relaxed Jersey Short Sleeve Tee",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "BC6400CVC": {
+    "name": "Bella+Canvas - Women's Relaxed CVC Tee",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "BC6482": {
+    "name": "BELLA+CANVAS - Women's Jersey Crop Tee",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "BC8413": {
+    "name": "BELLA+CANVAS - Women's Triblend Short Sleeve Tee",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "BG0350": {
+    "name": "Port Authority - Core Cotton Drawstring Bag",
+    "vendor": "Sanmar",
+    "kind": "Bag / Tote / Backpack",
+    "age": "Adult"
+  },
+  "BG1010": {
+    "name": "Port Authority - Honeycomb Sling Pack",
+    "vendor": "Sanmar",
+    "kind": "Bag / Tote / Backpack",
+    "age": "Adult"
+  },
+  "BG1500": {
+    "name": "Port Authority - Core Cotton Tote",
+    "vendor": "Sanmar",
+    "kind": "Bag / Tote / Backpack",
+    "age": "Adult"
+  },
+  "BG204": {
+    "name": "Port Authority - Basic Backpack",
+    "vendor": "Sanmar",
+    "kind": "Bag / Tote / Backpack",
+    "age": "Adult"
+  },
+  "BG207C": {
+    "name": "Port Authority - Camo Xtreme Backpack",
+    "vendor": "Sanmar",
+    "kind": "Bag / Tote / Backpack",
+    "age": "Adult"
+  },
+  "BG209": {
+    "name": "Port Authority - Vector Backpack",
+    "vendor": "Sanmar",
+    "kind": "Bag / Tote / Backpack",
+    "age": "Adult"
+  },
+  "BG212": {
+    "name": "Port Authority - Form Backpack",
+    "vendor": "Sanmar",
+    "kind": "Bag / Tote / Backpack",
+    "age": "Adult"
+  },
+  "BG219": {
+    "name": "Port Authority - Access Rucksack",
+    "vendor": "Sanmar",
+    "kind": "Bag / Tote / Backpack",
+    "age": "Adult"
+  },
+  "BG224": {
+    "name": "Port Authority - Transit Backpack",
+    "vendor": "Sanmar",
+    "kind": "Bag / Tote / Backpack",
+    "age": "Adult"
+  },
+  "BG226": {
+    "name": "Port Authority - Daily Commute Backpack",
+    "vendor": "Sanmar",
+    "kind": "Bag / Tote / Backpack",
+    "age": "Adult"
+  },
+  "BG231": {
+    "name": "Port Authority - Modern Backpack",
+    "vendor": "Sanmar",
+    "kind": "Bag / Tote / Backpack",
+    "age": "Adult"
+  },
+  "BG232": {
+    "name": "Port Authority - Transport Backpack",
+    "vendor": "Sanmar",
+    "kind": "Bag / Tote / Backpack",
+    "age": "Adult"
+  },
+  "BG235": {
+    "name": "Port Authority - Matte Backpack",
+    "vendor": "Sanmar",
+    "kind": "Bag / Tote / Backpack",
+    "age": "Adult"
+  },
+  "BG270": {
+    "name": "Port Authority - C-FREE Recycled Backpack",
+    "vendor": "Sanmar",
+    "kind": "Bag / Tote / Backpack",
+    "age": "Adult"
+  },
+  "BG306": {
+    "name": "Port Authority - Computer Messenger",
+    "vendor": "Sanmar",
+    "kind": "Bag / Tote / Backpack",
+    "age": "Adult"
+  },
+  "BG307": {
+    "name": "Port Authority - Commuter Brief",
+    "vendor": "Sanmar",
+    "kind": "Bag / Tote / Backpack",
+    "age": "Adult"
+  },
+  "BG322": {
+    "name": "Port Authority - City Briefcase",
+    "vendor": "Sanmar",
+    "kind": "Bag / Tote / Backpack",
+    "age": "Adult"
+  },
+  "BG405": {
+    "name": "Port Authority - Cotton Canvas Sling Bag",
+    "vendor": "Sanmar",
+    "kind": "Bag / Tote / Backpack",
+    "age": "Adult"
+  },
+  "BG406": {
+    "name": "Port Authority - Day Tote",
+    "vendor": "Sanmar",
+    "kind": "Bag / Tote / Backpack",
+    "age": "Adult"
+  },
+  "BG411": {
+    "name": "Port Authority - On-The-Go Tote",
+    "vendor": "Sanmar",
+    "kind": "Bag / Tote / Backpack",
+    "age": "Adult"
+  },
+  "BG413": {
+    "name": "Port Authority - Large Cotton Canvas Tote",
+    "vendor": "Sanmar",
+    "kind": "Bag / Tote / Backpack",
+    "age": "Adult"
+  },
+  "BG418": {
+    "name": "Port Authority - DISCONTINUED Port Authority Access Convertible Tote",
+    "vendor": "Sanmar",
+    "kind": "Bag / Tote / Backpack",
+    "age": "Adult"
+  },
+  "BG420": {
+    "name": "Port Authority - Eco Blend Canvas Tote",
+    "vendor": "Sanmar",
+    "kind": "Bag / Tote / Backpack",
+    "age": "Adult"
+  },
+  "BG614": {
+    "name": "Port & Company - Core Fleece Sweatshirt Cinch Pack",
+    "vendor": "Sanmar",
+    "kind": "Bag / Tote / Backpack",
+    "age": "Adult"
+  },
+  "BG615": {
+    "name": "Port Authority - Ultra-Core Cinch Pack",
+    "vendor": "Sanmar",
+    "kind": "Bag / Tote / Backpack",
+    "age": "Adult"
+  },
+  "BG637": {
+    "name": "Port Authority - Diamond Pocket Cinch",
+    "vendor": "Sanmar",
+    "kind": "Bag / Tote / Backpack",
+    "age": "Adult"
+  },
+  "BG800": {
+    "name": "Port Authority - Voyager Sports Duffel",
+    "vendor": "Sanmar",
+    "kind": "Bag / Tote / Backpack",
+    "age": "Adult"
+  },
+  "BG805": {
+    "name": "Port Authority - Form Duffel",
+    "vendor": "Sanmar",
+    "kind": "Bag / Tote / Backpack",
+    "age": "Adult"
+  },
+  "BG810": {
+    "name": "Port Authority - Cinch Pack with Mesh Trim",
+    "vendor": "Sanmar",
+    "kind": "Bag / Tote / Backpack",
+    "age": "Adult"
+  },
+  "BG819": {
+    "name": "Port Authority - Mini Ripstop Dome Duffel",
+    "vendor": "Sanmar",
+    "kind": "Bag / Tote / Backpack",
+    "age": "Adult"
+  },
+  "BG820": {
+    "name": "Port Authority - Mini Ripstop Travel Duffel",
+    "vendor": "Sanmar",
+    "kind": "Bag / Tote / Backpack",
+    "age": "Adult"
+  },
+  "BG85": {
+    "name": "Port & Company - Cinch Pack",
+    "vendor": "Sanmar",
+    "kind": "Bag / Tote / Backpack",
+    "age": "Adult"
+  },
+  "BG905": {
+    "name": "Port Authority - Hip Pack",
+    "vendor": "Sanmar",
+    "kind": "Bag / Tote / Backpack",
+    "age": "Adult"
+  },
+  "BG917": {
+    "name": "Port Authority - Stash Crossbody Pouch (5-Pack)",
+    "vendor": "Sanmar",
+    "kind": "Bag / Tote / Backpack",
+    "age": "Adult"
+  },
+  "BG918": {
+    "name": "Port Authority - Upright Crossbody Bag",
+    "vendor": "Sanmar",
+    "kind": "Bag / Tote / Backpack",
+    "age": "Adult"
+  },
+  "BG930": {
+    "name": "Port Authority - Clear Hip Pack",
+    "vendor": "Sanmar",
+    "kind": "Bag / Tote / Backpack",
+    "age": "Adult"
+  },
+  "BG970": {
+    "name": "Port & Company - Gym Bag",
+    "vendor": "Sanmar",
+    "kind": "Bag / Tote / Backpack",
+    "age": "Adult"
+  },
+  "BG980": {
+    "name": "Port & Company - Basic Large Duffel",
+    "vendor": "Sanmar",
+    "kind": "Bag / Tote / Backpack",
+    "age": "Adult"
+  },
+  "C112": {
+    "name": "Port Authority - Snapback Trucker Cap",
+    "vendor": "Sanmar",
+    "kind": "Hat / Cap",
+    "age": "Adult",
+    "successor": "C402"
+  },
+  "C112ECO": {
+    "name": "Port Authority - Eco Snapback Trucker Cap",
+    "vendor": "Sanmar",
+    "kind": "Hat / Cap",
+    "age": "Adult",
+    "successor": "C402ECO"
+  },
+  "C112LP": {
+    "name": "Port Authority - Low-Profile Snapback Trucker Cap",
+    "vendor": "Sanmar",
+    "kind": "Hat / Cap",
+    "age": "Adult",
+    "successor": "C402LP"
+  },
+  "C919": {
+    "name": "Port Authority - Unstructured Sandwich Bill Cap",
+    "vendor": "Sanmar",
+    "kind": "Hat / Cap",
+    "age": "Adult"
+  },
+  "CP90": {
+    "name": "Port & Company - Knit Cap",
+    "vendor": "Sanmar",
+    "kind": "Beanie",
+    "age": "Adult"
+  },
+  "CP90L": {
+    "name": "Port Authority - Fleece-Lined Knit Cap",
+    "vendor": "Sanmar",
+    "kind": "Beanie",
+    "age": "Adult"
+  },
+  "CP91": {
+    "name": "Port & Company - Beanie Cap",
+    "vendor": "Sanmar",
+    "kind": "Beanie",
+    "age": "Adult"
+  },
+  "CP91L": {
+    "name": "Port & Company - Fleece-Lined Beanie Cap",
+    "vendor": "Sanmar",
+    "kind": "Beanie",
+    "age": "Adult"
+  },
+  "CT101604": {
+    "name": "Carhartt - Ashland Cap",
+    "vendor": "Sanmar",
+    "kind": "Hat / Cap",
+    "age": "Adult",
+    "successor": "CT106665"
+  },
+  "CT102199": {
+    "name": "Carhartt - Crowley Soft Shell Jacket",
+    "vendor": "Sanmar",
+    "kind": "Jacket / Vest",
+    "age": "Adult"
+  },
+  "CT102208": {
+    "name": "Carhartt - Gilliam Jacket",
+    "vendor": "Sanmar",
+    "kind": "Jacket / Vest",
+    "age": "Adult"
+  },
+  "CT102286": {
+    "name": "Carhartt - Gilliam Vest",
+    "vendor": "Sanmar",
+    "kind": "Jacket / Vest",
+    "age": "Adult"
+  },
+  "CT102524": {
+    "name": "Carhartt - Women's Rugged Flex Crawford Jacket",
+    "vendor": "Sanmar",
+    "kind": "Jacket / Vest",
+    "age": "Adult"
+  },
+  "CT102537": {
+    "name": "Carhartt - Rugged Professional Series Short Sleeve Shirt",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult",
+    "successor": "CT106688"
+  },
+  "CT102538": {
+    "name": "Carhartt - Rugged Professional Series Long Sleeve Shirt",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult",
+    "successor": "CT106689"
+  },
+  "CT102776": {
+    "name": "Carhartt - Duck Unlined Bib Overalls",
+    "vendor": "Sanmar",
+    "kind": "Pants / Shorts",
+    "age": "Adult"
+  },
+  "CT103056": {
+    "name": "Carhartt - Rugged Professional Series Cap",
+    "vendor": "Sanmar",
+    "kind": "Hat / Cap",
+    "age": "Adult",
+    "successor": "CT106687"
+  },
+  "CT103938": {
+    "name": "Carhartt - Cotton Canvas Cap",
+    "vendor": "Sanmar",
+    "kind": "Hat / Cap",
+    "age": "Adult"
+  },
+  "CT104078": {
+    "name": "Carhartt - Midweight Thermal-Lined Full-Zip Sweatshirt",
+    "vendor": "Sanmar",
+    "kind": "Hoodie / Crew / Zip",
+    "age": "Adult"
+  },
+  "CT104277": {
+    "name": "Carhartt - Sherpa-Lined Mock Neck Vest",
+    "vendor": "Sanmar",
+    "kind": "Jacket / Vest",
+    "age": "Adult"
+  },
+  "CT104485": {
+    "name": "Carhartt - Knit Insulated Face Mask",
+    "vendor": "Sanmar",
+    "kind": "Other item",
+    "age": "Adult"
+  },
+  "CT104597": {
+    "name": "Carhartt - Watch Cap 2.0",
+    "vendor": "Sanmar",
+    "kind": "Hat / Cap",
+    "age": "Adult"
+  },
+  "CT104987": {
+    "name": "Carhartt - ANSI 107 Class 3 Hooded Sweatshirt",
+    "vendor": "Sanmar",
+    "kind": "Hoodie / Crew / Zip",
+    "age": "Adult"
+  },
+  "CT104988": {
+    "name": "Carhartt - ANSI 107 Class 3 Lined Full-Zip Sweatshirt",
+    "vendor": "Sanmar",
+    "kind": "Hoodie / Crew / Zip",
+    "age": "Adult"
+  },
+  "CT105160": {
+    "name": "Carhartt - Cotton Ear Loop Face Mask (3 pack)",
+    "vendor": "Sanmar",
+    "kind": "Other item",
+    "age": "Adult"
+  },
+  "CT105291": {
+    "name": "Carhartt - Force Solid Long Sleeve Shirt",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "CT105292": {
+    "name": "Carhartt - Force Solid Short Sleeve Shirt",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "CT105298": {
+    "name": "Carhartt - Mesh Back Cap",
+    "vendor": "Sanmar",
+    "kind": "Hat / Cap",
+    "age": "Adult"
+  },
+  "CT105475": {
+    "name": "Carhartt - Montana Insulated Vest",
+    "vendor": "Sanmar",
+    "kind": "Jacket / Vest",
+    "age": "Adult"
+  },
+  "CT106020": {
+    "name": "Carhartt - Short Sleeve T-Shirt",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "CT106652": {
+    "name": "Carhartt - Force Short Sleeve Pocket T-Shirt",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "CT106656": {
+    "name": "Carhartt - Force Long Sleeve Pocket T-Shirt",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "CT106678": {
+    "name": "Carhartt - Thermal-Lined Duck Active Jac",
+    "vendor": "Sanmar",
+    "kind": "Jacket / Vest",
+    "age": "Adult"
+  },
+  "CTK121": {
+    "name": "Carhartt - Midweight Hooded Sweatshirt",
+    "vendor": "Sanmar",
+    "kind": "Hoodie / Crew / Zip",
+    "age": "Adult"
+  },
+  "CTK122": {
+    "name": "Carhartt - Midweight Hooded Zip-Front Sweatshirt",
+    "vendor": "Sanmar",
+    "kind": "Hoodie / Crew / Zip",
+    "age": "Adult"
+  },
+  "CTK126": {
+    "name": "Carhartt - Workwear Pocket Long Sleeve T-Shirt",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "CTK87": {
+    "name": "Carhartt - Workwear Pocket Short Sleeve T-Shirt",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "CTSJ140": {
+    "name": "Carhartt - Quilted-Flannel-Lined Duck Active Jac",
+    "vendor": "Sanmar",
+    "kind": "Jacket / Vest",
+    "age": "Adult",
+    "successor": "CT106677"
+  },
+  "CTT106677": {
+    "name": "Carhartt - Tall Quilted-Flannel-Lined Duck Active Jac",
+    "vendor": "Sanmar",
+    "kind": "Jacket / Vest",
+    "age": "Adult"
+  },
+  "CTTK87": {
+    "name": "Carhartt - Tall Workwear Pocket Short Sleeve T-Shirt",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "DM104L": {
+    "name": "District - Women's Perfect WeightTee",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "DM108": {
+    "name": "District - Perfect Blend CVC Tee",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "DM108L": {
+    "name": "District - Women's Perfect Blend CVC Tee",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "DM1170L": {
+    "name": "District - Women's Perfect Weight V-Neck Tee",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "DM1190L": {
+    "name": "District - Women's Perfect Blend CVC V-Neck Tee",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "DM130": {
+    "name": "District - Perfect TriTee",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "DM130DTG": {
+    "name": "District - Perfect Tri DTG Tee",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "DM130L": {
+    "name": "District - Women's Perfect Tri Tee",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "DM132": {
+    "name": "District Made - Perfect Tri Long Sleeve Tee",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "DM1350L": {
+    "name": "District - Women's Perfect Tri V-Neck Tee",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "DM136": {
+    "name": "District - Perfect Tri 3/4-Sleeve Raglan",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "DM136L": {
+    "name": "District - Women's Perfect Tri 3/4-Sleeve Raglan",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "DM138L": {
+    "name": "District - Women's Perfect Tri Racerback Tank",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "DM139": {
+    "name": "District - Perfect Tri Long Sleeve Hoodie",
+    "vendor": "Sanmar",
+    "kind": "Hoodie / Crew / Zip",
+    "age": "Adult"
+  },
+  "DM139L": {
+    "name": "District Made - Women's Perfect Tri Long Sleeve Hoodie",
+    "vendor": "Sanmar",
+    "kind": "Hoodie / Crew / Zip",
+    "age": "Adult"
+  },
+  "DM391": {
+    "name": "District Made - Lightweight Fleece Hoodie",
+    "vendor": "Sanmar",
+    "kind": "Hoodie / Crew / Zip",
+    "age": "Adult"
+  },
+  "DM392": {
+    "name": "District Made - Lightweight Fleece 1/4-Zip",
+    "vendor": "Sanmar",
+    "kind": "Hoodie / Crew / Zip",
+    "age": "Adult"
+  },
+  "DT104": {
+    "name": "District - Perfect Weight Tee",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "DT105": {
+    "name": "District - Perfect Weight Long Sleeve Tee",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "DT106": {
+    "name": "District - Perfect Weight Icon Tee",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "DT108Y": {
+    "name": "District - Youth Perfect Blend CVC Tee",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Youth"
+  },
+  "DT109": {
+    "name": "District - Perfect Blend CVC Long Sleeve Tee",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "DT1100": {
+    "name": "District - Jersey Full-Zip Hoodie",
+    "vendor": "Sanmar",
+    "kind": "Hoodie / Crew / Zip",
+    "age": "Adult"
+  },
+  "DT1101": {
+    "name": "District - Perfect Weight Fleece Hoodie",
+    "vendor": "Sanmar",
+    "kind": "Hoodie / Crew / Zip",
+    "age": "Adult"
+  },
+  "DT1103": {
+    "name": "District - Perfect Weight Fleece Full-Zip Hoodie",
+    "vendor": "Sanmar",
+    "kind": "Hoodie / Crew / Zip",
+    "age": "Adult"
+  },
+  "DT1104": {
+    "name": "District - Women's Perfect Weight Fleece Drop Shoulder Full-Zip Hoodie",
+    "vendor": "Sanmar",
+    "kind": "Hoodie / Crew / Zip",
+    "age": "Adult"
+  },
+  "DT1105": {
+    "name": "District - Women's Perfect Weight Fleece Cropped Crew",
+    "vendor": "Sanmar",
+    "kind": "Hoodie / Crew / Zip",
+    "age": "Adult"
+  },
+  "DT1307": {
+    "name": "District - Perfect Tri Fleece Jogger",
+    "vendor": "Sanmar",
+    "kind": "Pants / Shorts",
+    "age": "Adult"
+  },
+  "DT130Y": {
+    "name": "District - Youth Perfect Tri Tee",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Youth"
+  },
+  "DT1310": {
+    "name": "District - Women's Perfect Tri Fleece Jogger",
+    "vendor": "Sanmar",
+    "kind": "Pants / Shorts",
+    "age": "Adult"
+  },
+  "DT132L": {
+    "name": "District - Women's Perfect Tri Long Sleeve Tunic Tee",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "DT1350": {
+    "name": "District - Perfect Tri V-Neck Tee",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "DT139Y": {
+    "name": "District - Youth Perfect Tri Long Sleeve Hoodie",
+    "vendor": "Sanmar",
+    "kind": "Hoodie / Crew / Zip",
+    "age": "Youth"
+  },
+  "DT151": {
+    "name": "District - Women's Perfect Tri Relaxed Tank",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "DT153": {
+    "name": "District - Women's Perfect Tri Muscle Tank",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "DT5000": {
+    "name": "District - The Concert Tee",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "DT5300": {
+    "name": "District - The Concert Tank",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "DT600": {
+    "name": "District - Distressed Cap",
+    "vendor": "Sanmar",
+    "kind": "Hat / Cap",
+    "age": "Adult"
+  },
+  "DT6000": {
+    "name": "District - Very Important Tee",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "DT6000P": {
+    "name": "District - Very Important Tee with Pocket",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "DT6000Y": {
+    "name": "District - Youth Very Important Tee",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Youth"
+  },
+  "DT6100": {
+    "name": "District - V.I.T.Fleece Hoodie",
+    "vendor": "Sanmar",
+    "kind": "Hoodie / Crew / Zip",
+    "age": "Adult"
+  },
+  "DT6100Y": {
+    "name": "District - Youth V.I.T.Fleece Hoodie",
+    "vendor": "Sanmar",
+    "kind": "Hoodie / Crew / Zip",
+    "age": "Youth"
+  },
+  "DT624": {
+    "name": "District - Flat Bill Snapback Trucker Cap",
+    "vendor": "Sanmar",
+    "kind": "Hat / Cap",
+    "age": "Adult"
+  },
+  "DT630": {
+    "name": "District - Super Soft Mesh Back Cap",
+    "vendor": "Sanmar",
+    "kind": "Hat / Cap",
+    "age": "Adult"
+  },
+  "DT6300": {
+    "name": "District - V.I.T. Muscle Tank",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "DT6302": {
+    "name": "District - Women's V.I.T. Racerback Tank",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "DT6600": {
+    "name": "District - V.I.T. Super Heavyweight Fleece Hoodie",
+    "vendor": "Sanmar",
+    "kind": "Hoodie / Crew / Zip",
+    "age": "Adult"
+  },
+  "EB102": {
+    "name": "Eddie Bauer - Performance Polo",
+    "vendor": "Sanmar",
+    "kind": "Polo",
+    "age": "Adult"
+  },
+  "EB120": {
+    "name": "Eddie Bauer - Adventurer 1/4-Zip",
+    "vendor": "Sanmar",
+    "kind": "Hoodie / Crew / Zip",
+    "age": "Adult"
+  },
+  "EB204": {
+    "name": "Eddie Bauer - Fleece Vest",
+    "vendor": "Sanmar",
+    "kind": "Jacket / Vest",
+    "age": "Adult"
+  },
+  "EB205": {
+    "name": "Eddie Bauer - Women's Fleece Vest",
+    "vendor": "Sanmar",
+    "kind": "Jacket / Vest",
+    "age": "Adult"
+  },
+  "EB224": {
+    "name": "Eddie Bauer - Full-Zip Microfleece Jacket",
+    "vendor": "Sanmar",
+    "kind": "Jacket / Vest",
+    "age": "Adult"
+  },
+  "EB226": {
+    "name": "Eddie Bauer - Bauer1/2-Zip Microfleece Jacket",
+    "vendor": "Sanmar",
+    "kind": "Jacket / Vest",
+    "age": "Adult"
+  },
+  "EB227": {
+    "name": "Eddie Bauer - Women's 1/2-Zip Microfleece Jacket",
+    "vendor": "Sanmar",
+    "kind": "Jacket / Vest",
+    "age": "Adult"
+  },
+  "EB228": {
+    "name": "Eddie Bauer - Woodland Shirt Jac",
+    "vendor": "Sanmar",
+    "kind": "Jacket / Vest",
+    "age": "Adult"
+  },
+  "EB254": {
+    "name": "Eddie Bauer - Sweater Fleece 1/4-Zip",
+    "vendor": "Sanmar",
+    "kind": "Jacket / Vest",
+    "age": "Adult"
+  },
+  "EB512": {
+    "name": "Eddie Bauer - Quilted Vest",
+    "vendor": "Sanmar",
+    "kind": "Jacket / Vest",
+    "age": "Adult"
+  },
+  "EB513": {
+    "name": "Eddie Bauer - Women's Quilted Vest",
+    "vendor": "Sanmar",
+    "kind": "Jacket / Vest",
+    "age": "Adult"
+  },
+  "EB532": {
+    "name": "Eddie Bauer - Shaded Crosshatch Soft Shell Jacket",
+    "vendor": "Sanmar",
+    "kind": "Jacket / Vest",
+    "age": "Adult"
+  },
+  "EB550": {
+    "name": "Eddie Bauer - Rain Jacket",
+    "vendor": "Sanmar",
+    "kind": "Jacket / Vest",
+    "age": "Adult"
+  },
+  "F170": {
+    "name": "Hanes - Unisex Ultimate Cotton Hooded Sweatshirt",
+    "vendor": "S&S Activewear",
+    "kind": "Hoodie / Crew / Zip",
+    "age": "Adult"
+  },
+  "F217": {
+    "name": "Port Authority - Value Fleece Jacket",
+    "vendor": "Sanmar",
+    "kind": "Jacket / Vest",
+    "age": "Adult"
+  },
+  "F223": {
+    "name": "Port Authority - Microfleece Jacket",
+    "vendor": "Sanmar",
+    "kind": "Jacket / Vest",
+    "age": "Adult"
+  },
+  "F236": {
+    "name": "Port Authority - Sweater Fleece Vest",
+    "vendor": "Sanmar",
+    "kind": "Jacket / Vest",
+    "age": "Adult"
+  },
+  "F283": {
+    "name": "Hanes - Unisex Ultimate Cotton Full-Zip Hooded Sweatshirt",
+    "vendor": "S&S Activewear",
+    "kind": "Hoodie / Crew / Zip",
+    "age": "Adult",
+    "successor": "F280"
+  },
+  "FR22": {
+    "name": "Dickies - Women's Flat Front Shorts",
+    "vendor": "S&S Activewear",
+    "kind": "Pants / Shorts",
+    "age": "Adult"
+  },
+  "FTCB0": {
+    "name": "American Apparel - Women's French Terry Mid-Length Boxy Top",
+    "vendor": "S&S Activewear",
+    "kind": "Hoodie / Crew / Zip",
+    "age": "Adult"
+  },
+  "FTEX00": {
+    "name": "American Apparel - Unisex French Terry Oversized Boxy Top",
+    "vendor": "S&S Activewear",
+    "kind": "Hoodie / Crew / Zip",
+    "age": "Adult"
+  },
+  "G2400": {
+    "name": "Gildan - Ultra Cotton 100% US Cotton Long Sleeve T-Shirt",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "GDS101": {
+    "name": "Champion - Reverse Weave Garment-Dyed Hooded Sweatshirt",
+    "vendor": "Sanmar",
+    "kind": "Hoodie / Crew / Zip",
+    "age": "Adult"
+  },
+  "GDS149": {
+    "name": "Champion - Reverse Weave Garment-Dyed Crewneck Sweatshirt",
+    "vendor": "Sanmar",
+    "kind": "Hoodie / Crew / Zip",
+    "age": "Adult"
+  },
+  "IND20SRT": {
+    "name": "Independent Trading Co. - Men's Midweight Fleece Shorts",
+    "vendor": "S&S Activewear",
+    "kind": "Pants / Shorts",
+    "age": "Adult"
+  },
+  "IND4000": {
+    "name": "Independent Trading Co. - Unisex Heavyweight Hooded Sweatshirt",
+    "vendor": "S&S Activewear",
+    "kind": "Hoodie / Crew / Zip",
+    "age": "Adult"
+  },
+  "IND4000Z": {
+    "name": "Independent Trading Co. - Unisex Heavyweight Full-Zip Hooded Sweatshirt",
+    "vendor": "S&S Activewear",
+    "kind": "Hoodie / Crew / Zip",
+    "age": "Adult"
+  },
+  "J317": {
+    "name": "Port Authority - Core Soft Shell Jacket",
+    "vendor": "Sanmar",
+    "kind": "Jacket / Vest",
+    "age": "Adult"
+  },
+  "J327": {
+    "name": "Port Authority - Hooded Charger Jacket",
+    "vendor": "Sanmar",
+    "kind": "Jacket / Vest",
+    "age": "Adult"
+  },
+  "J328": {
+    "name": "Port Authority - Charger Jacket",
+    "vendor": "Sanmar",
+    "kind": "Jacket / Vest",
+    "age": "Adult"
+  },
+  "J329": {
+    "name": "Port Authority - Lightweight Charger Jacket",
+    "vendor": "Sanmar",
+    "kind": "Jacket / Vest",
+    "age": "Adult"
+  },
+  "J331": {
+    "name": "Port Authority - All-Conditions Jacket",
+    "vendor": "Sanmar",
+    "kind": "Jacket / Vest",
+    "age": "Adult"
+  },
+  "J344": {
+    "name": "Port Authority - Zephyr Full-Zip Jacket",
+    "vendor": "Sanmar",
+    "kind": "Jacket / Vest",
+    "age": "Adult"
+  },
+  "J364": {
+    "name": "Port Authority - Horizon Puffy Jacket",
+    "vendor": "Sanmar",
+    "kind": "Jacket / Vest",
+    "age": "Adult"
+  },
+  "J405": {
+    "name": "Port Authority - Insulated Waterproof Tech Jacket",
+    "vendor": "Sanmar",
+    "kind": "Jacket / Vest",
+    "age": "Adult"
+  },
+  "J406": {
+    "name": "Port Authority - Tech Rain Jacket",
+    "vendor": "Sanmar",
+    "kind": "Jacket / Vest",
+    "age": "Adult"
+  },
+  "J717": {
+    "name": "Port Authority - Active Soft Shell Jacket",
+    "vendor": "Sanmar",
+    "kind": "Jacket / Vest",
+    "age": "Adult"
+  },
+  "J719": {
+    "name": "Port Authority - Active Hooded Soft Shell Jacket",
+    "vendor": "Sanmar",
+    "kind": "Jacket / Vest",
+    "age": "Adult"
+  },
+  "J790": {
+    "name": "Port Authority - Glacier Soft Shell Jacket",
+    "vendor": "Sanmar",
+    "kind": "Jacket / Vest",
+    "age": "Adult"
+  },
+  "J799": {
+    "name": "Port Authority - Heavyweight Parka",
+    "vendor": "Sanmar",
+    "kind": "Jacket / Vest",
+    "age": "Adult"
+  },
+  "J851": {
+    "name": "Port Authority - Packable Puffy Vest",
+    "vendor": "Sanmar",
+    "kind": "Jacket / Vest",
+    "age": "Adult"
+  },
+  "JST70": {
+    "name": "Sport-Tek - Full-Zip Wind Jacket",
+    "vendor": "Sanmar",
+    "kind": "Jacket / Vest",
+    "age": "Adult"
+  },
+  "JT78": {
+    "name": "Dickies - Men's Unlined Industrial Eisenhower Jacket",
+    "vendor": "S&S Activewear",
+    "kind": "Jacket / Vest",
+    "age": "Adult"
+  },
+  "K240": {
+    "name": "Port Authority - Wearever Performance Pique Polo",
+    "vendor": "Sanmar",
+    "kind": "Polo",
+    "age": "Adult"
+  },
+  "K420": {
+    "name": "Port Authority - Heavyweight Cotton Pique Polo",
+    "vendor": "Sanmar",
+    "kind": "Polo",
+    "age": "Adult"
+  },
+  "K420P": {
+    "name": "Port Authority - Heavyweight Cotton Pique Polo with Pocket",
+    "vendor": "Sanmar",
+    "kind": "Polo",
+    "age": "Adult"
+  },
+  "K500": {
+    "name": "Port Authority - Silk Touch Polo",
+    "vendor": "Sanmar",
+    "kind": "Polo",
+    "age": "Adult"
+  },
+  "K500ES": {
+    "name": "Port Authority - Extended Size Silk Touch Polo",
+    "vendor": "Sanmar",
+    "kind": "Polo",
+    "age": "Adult"
+  },
+  "K500LS": {
+    "name": "Port Authority - Silk Touch Long Sleeve Polo",
+    "vendor": "Sanmar",
+    "kind": "Polo",
+    "age": "Adult"
+  },
+  "K500LSP": {
+    "name": "Port Authority - Long Sleeve Silk Touch Polo with Pocket",
+    "vendor": "Sanmar",
+    "kind": "Polo",
+    "age": "Adult"
+  },
+  "K500P": {
+    "name": "Port Authority - Silk Touch Polo with Pocket",
+    "vendor": "Sanmar",
+    "kind": "Polo",
+    "age": "Adult"
+  },
+  "K540": {
+    "name": "Port Authority - Silk Touch Performance Polo",
+    "vendor": "Sanmar",
+    "kind": "Polo",
+    "age": "Adult"
+  },
+  "K540LS": {
+    "name": "Port Authority - Silk Touch Performance Long Sleeve Polo",
+    "vendor": "Sanmar",
+    "kind": "Polo",
+    "age": "Adult"
+  },
+  "K540P": {
+    "name": "Port Authority - Silk Touch Performance Pocket Polo",
+    "vendor": "Sanmar",
+    "kind": "Polo",
+    "age": "Adult"
+  },
+  "K8000": {
+    "name": "Port Authority - EZCotton Polo",
+    "vendor": "Sanmar",
+    "kind": "Polo",
+    "age": "Adult"
+  },
+  "KP1500": {
+    "name": "Port & Company - Combed Ring Spun Pique Polo",
+    "vendor": "Sanmar",
+    "kind": "Polo",
+    "age": "Adult"
+  },
+  "KP155": {
+    "name": "Port & Company - Core Blend Pique Polo",
+    "vendor": "Sanmar",
+    "kind": "Polo",
+    "age": "Adult"
+  },
+  "KP55": {
+    "name": "Port & Company - Core Blend Jersey Knit Polo",
+    "vendor": "Sanmar",
+    "kind": "Polo",
+    "age": "Adult"
+  },
+  "KP55P": {
+    "name": "Port & Company - Core Blend Jersey Knit Pocket Polo",
+    "vendor": "Sanmar",
+    "kind": "Polo",
+    "age": "Adult"
+  },
+  "KP55Y": {
+    "name": "Port & Company Youth Polo",
+    "vendor": "Sanmar",
+    "kind": "Polo",
+    "age": "Youth"
+  },
+  "L223": {
+    "name": "Port Authority - Women's Microfleece Jacket",
+    "vendor": "Sanmar",
+    "kind": "Jacket / Vest",
+    "age": "Adult"
+  },
+  "L535": {
+    "name": "Dickies - Men's Industrial Long Sleeve Work Shirt",
+    "vendor": "S&S Activewear",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "L5350": {
+    "name": "Dickies - Women's Long Sleeve Industrial Work Shirt",
+    "vendor": "S&S Activewear",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "LK240": {
+    "name": "Port Authority - Women's Wearever Performance Pique Polo",
+    "vendor": "Sanmar",
+    "kind": "Polo",
+    "age": "Adult"
+  },
+  "LKP1500": {
+    "name": "Port & Company - DISCONTINUED Port & Company Ladies Combed Ring Spun Pique Polo",
+    "vendor": "Sanmar",
+    "kind": "Polo",
+    "age": "Adult"
+  },
+  "LKP155": {
+    "name": "Port & Company - Women's Core Blend Pique Polo",
+    "vendor": "Sanmar",
+    "kind": "Polo",
+    "age": "Adult"
+  },
+  "LNEA101": {
+    "name": "New Era Apparel - Women's Heritage Blend V-Neck Tee",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "LNEA122": {
+    "name": "New Era Apparel - Women's Sueded Cotton Blend Full-Zip Hoodie",
+    "vendor": "Sanmar",
+    "kind": "Hoodie / Crew / Zip",
+    "age": "Adult"
+  },
+  "LNEA229": {
+    "name": "New Era Apparel - Women's Power Long Sleeve Hoodie",
+    "vendor": "Sanmar",
+    "kind": "Hoodie / Crew / Zip",
+    "age": "Adult"
+  },
+  "LNEA301": {
+    "name": "New Era Apparel - Women's Slub Twist Polo",
+    "vendor": "Sanmar",
+    "kind": "Polo",
+    "age": "Adult"
+  },
+  "LNEA500": {
+    "name": "New Era Apparel - Women's French Terry Pullover Hoodie",
+    "vendor": "Sanmar",
+    "kind": "Hoodie / Crew / Zip",
+    "age": "Adult"
+  },
+  "LNEA511": {
+    "name": "New Era Apparel - Women's Tri-Blend Fleece Full-Zip Hoodie",
+    "vendor": "Sanmar",
+    "kind": "Hoodie / Crew / Zip",
+    "age": "Adult"
+  },
+  "LNEA533": {
+    "name": "New Era Apparel - Women's Performance Terry Short Sleeve Hoodie",
+    "vendor": "Sanmar",
+    "kind": "Hoodie / Crew / Zip",
+    "age": "Adult"
+  },
+  "LNEA540": {
+    "name": "New Era Apparel - Women's STS Full-Zip Hoodie",
+    "vendor": "Sanmar",
+    "kind": "Hoodie / Crew / Zip",
+    "age": "Adult"
+  },
+  "LNEA541": {
+    "name": "New Era Apparel - Women's STS 1/2-Zip",
+    "vendor": "Sanmar",
+    "kind": "Hoodie / Crew / Zip",
+    "age": "Adult"
+  },
+  "LOG101": {
+    "name": "OGIO - Jewel Polo",
+    "vendor": "Sanmar",
+    "kind": "Polo",
+    "age": "Adult"
+  },
+  "LP22": {
+    "name": "Dickies - Men's Premium Industrial Multi-Use Pocket Pants",
+    "vendor": "S&S Activewear",
+    "kind": "Pants / Shorts",
+    "age": "Adult"
+  },
+  "LP22EXT": {
+    "name": "Dickies - Men's Extended Sizes Premium Industrial Multi-Use Pocket Pants",
+    "vendor": "S&S Activewear",
+    "kind": "Pants / Shorts",
+    "age": "Adult"
+  },
+  "LP70EXT": {
+    "name": "Dickies - Men's Extended Sizes Premium Industrial Flat Front Comfort Waist Pants",
+    "vendor": "S&S Activewear",
+    "kind": "Pants / Shorts",
+    "age": "Adult"
+  },
+  "LPC330V": {
+    "name": "Port & Company - Women's Tri-Blend V-Neck Tee",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "LPC380": {
+    "name": "Port & Company - Women's Performance Tee",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "LPC380TT": {
+    "name": "Port & Company - Women's Performance Tank",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "LPC381V": {
+    "name": "Port & Company - Women's Performance Blend V-Neck Tee",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "LPC450": {
+    "name": "Port & Company - Women's Fan Favorite Tee",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "LPC450V": {
+    "name": "Port & Company - Women's Fan Favorite V-Neck Tee",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "LPC450VLS": {
+    "name": "Port & Company - Women's Long Sleeve Fan Favorite V-Neck Tee",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "LPC54": {
+    "name": "Port & Company - Women's Core Cotton Tee",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "LPC54LS": {
+    "name": "Port & Company - Women's Long Sleeve Core Cotton Tee",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "LPC54TT": {
+    "name": "Port & Company - Women's Core Cotton Tank Top",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "LPC54V": {
+    "name": "Port & Company - Women's Core Cotton V-Neck Tee",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "LPC55": {
+    "name": "Port & Company - Women's Core Blend Tee",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "LPC61": {
+    "name": "Port & Company - Women's Essential Tee",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "LPC78H": {
+    "name": "Port & Company - Women's Core Fleece Pullover Hooded Sweatshirt",
+    "vendor": "Sanmar",
+    "kind": "Hoodie / Crew / Zip",
+    "age": "Adult"
+  },
+  "LPC78ZH": {
+    "name": "Port & Company - Women's Core Fleece Full-Zip Hooded Sweatshirt",
+    "vendor": "Sanmar",
+    "kind": "Hoodie / Crew / Zip",
+    "age": "Adult"
+  },
+  "LPWU": {
+    "name": "Port Authority - Women's Garment-Washed Cap",
+    "vendor": "Sanmar",
+    "kind": "Hat / Cap",
+    "age": "Adult"
+  },
+  "LS44": {
+    "name": "Dickies - Men's Performance Short Sleeve Work Shirt With Pocket",
+    "vendor": "S&S Activewear",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "LS45": {
+    "name": "Dickies - Men's WorkTech Cooling Mesh Shirt",
+    "vendor": "S&S Activewear",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "LST254": {
+    "name": "Sport-Tek - Women's Pullover Hooded Sweatshirt",
+    "vendor": "Sanmar",
+    "kind": "Hoodie / Crew / Zip",
+    "age": "Adult"
+  },
+  "LST350": {
+    "name": "Sport-Tek - Women's PosiCharge Competitor Tee",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "LST353LS": {
+    "name": "Sport-Tek - Women's Long Sleeve PosiCharge Competitor V-Neck Tee",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "LST550": {
+    "name": "Sport-Tek - Women's PosiCharge Competitor Polo",
+    "vendor": "Sanmar",
+    "kind": "Polo",
+    "age": "Adult"
+  },
+  "LW808": {
+    "name": "Port Authority - Women's Long Sleeve SuperPro ReactTwill Shirt",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "NE208": {
+    "name": "New Era - Recycled Snapback Cap",
+    "vendor": "Sanmar",
+    "kind": "Hat / Cap",
+    "age": "Adult"
+  },
+  "NE209": {
+    "name": "New Era Headwear - Performance Dash Adjustable Cap",
+    "vendor": "Sanmar",
+    "kind": "Hat / Cap",
+    "age": "Adult"
+  },
+  "NE211": {
+    "name": "New Era - A-Frame Snapback Cap",
+    "vendor": "Sanmar",
+    "kind": "Hat / Cap",
+    "age": "Adult"
+  },
+  "NE219": {
+    "name": "New Era Headwear - Performance Dash Adjustable Visor",
+    "vendor": "Sanmar",
+    "kind": "Hat / Cap",
+    "age": "Adult"
+  },
+  "NE4020": {
+    "name": "New Era - Standard Fit Flat Bill Snapback Cap",
+    "vendor": "Sanmar",
+    "kind": "Hat / Cap",
+    "age": "Adult"
+  },
+  "NE4030": {
+    "name": "New Era - Standard Fit Snapback Trucker Cap",
+    "vendor": "Sanmar",
+    "kind": "Hat / Cap",
+    "age": "Adult"
+  },
+  "NE409": {
+    "name": "New Era Headwear - Pivot Flat Bill Snapback Cap",
+    "vendor": "Sanmar",
+    "kind": "Hat / Cap",
+    "age": "Adult"
+  },
+  "NE501": {
+    "name": "New Era Headwear - 9SEVENTY Perforated Snapback Cap",
+    "vendor": "Sanmar",
+    "kind": "Hat / Cap",
+    "age": "Adult"
+  },
+  "NE907": {
+    "name": "New Era Headwear - Recycled Cuff Beanie",
+    "vendor": "Sanmar",
+    "kind": "Beanie",
+    "age": "Adult"
+  },
+  "NE908": {
+    "name": "New Era Headwear - Core Classic Cuff Beanie",
+    "vendor": "Sanmar",
+    "kind": "Beanie",
+    "age": "Adult"
+  },
+  "NE909": {
+    "name": "New Era Headwear - Knit Chilled Pom Beanie",
+    "vendor": "Sanmar",
+    "kind": "Beanie",
+    "age": "Adult"
+  },
+  "NE910": {
+    "name": "New Era Headwear - Marled Knit Pom Beanie",
+    "vendor": "Sanmar",
+    "kind": "Beanie",
+    "age": "Adult"
+  },
+  "NE911": {
+    "name": "New Era Headwear - Faux Fur Pom Beanie",
+    "vendor": "Sanmar",
+    "kind": "Beanie",
+    "age": "Adult"
+  },
+  "NF0A3LGT": {
+    "name": "The North Face - Apex Barrier Soft Shell Jacket",
+    "vendor": "Sanmar",
+    "kind": "Jacket / Vest",
+    "age": "Adult"
+  },
+  "NF0A3LGU": {
+    "name": "The North Face - Women's Apex Barrier Soft Shell Jacket",
+    "vendor": "Sanmar",
+    "kind": "Jacket / Vest",
+    "age": "Adult"
+  },
+  "NF0A3LGZ": {
+    "name": "The North Face - Ridgewall Soft Shell Vest",
+    "vendor": "Sanmar",
+    "kind": "Jacket / Vest",
+    "age": "Adult"
+  },
+  "NF0A3LH1": {
+    "name": "The North Face - Women's Ridgewall Soft Shell Vest",
+    "vendor": "Sanmar",
+    "kind": "Jacket / Vest",
+    "age": "Adult"
+  },
+  "NF0A3LH7": {
+    "name": "The North Face - Sweater Fleece Jacket",
+    "vendor": "Sanmar",
+    "kind": "Jacket / Vest",
+    "age": "Adult"
+  },
+  "NF0A3LHD": {
+    "name": "The North Face - ThermoBall Trekker Vest",
+    "vendor": "Sanmar",
+    "kind": "Jacket / Vest",
+    "age": "Adult"
+  },
+  "NF0A3LHL": {
+    "name": "The North Face - Women's ThermoBall Trekker Vest",
+    "vendor": "Sanmar",
+    "kind": "Jacket / Vest",
+    "age": "Adult"
+  },
+  "NF0A7V4J": {
+    "name": "The North Face - Glacier Full-Zip Fleece Jacket",
+    "vendor": "Sanmar",
+    "kind": "Hoodie / Crew / Zip",
+    "age": "Adult"
+  },
+  "NF0A7V4K": {
+    "name": "The North Face - Women's Glacier Full-Zip Fleece Jacket",
+    "vendor": "Sanmar",
+    "kind": "Hoodie / Crew / Zip",
+    "age": "Adult"
+  },
+  "NF0A7V4L": {
+    "name": "The North Face - Glacier 1/4-Zip Fleece",
+    "vendor": "Sanmar",
+    "kind": "Hoodie / Crew / Zip",
+    "age": "Adult"
+  },
+  "NF0A7V63": {
+    "name": "The North Face - Skyline 1/2-Zip Fleece",
+    "vendor": "Sanmar",
+    "kind": "Hoodie / Crew / Zip",
+    "age": "Adult"
+  },
+  "NKDC1963": {
+    "name": "Nike - Dri-FIT Micro Pique 2.0 Polo",
+    "vendor": "Sanmar",
+    "kind": "Polo",
+    "age": "Adult"
+  },
+  "NKDC1991": {
+    "name": "Nike - Women's Dri-FIT Micro Pique 2.0 Polo",
+    "vendor": "Sanmar",
+    "kind": "Polo",
+    "age": "Adult"
+  },
+  "NKDC2108": {
+    "name": "Nike - Dri-FIT Vapor Polo",
+    "vendor": "Sanmar",
+    "kind": "Polo",
+    "age": "Adult"
+  },
+  "NKFB6449": {
+    "name": "Nike - Unstructured Cotton/Poly Twill Cap",
+    "vendor": "Sanmar",
+    "kind": "Hat / Cap",
+    "age": "Adult"
+  },
+  "NKFD9889": {
+    "name": "Nike - Women's Club Fleece Sleeve Swoosh Pullover Hoodie",
+    "vendor": "Sanmar",
+    "kind": "Hoodie / Crew / Zip",
+    "age": "Adult"
+  },
+  "NL1510": {
+    "name": "Next Level - Women's Ideal Tee",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "NL1533": {
+    "name": "Next Level - Women's Ideal Racerback Tank",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "NL1540": {
+    "name": "Next Level - Women's Ideal V-Neck Tee",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "NL3312": {
+    "name": "Next Level - Youth CVC Tee",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Youth"
+  },
+  "NL3600": {
+    "name": "Next Level - Adult Cotton Tee",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "NL3600SW": {
+    "name": "Next Level - Soft Wash Cotton Tee",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "NL3601": {
+    "name": "Next Level - Cotton Long Sleeve Tee",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "NL3602": {
+    "name": "Next Level - Cotton Long Body Tee",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "NL3633": {
+    "name": "Next Level - Cotton Muscle Tank",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "NL3933": {
+    "name": "Next Level - Women's Cotton Tank",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "NL6010": {
+    "name": "Next Level - Adult Tri-Blend Tee",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "NL6200": {
+    "name": "Next Level - Adult Poly/Cotton Tee",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "NL6210": {
+    "name": "Next Level - Adult CVC Tee",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "NL6211": {
+    "name": "Next Level - Adult CVC Long Sleeve Tee",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "NL6410": {
+    "name": "Next Level - Adult CVC Sueded Tee",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "NL6733": {
+    "name": "Next Level - Women's Tri-Blend Racerback Tank",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "NL9303": {
+    "name": "Next Level - Adult Santa Barbara Pullover Hoodie",
+    "vendor": "Sanmar",
+    "kind": "Hoodie / Crew / Zip",
+    "age": "Adult"
+  },
+  "OG101": {
+    "name": "OGIO - Caliber2.0 Polo",
+    "vendor": "Sanmar",
+    "kind": "Polo",
+    "age": "Adult"
+  },
+  "OG139": {
+    "name": "Ogio - Limit 1/4-Zip",
+    "vendor": "Sanmar",
+    "kind": "Jacket / Vest",
+    "age": "Adult"
+  },
+  "OG146": {
+    "name": "Ogio - Code Stretch Polo",
+    "vendor": "Sanmar",
+    "kind": "Polo",
+    "age": "Adult"
+  },
+  "OG600": {
+    "name": "Hanes - Unisex Beefy Sweats Premium Heavyweight Crewneck Sweatshirt",
+    "vendor": "S&S Activewear",
+    "kind": "Hoodie / Crew / Zip",
+    "age": "Adult"
+  },
+  "OG700": {
+    "name": "Hanes - Unisex Beefy Sweats Premium Heavyweight Hooded Sweatshirt",
+    "vendor": "S&S Activewear",
+    "kind": "Hoodie / Crew / Zip",
+    "age": "Adult"
+  },
+  "OG900": {
+    "name": "Hanes - Unisex Beefy Sweats Premium Heavyweight Quarter-Zip Sweatshirt",
+    "vendor": "S&S Activewear",
+    "kind": "Hoodie / Crew / Zip",
+    "age": "Adult"
+  },
+  "P170": {
+    "name": "Hanes - Unisex EcoSmart Hooded Sweatshirt",
+    "vendor": "S&S Activewear",
+    "kind": "Hoodie / Crew / Zip",
+    "age": "Adult"
+  },
+  "P180": {
+    "name": "Hanes - Unisex EcoSmart Full-Zip Hooded Sweatshirt",
+    "vendor": "S&S Activewear",
+    "kind": "Hoodie / Crew / Zip",
+    "age": "Adult"
+  },
+  "PC01": {
+    "name": "Port & Company - Core Blend Recycled Tee",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "PC098H": {
+    "name": "Port & Company - Beach Wash Garment-Dyed Pullover Hooded Sweatshirt",
+    "vendor": "Sanmar",
+    "kind": "Hoodie / Crew / Zip",
+    "age": "Adult"
+  },
+  "PC099": {
+    "name": "Port & Company - Beach Wash Garment-Dyed Tee",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "PC330": {
+    "name": "Port & Company - Tri-Blend Tee",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "PC330LS": {
+    "name": "Port & Company - Tri-Blend Long Sleeve Tee",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "PC330Y": {
+    "name": "Port & Company - Youth Tri-Blend Tee",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Youth"
+  },
+  "PC340": {
+    "name": "Port & Company - CVC Tee",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "PC340Y": {
+    "name": "Port & Company - Youth CVC Tee",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Youth"
+  },
+  "PC380": {
+    "name": "Port & Company - Performance Tee",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "PC380H": {
+    "name": "Port & Company - Performance Pullover Hooded Tee",
+    "vendor": "Sanmar",
+    "kind": "Hoodie / Crew / Zip",
+    "age": "Adult"
+  },
+  "PC380LS": {
+    "name": "Port & Company - Long Sleeve Performance Tee",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "PC380Y": {
+    "name": "Port & Company - Youth Performance Tee",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Youth"
+  },
+  "PC380YLS": {
+    "name": "Port & Company - Youth Long Sleeve Performance Tee",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Youth"
+  },
+  "PC381": {
+    "name": "Port & Company - Performance Blend Tee",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "PC381LS": {
+    "name": "Port & Company - Long Sleeve Performance Blend Tee",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "PC381Y": {
+    "name": "Port & Company - Youth Performance Blend Tee",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Youth"
+  },
+  "PC390": {
+    "name": "Port & Company - Heather Performance Tee",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "PC390Y": {
+    "name": "Port & Company - Youth Heather Performance Tee",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Youth"
+  },
+  "PC43": {
+    "name": "Port & Company - Easy Cotton Tee",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "PC450": {
+    "name": "Port & Company - Fan Favorite Tee",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "PC450LS": {
+    "name": "Port & Company - Long Sleeve Fan Favorite Tee",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "PC450TD": {
+    "name": "Port & Company - Toddler Fan Favorite Tee",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Infant-Toddler"
+  },
+  "PC450Y": {
+    "name": "Port & Company - Youth Fan Favorite Tee",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Youth"
+  },
+  "PC455": {
+    "name": "Port & Company - Fan Favorite Blend Tee",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "PC455LS": {
+    "name": "Port & Company - Long Sleeve Fan Favorite Blend Tee",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "PC54": {
+    "name": "Port & Company - Core Cotton Tee",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "PC54DTG": {
+    "name": "Port & Company - Core Cotton DTG Tee",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "PC54LS": {
+    "name": "Port & Company - Long Sleeve Core Cotton Tee",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "PC54P": {
+    "name": "Port & Company - Core Cotton Pocket Tee",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "PC54T": {
+    "name": "Port & Company - Tall Core Cotton Tee",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "PC54Y": {
+    "name": "Port & Company - Youth Core Cotton Tee",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Youth"
+  },
+  "PC54YDTG": {
+    "name": "Port & Company - Youth Core Cotton DTG Tee",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Youth"
+  },
+  "PC54YLS": {
+    "name": "Port & Company - Youth Long Sleeve Core Cotton Tee",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Youth"
+  },
   "PC55": {
     "name": "Port & Company Adult T-Shirt",
     "vendor": "Sanmar",
-    "kind": "Tee / Long Sleeve / Tank"
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "PC55LS": {
+    "name": "Port & Company - Long Sleeve Core Blend Tee",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "PC55LST": {
+    "name": "Port & Company - Tall Long Sleeve Core Blend Tee",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "PC55P": {
+    "name": "Port & Company - Core Blend Pocket Tee",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "PC55PT": {
+    "name": "Port & Company - Tall Core Blend Pocket Tee",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "PC55T": {
+    "name": "Port & Company - Tall Core Blend Tee",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
   },
   "PC55Y": {
     "name": "Port & Company Youth T-Shirt",
     "vendor": "Sanmar",
-    "kind": "Tee / Long Sleeve / Tank"
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Youth"
+  },
+  "PC61": {
+    "name": "Port & Company - Essential Tee",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "PC61LS": {
+    "name": "Port & Company - Long Sleeve Essential Tee",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "PC61P": {
+    "name": "Port & Company - Essential Pocket Tee",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "PC61PT": {
+    "name": "Port & Company - Tall Essential Pocket Tee",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "PC61T": {
+    "name": "Port & Company - Tall Essential Tee",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "PC61Y": {
+    "name": "Port & Company - Youth Essential Tee",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Youth"
   },
   "PC78": {
     "name": "Port & Company Adult Crew Neck Sweater",
     "vendor": "Sanmar",
-    "kind": "Hoodie / Crew / Zip"
+    "kind": "Hoodie / Crew / Zip",
+    "age": "Adult"
+  },
+  "PC78H": {
+    "name": "Port & Company - Core Fleece Pullover Hooded Sweatshirt",
+    "vendor": "Sanmar",
+    "kind": "Hoodie / Crew / Zip",
+    "age": "Adult"
+  },
+  "PC78HT": {
+    "name": "Port & Company - Tall Core Fleece Pullover Hooded Sweatshirt",
+    "vendor": "Sanmar",
+    "kind": "Hoodie / Crew / Zip",
+    "age": "Adult"
+  },
+  "PC78YQ": {
+    "name": "Port & Company - Youth Core Fleece 1/4-Zip Pullover Sweatshirt",
+    "vendor": "Sanmar",
+    "kind": "Hoodie / Crew / Zip",
+    "age": "Youth"
+  },
+  "PC90": {
+    "name": "Port & Company - Essential Fleece Crewneck Sweatshirt",
+    "vendor": "Sanmar",
+    "kind": "Hoodie / Crew / Zip",
+    "age": "Adult"
+  },
+  "PC90H": {
+    "name": "Port & Company - Essential Fleece Pullover Hooded Sweatshirt",
+    "vendor": "Sanmar",
+    "kind": "Hoodie / Crew / Zip",
+    "age": "Adult"
+  },
+  "PC90HT": {
+    "name": "Port & Company - Tall Essential Fleece Pullover Hooded Sweatshirt",
+    "vendor": "Sanmar",
+    "kind": "Hoodie / Crew / Zip",
+    "age": "Adult"
   },
   "PC90Y": {
     "name": "Port & Company Youth Crew Neck Sweater",
     "vendor": "Sanmar",
-    "kind": "Hoodie / Crew / Zip"
+    "kind": "Hoodie / Crew / Zip",
+    "age": "Youth",
+    "successor": "PC78Y"
   },
-  "8800": {
-    "name": "Gildan Polo",
-    "vendor": "Inventory",
-    "kind": "Polo / Button-up"
+  "PC90YH": {
+    "name": "Port & Company - Youth Core Fleece Pullover Hooded Sweatshirt",
+    "vendor": "Sanmar",
+    "kind": "Hoodie / Crew / Zip",
+    "age": "Youth",
+    "successor": "PC78YH"
   },
-  "8800B": {
-    "name": "Gildan Youth Polo",
-    "vendor": "Inventory",
-    "kind": "Polo / Button-up"
+  "PRM180PT": {
+    "name": "Independent Trading Co. - Unisex Premium T-Shirt",
+    "vendor": "S&S Activewear",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
   },
-  "KP55Y": {
-    "name": "Port & Company Youth Polo",
-    "vendor": "Inventory",
-    "kind": "Polo / Button-up"
+  "PWU": {
+    "name": "Port Authority - Garment-Washed Cap",
+    "vendor": "Sanmar",
+    "kind": "Hat / Cap",
+    "age": "Adult"
+  },
+  "RA7110LS": {
+    "name": "Richardson Apparel - Clutch Long Sleeve Tee",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "RA7110LSH": {
+    "name": "Richardson Apparel - Clutch Long Sleeve Hoodie",
+    "vendor": "Sanmar",
+    "kind": "Hoodie / Crew / Zip",
+    "age": "Adult"
+  },
+  "RA7200LSH": {
+    "name": "Richardson Apparel - Charge Performance Fleece Long Sleeve Hoodie",
+    "vendor": "Sanmar",
+    "kind": "Hoodie / Crew / Zip",
+    "age": "Adult"
+  },
+  "RA7200SSH": {
+    "name": "Richardson Apparel - Charge Performance Fleece Short Sleeve Hoodie",
+    "vendor": "Sanmar",
+    "kind": "Hoodie / Crew / Zip",
+    "age": "Adult"
+  },
+  "RA7401B": {
+    "name": "Richardson Apparel - Barrage Stretch Woven Training Short",
+    "vendor": "Sanmar",
+    "kind": "Pants / Shorts",
+    "age": "Adult"
+  },
+  "RA7500Q": {
+    "name": "Richardson Apparel - Vertex 1/4-Zip Pullover",
+    "vendor": "Sanmar",
+    "kind": "Hoodie / Crew / Zip",
+    "age": "Adult"
+  },
+  "RF491": {
+    "name": "American Apparel - Unisex ReFlex Fleece Sweatpants",
+    "vendor": "S&S Activewear",
+    "kind": "Pants / Shorts",
+    "age": "Adult"
+  },
+  "RF494": {
+    "name": "American Apparel - Women's ReFlex Fleece Crewneck Sweatshirt",
+    "vendor": "S&S Activewear",
+    "kind": "Hoodie / Crew / Zip",
+    "age": "Adult"
+  },
+  "RF496": {
+    "name": "American Apparel - Unisex ReFlex Fleece Crewneck Sweatshirt",
+    "vendor": "S&S Activewear",
+    "kind": "Hoodie / Crew / Zip",
+    "age": "Adult"
+  },
+  "RF498": {
+    "name": "American Apparel - Unisex ReFlex Fleece Hoodie Sweatshirt",
+    "vendor": "S&S Activewear",
+    "kind": "Hoodie / Crew / Zip",
+    "age": "Adult"
+  },
+  "RW01W": {
+    "name": "Champion - Women's Reverse Weave Cropped Cut-Off Hooded Sweatshirt",
+    "vendor": "Sanmar",
+    "kind": "Hoodie / Crew / Zip",
+    "age": "Adult"
+  },
+  "RW25": {
+    "name": "Champion - Reverse Weave Jogger",
+    "vendor": "Sanmar",
+    "kind": "Pants / Shorts",
+    "age": "Adult"
+  },
+  "RW47": {
+    "name": "Champion - Reverse Weave Stadium Blanket",
+    "vendor": "Sanmar",
+    "kind": "Other item",
+    "age": "Adult"
+  },
+  "S101": {
+    "name": "Champion - Reverse Weave Hooded Sweatshirt",
+    "vendor": "Sanmar",
+    "kind": "Hoodie / Crew / Zip",
+    "age": "Adult"
+  },
+  "S101SS": {
+    "name": "Champion - Reverse Weave Short Sleeve Hooded Sweatshirt",
+    "vendor": "Sanmar",
+    "kind": "Hoodie / Crew / Zip",
+    "age": "Adult"
+  },
+  "S149": {
+    "name": "Champion - Reverse Weave Crewneck Sweatshirt",
+    "vendor": "Sanmar",
+    "kind": "Hoodie / Crew / Zip",
+    "age": "Adult"
+  },
+  "S535": {
+    "name": "Dickies - Men's Industrial Short Sleeve Work Shirt",
+    "vendor": "S&S Activewear",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "S600": {
+    "name": "Dickies - Men's Performance Cooling T-Shirt",
+    "vendor": "S&S Activewear",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "S6000": {
+    "name": "Champion - Powerblend Crewneck Sweatshirt",
+    "vendor": "Sanmar",
+    "kind": "Hoodie / Crew / Zip",
+    "age": "Adult"
+  },
+  "S608": {
+    "name": "Port Authority - Long Sleeve Easy Care Shirt",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "S608ES": {
+    "name": "Port Authority - Extended Size Long Sleeve Easy Care Shirt",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "S700": {
+    "name": "Champion - Powerblend Pullover Hoodie",
+    "vendor": "Sanmar",
+    "kind": "Hoodie / Crew / Zip",
+    "age": "Adult"
+  },
+  "S800": {
+    "name": "Champion - Powerblend Full-Zip Hoodie",
+    "vendor": "Sanmar",
+    "kind": "Hoodie / Crew / Zip",
+    "age": "Adult"
+  },
+  "SSS36": {
+    "name": "Dickies - Men's Oxford Shirt",
+    "vendor": "S&S Activewear",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "SSS46": {
+    "name": "Dickies - Men's Short Sleeve Oxford Shirt",
+    "vendor": "S&S Activewear",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "ST350": {
+    "name": "Sport-Tek - PosiCharge Competitor Tee",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "ST350LS": {
+    "name": "Sport-Tek - Long Sleeve PosiCharge Competitor Tee",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "ST550": {
+    "name": "Sport-Tek - PosiCharge Competitor Polo",
+    "vendor": "Sanmar",
+    "kind": "Polo",
+    "age": "Adult"
+  },
+  "STC41": {
+    "name": "Sport-Tek - DISCONTINUED Sport-Tek Heather Pom Pom Beanie",
+    "vendor": "Sanmar",
+    "kind": "Beanie",
+    "age": "Adult"
+  },
+  "T105": {
+    "name": "Champion - Heritage 7-Oz. Jersey Tee",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "T425": {
+    "name": "Champion - Heritage 6-Oz. Jersey Tee",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "TLJ317": {
+    "name": "Port Authority - Tall Core Soft Shell Jacket",
+    "vendor": "Sanmar",
+    "kind": "Jacket / Vest",
+    "age": "Adult"
+  },
+  "TLJ790": {
+    "name": "Port Authority - Tall Glacier Soft Shell Jacket",
+    "vendor": "Sanmar",
+    "kind": "Jacket / Vest",
+    "age": "Adult"
+  },
+  "TLK420": {
+    "name": "Port Authority - Tall Heavyweight Cotton Pique Polo",
+    "vendor": "Sanmar",
+    "kind": "Polo",
+    "age": "Adult"
+  },
+  "TLK500": {
+    "name": "Port Authority - Tall Silk Touch Polo",
+    "vendor": "Sanmar",
+    "kind": "Polo",
+    "age": "Adult"
+  },
+  "TLK500LS": {
+    "name": "Port Authority - Tall Silk Touch Long Sleeve Polo",
+    "vendor": "Sanmar",
+    "kind": "Polo",
+    "age": "Adult"
+  },
+  "TLK500P": {
+    "name": "Port Authority - Tall Silk Touch Polo with Pocket",
+    "vendor": "Sanmar",
+    "kind": "Polo",
+    "age": "Adult"
+  },
+  "TLK540": {
+    "name": "Port Authority - Tall Silk Touch Performance Polo",
+    "vendor": "Sanmar",
+    "kind": "Polo",
+    "age": "Adult"
+  },
+  "TLS608": {
+    "name": "Port Authority - Tall Long Sleeve Easy Care Shirt",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "TM1MU410": {
+    "name": "TravisMathew - Coto Performance Polo",
+    "vendor": "Sanmar",
+    "kind": "Polo",
+    "age": "Adult"
+  },
+  "TM1MU411": {
+    "name": "TravisMathew - Oceanside Solid Polo",
+    "vendor": "Sanmar",
+    "kind": "Polo",
+    "age": "Adult"
+  },
+  "TM1MU412": {
+    "name": "TRAVISMATHEW - Oceanside Heather Polo",
+    "vendor": "Sanmar",
+    "kind": "Polo",
+    "age": "Adult"
+  },
+  "TM1MU414": {
+    "name": "TRAVISMATHEW - Oceanside Blocked Polo",
+    "vendor": "Sanmar",
+    "kind": "Polo",
+    "age": "Adult"
+  },
+  "TM1MU419": {
+    "name": "TRAVISMATHEW - Newport 1/4-Zip Fleece",
+    "vendor": "Sanmar",
+    "kind": "Hoodie / Crew / Zip",
+    "age": "Adult"
+  },
+  "TM1MU422": {
+    "name": "TRAVISMATHEW - Surfside Full-Zip Jacket",
+    "vendor": "Sanmar",
+    "kind": "Jacket / Vest",
+    "age": "Adult"
+  },
+  "TM1MU423": {
+    "name": "TravisMathew - Cruz Trucker Cap",
+    "vendor": "Sanmar",
+    "kind": "Hat / Cap",
+    "age": "Adult"
+  },
+  "TM1MU425": {
+    "name": "TRAVISMATHEW - FOMO Novelty Cap",
+    "vendor": "Sanmar",
+    "kind": "Hat / Cap",
+    "age": "Adult"
+  },
+  "TM1MY390": {
+    "name": "TRAVISMATHEW - Cruz Colorblock Trucker Cap",
+    "vendor": "Sanmar",
+    "kind": "Hat / Cap",
+    "age": "Adult"
+  },
+  "TM1MY391": {
+    "name": "TravisMathew - FOMO Solid Cap",
+    "vendor": "Sanmar",
+    "kind": "Hat / Cap",
+    "age": "Adult"
+  },
+  "TST350": {
+    "name": "Sport-Tek - Tall PosiCharge Competitor Tee",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "TST350LS": {
+    "name": "Sport-Tek - Tall Long Sleeve PosiCharge Competitor Tee",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "VB51": {
+    "name": "Dickies - Men's E-Vis Overall",
+    "vendor": "S&S Activewear",
+    "kind": "Pants / Shorts",
+    "age": "Adult"
+  },
+  "W808": {
+    "name": "Port Authority - Long Sleeve SuperPro React Twill Shirt",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "WS50-D": {
+    "name": "Dickies - Men's Traditional Heavyweight T-Shirt",
+    "vendor": "S&S Activewear",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Adult"
+  },
+  "YST350": {
+    "name": "Sport-Tek - Youth PosiCharge Competitor Tee",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Youth"
+  },
+  "YST350LS": {
+    "name": "Sport-Tek - Youth Long Sleeve PosiCharge Competitor Tee",
+    "vendor": "Sanmar",
+    "kind": "Tee / Long Sleeve / Tank / Button-up",
+    "age": "Youth"
   }
 }
