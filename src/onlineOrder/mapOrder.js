@@ -116,9 +116,12 @@ function countColorSize(styleRows) {
  * @param order    { summary, package } as InkSoft returns them (GetOrderSummaries with cards, GetOrderPackage)
  * @param deal     { Deal_Name, Account_Name, Contact_Name } from the CRM Deal
  * @param profiles profiles.json   @param styles styles.json
+ * @param productStyles  E-89: InkSoft ProductId -> style (productStyles.json + productStylesCarried.json). When given,
+ *                       a product's style is looked up by its id ONLY -- the SKU-prefix rule (styleOf) is not used, and
+ *                       a product not in the table is held. Without it (old callers, tests), the prefix rule applies.
  * @returns { data, held: string[], notes: string[], due }
  */
-export function inksoftToFormData(order, deal, profiles, styles, rules = RULES) {
+export function inksoftToFormData(order, deal, profiles, styles, rules = RULES, productStyles = null) {
   const s = order.summary || {};
   const pkg = order.package?.Orders?.[0] || order.package || {};
   const cards = s.ProductionCards || [];
@@ -137,11 +140,13 @@ export function inksoftToFormData(order, deal, profiles, styles, rules = RULES) 
   // 2 · which art goes on which product + colour, from the production cards
   const artFor = new Map();     // `${product}|${color}` -> Map(art -> side)
   const skuFor = new Map();     // product -> card ProductSku
+  const pidFor = new Map();     // product -> card ProductId (E-89)
   for (const c of cards) {
     const key = `${c.ProductName}|${c.ProductStyleName}`;
     if (!artFor.has(key)) artFor.set(key, new Map());
     artFor.get(key).set(artBase(c.DesignName), String(c.SideInternalName || c.Side || '').toLowerCase());
     skuFor.set(c.ProductName, c.ProductSku);
+    if (c.ProductId != null) pidFor.set(c.ProductName, String(c.ProductId));
   }
 
   // 3 · group lines that carry the same art into one garment entry, as staff do
@@ -149,8 +154,18 @@ export function inksoftToFormData(order, deal, profiles, styles, rules = RULES) 
   for (const l of lines) {
     const arts = artFor.get(`${l.product}|${l.color}`);
     if (!arts) { if (cards.length) held.push(`no production card for "${l.product}" in ${l.color}`); continue; }
-    const style = styleOf(skuFor.get(l.product), styles);
-    if (!style) { held.push(`style of "${l.product}" (SKU ${skuFor.get(l.product)}) is not in styles.json`); continue; }
+    let style;
+    if (productStyles) {
+      // E-89 (InkSoft M-15): the product says its style; a store SKU is never read as one (8800BMACC… is not 8800).
+      const pid = String(l.productId ?? pidFor.get(l.product) ?? '');
+      const code = pid ? productStyles[pid] : undefined;
+      if (!code) { held.push(`"${l.product}" (InkSoft product ${pid || '?'}) is not in the style table -- a person onboards it; re-run the M-15 pull if it is new`); continue; }
+      if (!styles[code]) { held.push(`style ${code} of "${l.product}" is not in styles.json yet (its name / garment kind are not approved)`); continue; }
+      style = { code, ...styles[code] };
+    } else {
+      style = styleOf(skuFor.get(l.product), styles);
+      if (!style) { held.push(`style of "${l.product}" (SKU ${skuFor.get(l.product)}) is not in styles.json`); continue; }
+    }
     const sig = [...arts.keys()].sort().join('+');
     if (!groups.has(sig)) groups.set(sig, { arts, styles: new Map(), colors: new Set() });
     const g = groups.get(sig);

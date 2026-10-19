@@ -1,0 +1,5 @@
+{
+ "_about": "Products onboarded before the M-15 product table existed whose style that table does not yet list as confident. Carried here explicitly (by InkSoft ProductId) so a working order is not suddenly held. Each row says why and when to drop it. Never overrides productStyles.json (a test checks).",
+ "1002796": "PC90Y",
+ "_1002796": "Buhler youth crewneck: style PC90Y is 'confirm successor' (-> PC78Y) in M-15. Onboarded as PC90Y since 10-15 (1000249, approved by Korie). Drop when David answers D2 / D6 and the pull lists it."
+}

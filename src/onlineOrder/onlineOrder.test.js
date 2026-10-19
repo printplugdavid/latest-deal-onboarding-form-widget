@@ -1,4 +1,6 @@
-import { buildForOrder, PROFILE_COUNT, BUNDLE_VERSION } from "./index";
+import { buildForOrder, PROFILE_COUNT, BUNDLE_VERSION, PRODUCT_STYLES, PRODUCT_STYLES_PULLED } from "./index";
+import pulled from "./productStyles.json";
+import carried from "./productStylesCarried.json";
 import { inksoftToFormData, dueDateFor, zonedMidnightISO, artBase, styleOf } from "./mapOrder";
 import { structurePlacements } from "./structure";
 import profiles from "./profiles.json";
@@ -18,10 +20,10 @@ const order = (over = {}) => ({
   summary: {
     ID: 9000001, FirstName: "Test", LastName: "Buyer", Email: "buyer@example.com",
     EstimatedDeliveryDate_Max: "2026-11-13T18:00:00Z", ShippingVendorName: "Pickup", ShippingMethodName: "Store Pickup",
-    ProductionCards: [{ ProductName: "Canyon Winds Polo", ProductStyleName: "Black", ProductSku: "8800MACCCW", DesignName: "PolosMusicAssociationCanyonWinds-100044", SideInternalName: "front" }],
+    ProductionCards: [{ ProductName: "Canyon Winds Polo", ProductStyleName: "Black", ProductSku: "8800MACCCW", ProductId: 1001768, DesignName: "PolosMusicAssociationCanyonWinds-100044", SideInternalName: "front" }],
     ...over.summary,
   },
-  package: { Items: [{ FullName: "Canyon Winds Polo - Black - XL", Quantity: 1 }], ...over.package },
+  package: { Items: [{ FullName: "Canyon Winds Polo - Black - XL", Quantity: 1, ProductId: 1001768 }], ...over.package },
 });
 const deal = { Deal_Name: "9000001 - Test Buyer - Online Order" };
 const AT = "2026-10-15T20:00:00.000Z";
@@ -69,7 +71,7 @@ describe("held for a person, never guessed", () => {
   test("a garment color the design was never described on", () => {
     const o = order({
       summary: { ProductionCards: [{ ...order().summary.ProductionCards[0], ProductStyleName: "White" }] },
-      package: { Items: [{ FullName: "Canyon Winds Polo - White - XL", Quantity: 1 }] },
+      package: { Items: [{ FullName: "Canyon Winds Polo - White - XL", Quantity: 1, ProductId: 1001768 }] },
     });
     expect(buildForOrder(o, deal).held.join(" ")).toMatch(/only been described on Black/);
   });
@@ -102,13 +104,49 @@ describe("E-88 the youth polo 8800B is its own style", () => {
   });
   test("a youth-polo order is onboarded as the youth polo", () => {
     const o = order({
-      summary: { ProductionCards: [{ ...order().summary.ProductionCards[0], ProductName: "Canyon Winds Youth Polo", ProductSku: "8800BMACCY" }] },
-      package: { Items: [{ FullName: "Canyon Winds Youth Polo - Black - YM", Quantity: 1 }] },
+      summary: { ProductionCards: [{ ...order().summary.ProductionCards[0], ProductName: "Canyon Winds Youth Polo", ProductSku: "8800BMACC_16656618_2", ProductId: 1000191 }] },
+      package: { Items: [{ FullName: "Canyon Winds Youth Polo - Black - YM", Quantity: 1, ProductId: 1000191 }] },
     });
     const r = buildForOrder(o, deal, { submittedAt: AT });
     expect(r.ok).toBe(true);
     expect(r.note).toContain("Garment Type (Brand / Style): 8800B Gildan Youth Polo");
     expect(r.note).not.toContain("8800 Gildan Polo");
+  });
+});
+
+// E-89 (InkSoft M-15): a product's style comes from its InkSoft ProductId, never from the store SKU.
+describe("E-89 match by product, not by SKU prefix", () => {
+  const withProduct = (pid, sku, name) => order({
+    summary: { ProductionCards: [{ ...order().summary.ProductionCards[0], ProductName: name, ProductSku: sku, ProductId: pid }] },
+    package: { Items: [{ FullName: name + " - Black - XL", Quantity: 1, ProductId: pid }] },
+  });
+  test("the table is the InkSoft pull, plus only our carried rows, which never override it", () => {
+    expect(PRODUCT_STYLES_PULLED).toBe("2026-10-19");
+    const pulledIds = Object.keys(pulled).filter((k) => !k.startsWith("_"));
+    const carriedIds = Object.keys(carried).filter((k) => !k.startsWith("_"));
+    expect(pulledIds.length).toBe(693);
+    carriedIds.forEach((id) => expect(pulled[id]).toBeUndefined());
+    carriedIds.forEach((id) => expect(carried["_" + id]).toMatch(/Drop when/)); // every carried row says why
+    expect(Object.keys(PRODUCT_STYLES).length).toBe(pulledIds.length + carriedIds.length);
+  });
+  test("every style we can onboard is reachable from at least one product", () => {
+    const reachable = new Set(Object.values(PRODUCT_STYLES));
+    Object.keys(styles).filter((k) => !k.startsWith("_")).forEach((k) => expect(reachable.has(k)).toBe(true));
+  });
+  test("a product missing from the table is held, even when its SKU would match by prefix", () => {
+    const r = buildForOrder(withProduct(9999999, "8800MACCCW", "Mystery Polo"), deal);
+    expect(r.ok).toBe(false);
+    expect(r.held.join(" ")).toMatch(/InkSoft product 9999999\) is not in the style table/);
+  });
+  test("a listed product whose style is not approved yet is held, naming the style (PC78H hoodie, no longer read as PC78)", () => {
+    const r = buildForOrder(withProduct(1000035, "PC78H", "Core Fleece Hoodie"), deal);
+    expect(r.ok).toBe(false);
+    expect(r.held.join(" ")).toMatch(/style PC78H of "Core Fleece Hoodie" is not in styles.json yet/);
+  });
+  test("the product decides, whatever the SKU says", () => {
+    const r = buildForOrder(withProduct(1000191, "8800MACCCW", "Odd SKU Youth Polo"), deal, { submittedAt: AT });
+    expect(r.ok).toBe(true);
+    expect(r.note).toContain("8800B Gildan Youth Polo");
   });
 });
 

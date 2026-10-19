@@ -13,6 +13,8 @@ import { inksoftToFormData } from "./mapOrder";
 import { structurePlacements } from "./structure";
 import profiles from "./profiles.json";
 import styles from "./styles.json";
+import productStylesPulled from "./productStyles.json";
+import productStylesCarried from "./productStylesCarried.json";
 import * as placements from "../placements";
 import { applyGarmentSplits } from "../garmentSplit";
 import { lumpedConcerns } from "../lumpedOrder";
@@ -26,7 +28,7 @@ import { AUTO_SOURCE, buildSubmission } from "../submission";
  *          ok=false means a person must onboard it; nothing else is meaningful then.
  */
 export function buildForOrder(order, deal, opts = {}) {
-  const mapped = inksoftToFormData(order, deal, profiles, styles);
+  const mapped = inksoftToFormData(order, deal, profiles, styles, undefined, PRODUCT_STYLES);
   const held = [...mapped.held];
   const answers = structurePlacements(mapped.data, placements);
 
@@ -46,6 +48,15 @@ export function buildForOrder(order, deal, opts = {}) {
 }
 
 export const PROFILE_COUNT = Object.keys(profiles).length;
+
+/*
+ * E-89: InkSoft ProductId -> style. productStyles.json is the InkSoft thread's M-15 pull, vendored UNCHANGED at each
+ * release (only products whose style is confident). productStylesCarried.json is ours: the few products already onboarded
+ * before the pull existed that the pull does not list yet, each with its reason. Carried rows never override the pull.
+ */
+const rows = (o) => Object.fromEntries(Object.entries(o).filter(([k]) => !k.startsWith("_")));
+export const PRODUCT_STYLES = { ...rows(productStylesCarried), ...rows(productStylesPulled) };
+export const PRODUCT_STYLES_PULLED = productStylesPulled._pulled || "";
 /* global __FORM_COMMIT__ */
 // The order-sync's build stamps the tag it bundled (esbuild --define); every [AutoOnboard] log line carries it.
 export const BUNDLE_VERSION = typeof __FORM_COMMIT__ !== "undefined" ? __FORM_COMMIT__ : "dev";
