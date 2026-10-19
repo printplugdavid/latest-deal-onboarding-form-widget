@@ -15,6 +15,7 @@ import {
   normalizeHex, pantoneLabel, readInkText, readThreadText, searchThreads, threadLabel, THREAD_BRAND_COUNTS, THREAD_CATALOGS,
   THREAD_CATALOGS_MISSING,
 } from "../colorLibrary";
+import ImageColorFinder from "./ImageColorFinder";
 
 const METAL = "linear-gradient(135deg,#8a6d1f,#f5e08a,#b8962e)";
 export const Dot = ({ background, size = 16 }) => (
@@ -87,6 +88,7 @@ export const ThreadColors = ({ field, box }) => {
           For a line that is not in the library yet, type the maker, line and number in the box below (for example "Marathon Rayon 1159").
         </Typography>
       </Box>
+      <ImageColorFinder mode="thread" onAdd={(picks) => field.onChange(picks.reduce((t, p) => addLine(t, p.match.label), field.value))} />
       <Autocomplete
         size="small"
         options={THREADS}
@@ -293,6 +295,10 @@ export const InkColors = ({ field, box, typedCount }) => {
             ))}
           </Box>
         )}
+        <ImageColorFinder
+          mode="ink"
+          onAdd={(picks) => field.onChange(picks.reduce((t, p) => addLine(t, p.kind === "house" ? p.match.name : p.match.label), field.value))}
+        />
       </Box>
 
       {box}
