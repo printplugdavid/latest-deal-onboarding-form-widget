@@ -24,7 +24,7 @@ describe("release check: the style catalogue (E-89 / E-92)", () => {
   test("every style has a name, the supplier as vendor (D-41), a form kind and an age group", () => {
     entries.forEach(([code, s]) => {
       expect([code, !!s.name]).toEqual([code, true]);
-      expect([code, s.vendor]).toEqual([code, expect.stringMatching(/^(Sanmar|S&S Activewear)$/)]);
+      expect([code, s.vendor]).toEqual([code, expect.stringMatching(/^(San Mar|S&S Activewear)$/)]);
       expect([code, GARMENT_KINDS.includes(s.kind)]).toEqual([code, true]);
       expect([code, AGE_GROUPS.includes(s.age)]).toEqual([code, true]);
     });

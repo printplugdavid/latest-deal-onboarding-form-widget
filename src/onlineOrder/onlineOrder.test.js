@@ -152,7 +152,7 @@ describe("E-89 match by product, not by SKU prefix", () => {
     expect(r.held).toEqual([]);
     expect(r.note).toContain("Garment Type (Brand / Style): PC78H ");
     expect(r.json).toContain('"garmentKind":"Hoodie / Crew / Zip"');
-    expect(r.note).toContain("Vendors Used: Sanmar");
+    expect(r.note).toContain("Vendors Used: San Mar");
   });
   test("the product decides, whatever the SKU says", () => {
     const r = buildForOrder(withProduct(1000191, "8800MACCCW", "Odd SKU Youth Polo"), deal, { submittedAt: AT });
@@ -176,7 +176,7 @@ describe("E-79 descriptions per garment color", () => {
     summary: { ID: 1, ProductionCards: colors.map(card), EstimatedDeliveryDate_Max: "2026-11-02T12:00:00Z", ShippingMethodName: "Pick-up" },
     package: { Items: colors.map((c) => ({ FullName: `Tee - ${c} - L`, Quantity: 1, ProductId: 1 })) },
   });
-  const run = (colors) => inksoftToFormData(ord(colors), deal, profs, { PC55: { name: "Tee", vendor: "Sanmar", kind: "Polo" } }, undefined, { 1: "PC55" });
+  const run = (colors) => inksoftToFormData(ord(colors), deal, profs, { PC55: { name: "Tee", vendor: "San Mar", kind: "Polo" } }, undefined, { 1: "PC55" });
   const desc = (r) => r.data.products[0].primaryBranches[0].secondaryBranches[0].graphicDescription;
   test("navy alone keeps the navy-only description", () => expect(desc(run(["Navy"]))).toBe("navy only"));
   test("white uses the description that covers white", () => expect(desc(run(["White"]))).toBe("white and navy"));
@@ -198,8 +198,8 @@ describe("E-90 see art file, stickers, USDOT; E-93 one garment type per kind", (
     package: { Items: items },
   });
   const item = (product, color, size, qty, id) => ({ FullName: `${product} - ${color} - ${size}`, Quantity: qty, ProductId: id });
-  const styles2 = { TEE: { name: "Tee", vendor: "Sanmar", kind: "Tee / Long Sleeve / Tank / Button-up" },
-    HOOD: { name: "Hoodie", vendor: "Sanmar", kind: "Hoodie / Crew / Zip" }, CAP: { name: "Cap", vendor: "Sanmar", kind: "Hat / Cap" } };
+  const styles2 = { TEE: { name: "Tee", vendor: "San Mar", kind: "Tee / Long Sleeve / Tank / Button-up" },
+    HOOD: { name: "Hoodie", vendor: "San Mar", kind: "Hoodie / Crew / Zip" }, CAP: { name: "Cap", vendor: "San Mar", kind: "Hat / Cap" } };
   const ps = { 1: "TEE", 2: "HOOD", 3: "CAP" };
   const ng = { 50: { product: "Stickers" }, 51: { skip: "a USDOT decal" } };
   const run = (o, profs = {}) => inksoftToFormData(o, deal, profs, styles2, undefined, ps, ng);
