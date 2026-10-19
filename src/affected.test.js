@@ -633,7 +633,8 @@ describe("E-81 toddler sizes 2T / 3T / 4T", () => {
     expect(parseSizeText("Toddler 2 1, Toddler 4T 2").rows).toEqual([{ size: "2T", qty: 1 }, { size: "4T", qty: 2 }]);
     // "4 toddler 2" reads two ways; "Toddler N" is taken as the size (4 of 2T), and the agent sees it in the grid.
     expect(parseSizeText("4 toddler 2").rows).toEqual([{ size: "2T", qty: 4 }]);
-    expect(parseSizeText("2T-YS 1").unknown).toEqual(["2T-YS"]); // a range never crosses runs
+    expect(parseSizeText("2T-YS 1")).toMatchObject({ rows: [] }); // a range never crosses runs ...
+    expect(parseSizeText("2T-YS 1").unknown).toContain("2T-YS"); // ... and is reported, as for youth / adult
   });
 });
 
