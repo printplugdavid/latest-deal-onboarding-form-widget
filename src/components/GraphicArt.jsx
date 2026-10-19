@@ -4,8 +4,8 @@
  *
  * The form value is `artFiles: [{ name, size, key }]` on the graphic (names only). The files themselves live in
  * ArtFilesContext (provided by the onboarding form, App.jsx) and are uploaded to the onboarding note on Submit with
- * the "Other files", then copied to the Deal's Art Assets (E-72). Without the context (the Amendment Form, until
- * E-96) the row offers the color finder only: a picture is read on this computer and not saved.
+ * the "Other files", then copied to the Deal's Art Assets (E-72). The Amendment Form provides it too (E-96): new art
+ * goes on the amendment's note. Without the context the row offers the color finder only (nothing saved).
  */
 import React, { createContext, useContext, useState } from "react";
 import { Box, Button, Typography } from "@mui/material";
@@ -84,7 +84,7 @@ const GraphicArt = ({ base, productName: givenName, productIndex }) => {
               {store && store.get(a.key) && !isPicture(a.name) && (
                 <span style={{ color: "#777" }}>design file -- colors are read from a PNG, JPG or SVG</span>
               )}
-              {!store && <span style={{ color: "#777" }}>attached at onboarding</span>}
+              {(!store || !store.get(a.key)) && <span style={{ color: "#777" }}>attached earlier -- on an earlier onboarding note</span>}
               {store && (
                 <Button size="small" variant="text" onClick={() => remove(a.key)} sx={{ textTransform: "none", py: 0, minWidth: 0 }}>
                   Remove
@@ -111,7 +111,7 @@ const GraphicArt = ({ base, productName: givenName, productIndex }) => {
       <Typography sx={{ fontSize: "0.75rem", color: "#777", mt: "0.4rem" }}>
         {store
           ? `Attached art goes on the onboarding note and into the Deal's Art Assets. Add buttons write the ${WHERE[mode]} into this graphic's Colors Used.`
-          : "Art files are attached on the onboarding form. A picture picked here is only read for its colors; it is not saved."}
+          : "A picture picked here is only read for its colors; it is not saved."}
       </Typography>
     </Box>
   );

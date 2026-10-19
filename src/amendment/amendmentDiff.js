@@ -173,6 +173,7 @@ const ARRAY_LABELS = {
   branches: "Graphic",
   gangGraphics: "Gang graphic",
   garmentSkus: "SKU",
+  artFiles: "Art file", // E-96
 };
 
 const FIELD_LABELS = {
@@ -192,7 +193,7 @@ const FIELD_LABELS = {
 
 // E-74: the placement picks are saved beside the text they write (placementLocation, sizeAndDimensions,
 // a size variant's dimensions). The text says the change in words; the picks would only repeat it.
-const PICK_LEAF = /\.(placementPick|placementOther|widthIn|heightIn|positionNote|placementSizeAuto)$/;
+const PICK_LEAF = /\.(placementPick|placementOther|widthIn|heightIn|positionNote|placementSizeAuto)$|\.artFiles\.\d+\.(size|key)$/;
 
 export const humanize = (key) => {
   const words = key.replace(/_/g, " ").replace(/([a-z0-9])([A-Z])/g, "$1 $2").toLowerCase();
@@ -216,6 +217,8 @@ export function describePath(path, values) {
       out.push("Contact");
     } else if (/^\d+$/.test(key)) {
       out.push(`#${Number(key) + 1}`);
+    } else if (key === "name" && parts[i - 2] === "artFiles") {
+      // E-96: "Art file 1", not "Art file 1 › Name
     } else {
       out.push(FIELD_LABELS[key] || humanize(key));
     }

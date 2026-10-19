@@ -59,6 +59,9 @@ import { computePrints } from "../printMath";
 import { buildOnboardingNote } from "../onboardingNote";
 import { buildProductionCards, workDriveTarget } from "../productionCards";
 import { requestDealFolders, shouldRequestFolders } from "../dealFolders";
+import { requestArtCopy, shouldCopyArt } from "../artCopy";
+import { ArtFilesContext } from "../components/GraphicArt";
+import { MAX_UPLOAD_BYTES, artKey, collectArtFiles } from "../graphicArt";
 import {
   CUSTOMER_NOTES_QUESTION,
   CUSTOMER_NOTES_TOOLTIP,
@@ -252,6 +255,25 @@ const AmendmentApp = () => {
 
   const methods = useForm();
   const { control, reset, handleSubmit, getValues, setValue } = methods;
+
+  // E-96: art attached per graphic in this amendment. Files picked here are kept by key; a file attached at
+  // onboarding is only a name (its file is already on an earlier note) and is never uploaded again.
+  const artFilesRef = useRef(new Map());
+  const artFiles = useMemo(
+    () => ({
+      get: (key) => artFilesRef.current.get(key),
+      put: (file) => {
+        const key = artKey(file);
+        artFilesRef.current.set(key, file);
+        return key;
+      },
+      room: (addBytes) => {
+        const now = collectArtFiles(getValues("products")).reduce((n, a) => n + (artFilesRef.current.has(a.key) ? a.size || 0 : 0), 0);
+        return now + addBytes > MAX_UPLOAD_BYTES ? "New art files together cannot exceed 15MB." : "";
+      },
+    }),
+    [getValues]
+  );
   const current = useWatch({ control });
   const { append } = useFieldArray({ control, name: "products" });
 
@@ -573,6 +595,22 @@ const AmendmentApp = () => {
       newNoteId = r.data[0]?.details?.id;
       priorNotes = (prior?.data || []).filter((n) => n?.Note_Title === LIVE_NOTE_TITLE);
     });
+    // E-96: art attached in this amendment goes on the new note, then the Deal's Art Assets (E-72) -- as on the
+    // onboarding form. Files attached earlier are already on their own note and are not sent again.
+    if (noteOk && newNoteId) {
+      const fresh = collectArtFiles(saved?.products).map((a) => artFilesRef.current.get(a.key)).filter(Boolean);
+      if (fresh.length) {
+        let onNote = 0;
+        await step(`art files (${fresh.length})`, async () => {
+          for (let i = 0; i < fresh.length; i++) {
+            const content = new Blob([await fresh[i].arrayBuffer()], { type: fresh[i].type }); // as App.jsx does
+            await ZOHO.CRM.API.attachFile({ Entity: "Notes", RecordID: newNoteId, File: { Name: fresh[i].name, Content: content } });
+            onNote++;
+          }
+        });
+        if (shouldCopyArt(loaded.deal, onNote)) requestArtCopy(recordId, newNoteId);
+      }
+    }
     if (noteOk) {
       await step("marking the old note superseded", async () => {
         const olds = priorNotes.filter((n) => String(n.id) !== String(newNoteId));
@@ -722,6 +760,7 @@ const AmendmentApp = () => {
 
   return (
     <FormProvider {...methods}>
+      <ArtFilesContext.Provider value={artFiles}>
       <Box sx={{ p: 3, fontFamily: "Roboto, sans-serif", color: "#1a1a1a", background: "#fff", minHeight: "100vh" }}>
         {header}
         <Alert severity="info" sx={{ mb: 2 }}>
@@ -1146,6 +1185,7 @@ The panel at the bottom shows exactly what will be recorded. Saving posts a new 
           </Alert>
         )}
       </Box>
+      </ArtFilesContext.Provider>
     </FormProvider>
   );
 };

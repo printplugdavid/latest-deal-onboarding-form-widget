@@ -538,3 +538,12 @@ describe("E-74 placement picks in What Changed", () => {
     ]);
   });
 });
+
+// E-96: art attached to a graphic in an amendment reads as one line per file.
+describe("E-96 art files in What Changed", () => {
+  test("one line: Art file N, empty -> the file name; size and key are not listed", () => {
+    const before = { products: [{ productName: "Embroidery", primaryBranches: [{ secondaryBranches: [{ graphicDescription: "P" }] }] }] };
+    const after = { products: [{ productName: "Embroidery", primaryBranches: [{ secondaryBranches: [{ graphicDescription: "P", artFiles: [{ name: "p.dst", size: 12, key: "p.dst|12|1" }] }] }] }] };
+    expect(summariseDiff(diffValues(before, after), after)).toEqual(["Embroidery › Garment 1 › Graphic 1 › Art file 1: (empty) → p.dst"]);
+  });
+});
