@@ -586,7 +586,7 @@ describe("quick size entry (E-51)", () => {
   });
 
   test("it never guesses: unknown sizes, lone numbers and cross-run ranges are reported", () => {
-    expect(parseSizeText("3T 2, M 1")).toEqual({ rows: [{ size: "M", qty: 1 }], unknown: ["3T 2"] });
+    expect(parseSizeText("5T 2, M 1")).toEqual({ rows: [{ size: "M", qty: 1 }], unknown: ["5T 2"] });
     expect(parseSizeText("S/M 4").unknown).toEqual(["S/M 4"]);
     expect(parseSizeText("M").unknown).toEqual(["M"]);
     expect(parseSizeText("7").unknown).toEqual(["7"]);
@@ -618,3 +618,23 @@ describe("quick size entry (E-51)", () => {
     expect(TALL_SIZES).toEqual(["LT", "XLT", "2XLT", "3XLT", "4XLT"]);
   });
 });
+
+describe("E-81 toddler sizes 2T / 3T / 4T", () => {
+  const { parseSizeText, TODDLER_SIZES, ALL_SIZES } = require("./affected");
+  test("their own run, between OSFA and youth; no 5T", () => {
+    expect(TODDLER_SIZES).toEqual(["2T", "3T", "4T"]);
+    expect(ALL_SIZES.indexOf("2T")).toBe(ALL_SIZES.indexOf("YXS") - 3);
+    expect(ALL_SIZES).not.toContain("5T");
+  });
+  test("quick entry reads them in either order, as a range, and as 'Toddler 2'", () => {
+    expect(parseSizeText("2T 3, 4T 1")).toEqual({ rows: [{ size: "2T", qty: 3 }, { size: "4T", qty: 1 }], unknown: [] });
+    expect(parseSizeText("3 3T")).toEqual({ rows: [{ size: "3T", qty: 3 }], unknown: [] });
+    expect(parseSizeText("2T-4T 2").rows).toEqual([{ size: "2T", qty: 2 }, { size: "3T", qty: 2 }, { size: "4T", qty: 2 }]);
+    expect(parseSizeText("Toddler 2 1, Toddler 4T 2").rows).toEqual([{ size: "2T", qty: 1 }, { size: "4T", qty: 2 }]);
+    // "4 toddler 2" reads two ways; "Toddler N" is taken as the size (4 of 2T), and the agent sees it in the grid.
+    expect(parseSizeText("4 toddler 2").rows).toEqual([{ size: "2T", qty: 4 }]);
+    expect(parseSizeText("2T-YS 1")).toMatchObject({ rows: [] }); // a range never crosses runs ...
+    expect(parseSizeText("2T-YS 1").unknown).toContain("2T-YS"); // ... and is reported, as for youth / adult
+  });
+});
+

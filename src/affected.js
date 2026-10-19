@@ -24,10 +24,12 @@ export const OTHER_SIZE = "__other__";
  * only ever spans one run.
  */
 export const YOUTH_SIZES = ["YXS", "YS", "YM", "YL", "YXL"];
+// E-81 (David, 2026-10-19): toddler 2T / 3T / 4T, the same codes the onboarding form saves. Their own run, like youth.
+export const TODDLER_SIZES = ["2T", "3T", "4T"];
 export const TALL_SIZES = ["LT", "XLT", "2XLT", "3XLT", "4XLT"];
 const ADULT_RUN = ["XXS", "XS", "S", "M", "L", "XL", "2XL", "3XL", "4XL", "5XL"];
-const SIZE_RUNS = [ADULT_RUN, YOUTH_SIZES, TALL_SIZES];
-export const ALL_SIZES = ADULT_RUN.concat(["OSFA"], YOUTH_SIZES, TALL_SIZES);
+const SIZE_RUNS = [ADULT_RUN, TODDLER_SIZES, YOUTH_SIZES, TALL_SIZES];
+export const ALL_SIZES = ADULT_RUN.concat(["OSFA"], TODDLER_SIZES, YOUTH_SIZES, TALL_SIZES);
 
 // What agents actually type -> the code. Compared with spaces, dots and hyphens removed.
 const SIZE_ALIASES = {
@@ -38,6 +40,8 @@ const SIZE_ALIASES = {
   OS: "OSFA", ONESIZE: "OSFA", OSFM: "OSFA",
   YOUTHXS: "YXS", YOUTHS: "YS", YOUTHSMALL: "YS", YOUTHM: "YM", YOUTHMEDIUM: "YM",
   YOUTHL: "YL", YOUTHLARGE: "YL", YOUTHXL: "YXL",
+  TODDLER2: "2T", TODDLER2T: "2T", "2TODDLER": "2T", TODDLER3: "3T", TODDLER3T: "3T", "3TODDLER": "3T",
+  TODDLER4: "4T", TODDLER4T: "4T", "4TODDLER": "4T",
   LARGETALL: "LT", XLTALL: "XLT", XXLT: "2XLT", "2XLTALL": "2XLT", XXXLT: "3XLT", "3XLTALL": "3XLT", "4XLTALL": "4XLT",
 };
 const toSize = (word) => {
@@ -61,7 +65,7 @@ export function sizeRange(from, to) {
  * A range gets the quantity on EACH size in it. Either order (size then number, or number then size)
  * is read, as long as one line keeps to one order.
  * Returns { rows: [{ size, qty }], unknown: [text the parser could not place] }. Never guesses: a
- * size it does not know ("3T", "S/M") is reported, not dropped and not invented -- that is what the
+ * size it does not know ("5T", "S/M") is reported, not dropped and not invented -- that is what the
  * Other row is for.
  */
 export function parseSizeText(text) {
@@ -77,6 +81,9 @@ export function parseSizeText(text) {
     .replace(/[\u2013\u2014]/g, "-")
     .replace(/\b(YOUTH|EXTRA|ONE)\s+(?=[A-Z])/g, "$1") // "YOUTH LARGE" -> "YOUTHLARGE"
     .replace(/\b(X+L|[2-5]XL|LARGE)\s+TALL\b/g, "$1TALL")
+    // E-81: "Toddler 2" / "Toddler 2T" -> "2T" (checked first, so "4 Toddler 2" reads 4 of 2T), then "2 Toddler" -> "2T"
+    .replace(/\bTODDLER\s*([2-4])T?\b/g, "$1T")
+    .replace(/\b([2-4])\s+TODDLER\b/g, "$1T")
     .split(/[,;\n]+/)
     .forEach((chunk) => {
       const raw = chunk.match(/[0-9]*[A-Z][A-Z0-9/]*|[0-9]+|-/g) || [];
@@ -104,7 +111,7 @@ export function parseSizeText(text) {
           items.push(a);
         }
       }
-      // A chunk holding something unreadable is handed back whole -- half of "3T 2" is not an answer.
+      // A chunk holding something unreadable is handed back whole -- half of "5T 2" is not an answer.
       if (items.some((x) => x.bad)) {
         unknown.push(chunk.trim().replace(/\s+/g, " "));
         return;

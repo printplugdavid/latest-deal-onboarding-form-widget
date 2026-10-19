@@ -26,6 +26,7 @@ import {
   SIZE_OPTIONS,
   YOUTH_SIZES,
   TALL_SIZES,
+  TODDLER_SIZES,
   parseSizeText,
   mergeSizeRows,
   OTHER_SIZE,
@@ -445,6 +446,7 @@ export default function App() {
           quick: unknown.length ? it.quick : "",
           quickDone: rows.map((r) => r.size + " \u00d7" + r.qty).join(", "),
           quickUnknown: unknown.join(", "),
+          showToddler: it.showToddler || rows.some((r) => TODDLER_SIZES.includes(r.size)),
           showYouth: it.showYouth || rows.some((r) => YOUTH_SIZES.includes(r.size)),
           showTall: it.showTall || rows.some((r) => TALL_SIZES.includes(r.size)),
         };
@@ -1150,6 +1152,7 @@ export default function App() {
                   {/* ... or a number under each size */}
                   {[
                     { key: "adult", sizes: SIZE_OPTIONS, show: true },
+                    { key: "toddler", sizes: TODDLER_SIZES, label: t("g.toddler"), flag: "showToddler" },
                     { key: "youth", sizes: YOUTH_SIZES, label: t("g.youth"), flag: "showYouth" },
                     { key: "tall", sizes: TALL_SIZES, label: t("g.tall"), flag: "showTall" },
                   ].map((grp) => {
@@ -1178,6 +1181,11 @@ export default function App() {
                     );
                   })}
                   <div style={S.sizeLinks}>
+                    {!item.showToddler && !(item.sizes || []).some((r) => TODDLER_SIZES.includes(r.size)) && (
+                      <button type="button" style={S.linkBtn} onClick={() => patchItem(i, { showToddler: true })}>
+                        {t("g.show", { v: t("g.toddler") })}
+                      </button>
+                    )}
                     {!item.showYouth && !(item.sizes || []).some((r) => YOUTH_SIZES.includes(r.size)) && (
                       <button type="button" style={S.linkBtn} onClick={() => patchItem(i, { showYouth: true })}>
                         {t("g.show", { v: t("g.youth") })}
