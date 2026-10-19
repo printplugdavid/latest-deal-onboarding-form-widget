@@ -92,3 +92,23 @@ describe("helpers", () => {
     Object.entries(styles).filter(([k]) => !k.startsWith("_")).forEach(([, s]) => expect(placements.GARMENT_KINDS).toContain(s.kind));
   });
 });
+
+// E-88 (InkSoft M-15, 2026-10-19): the store SKU prefix picked the ADULT polo for MACC's youth polo.
+describe("E-88 the youth polo 8800B is its own style", () => {
+  test("8800B… reads as the youth polo; 8800… stays the adult polo", () => {
+    expect(styleOf("8800BMACCY", styles)).toMatchObject({ code: "8800B", name: "Gildan Youth Polo", kind: "Polo / Button-up" });
+    expect(styleOf("8800BMACC25", styles).code).toBe("8800B");
+    expect(styleOf("8800MACCCW", styles).code).toBe("8800");
+  });
+  test("a youth-polo order is onboarded as the youth polo", () => {
+    const o = order({
+      summary: { ProductionCards: [{ ...order().summary.ProductionCards[0], ProductName: "Canyon Winds Youth Polo", ProductSku: "8800BMACCY" }] },
+      package: { Items: [{ FullName: "Canyon Winds Youth Polo - Black - YM", Quantity: 1 }] },
+    });
+    const r = buildForOrder(o, deal, { submittedAt: AT });
+    expect(r.ok).toBe(true);
+    expect(r.note).toContain("Garment Type (Brand / Style): 8800B Gildan Youth Polo");
+    expect(r.note).not.toContain("8800 Gildan Polo");
+  });
+});
+
