@@ -68,12 +68,15 @@ describe("held for a person, never guessed", () => {
     expect(r.held.join(" ")).toMatch(/new design "BrandNewArt"/);
     expect(r.note).toBeUndefined();
   });
-  test("a garment color the design was never described on", () => {
+  test("a garment color the design was never described on: onboarded in its own department, see art file (E-90)", () => {
     const o = order({
       summary: { ProductionCards: [{ ...order().summary.ProductionCards[0], ProductStyleName: "White" }] },
       package: { Items: [{ FullName: "Canyon Winds Polo - White - XL", Quantity: 1, ProductId: 1001768 }] },
     });
-    expect(buildForOrder(o, deal).held.join(" ")).toMatch(/only been described on Black/);
+    const r = buildForOrder(o, deal, { submittedAt: AT });
+    expect(r.held).toEqual([]);
+    expect(r.note).toContain("Product 1: Embroidery");
+    expect(r.note).toMatch(/not yet described on White -- see art file/);
   });
   test("no production cards yet", () => {
     expect(buildForOrder(order({ summary: { ProductionCards: [] } }), deal).ok).toBe(false);
@@ -178,7 +181,72 @@ describe("E-79 descriptions per garment color", () => {
   test("navy alone keeps the navy-only description", () => expect(desc(run(["Navy"]))).toBe("navy only"));
   test("white uses the description that covers white", () => expect(desc(run(["White"]))).toBe("white and navy"));
   test("white and navy together use the one that covers both", () => expect(desc(run(["White", "Navy"]))).toBe("white and navy"));
-  test("a color no description covers is still held, naming every color described", () => {
-    expect(run(["Red"]).held).toContain('"Art" has only been described on Navy / White garments, not Red');
+  test("a color no description covers: the art's own department, see art file (E-90)", () => {
+    const r = run(["Red"]);
+    expect(r.held).toEqual([]);
+    expect(r.data.products[0].productName).toBe("Direct-to-Film");
+    expect(desc(r)).toMatch(/not yet described on Red -- see art file/);
+  });
+});
+
+// E-90 (D-44 … D-47) and E-93: what the robot does when no staff description covers an order.
+describe("E-90 see art file, stickers, USDOT; E-93 one garment type per kind", () => {
+  const W2W = 563840, MAIN = 432983, OTHER = 502240;
+  const card = (o) => ({ ProductName: "P", ProductStyleName: "Black", DesignName: "NewArt", DesignType: "Art", Side: "Front", RegionName: "Full Front", ProductSku: "X", ProductId: 1, ProductHtmlColor: "000000", ...o });
+  const ord = (storeId, cards, items) => ({
+    summary: { ID: 9, StoreId: storeId, ProductionCards: cards, EstimatedDeliveryDate_Max: "2026-11-02T12:00:00Z", ShippingMethodName: "Pick-up" },
+    package: { Items: items },
+  });
+  const item = (product, color, size, qty, id) => ({ FullName: `${product} - ${color} - ${size}`, Quantity: qty, ProductId: id });
+  const styles2 = { TEE: { name: "Tee", vendor: "Sanmar", kind: "Tee / Long Sleeve / Tank / Button-up" },
+    HOOD: { name: "Hoodie", vendor: "Sanmar", kind: "Hoodie / Crew / Zip" }, CAP: { name: "Cap", vendor: "Sanmar", kind: "Hat / Cap" } };
+  const ps = { 1: "TEE", 2: "HOOD", 3: "CAP" };
+  const ng = { 50: { product: "Stickers" }, 51: { skip: "a USDOT decal" } };
+  const run = (o, profs = {}) => inksoftToFormData(o, deal, profs, styles2, undefined, ps, ng);
+  const prod = (r, name) => r.data.products.find((p) => p.productName === name);
+
+  test("a customer's design on a black tee: DTG, double-pass, every side a placement, see art file", () => {
+    const o = ord(MAIN, [card({ DesignType: "Design" }), card({ DesignType: "Design", Side: "Back", RegionName: "Back" })], [item("P", "Black", "M", 1, 1)]);
+    const r = run(o);
+    expect(r.held).toEqual([]);
+    const gr = prod(r, "Direct-to-Garment").primaryBranches[0].secondaryBranches[0];
+    expect(gr.underbase).toBe("Double-pass");
+    expect(gr.colorsUsed).toBe("See art file");
+    expect(gr.numberOfPlacements).toBe("2");
+    expect(gr.tartiaryBranches.map((t) => [t.placementLocation, t.sizeAndDimensions])).toEqual([["Full Front", "See art file"], ["Back", "See art file"]]);
+    expect(gr.graphicDescription).toMatch(/^Customer's own design "NewArt"/);
+  });
+  test("a light garment gets no underbase; light and dark in one entry is held", () => {
+    expect(prod(run(ord(MAIN, [card({ ProductHtmlColor: "FFFFFF", ProductStyleName: "White" })], [item("P", "White", "M", 1, 1)])), "Direct-to-Garment")
+      .primaryBranches[0].secondaryBranches[0].underbase).toBe("None");
+    const mixed = run(ord(MAIN, [card(), card({ ProductStyleName: "White", ProductHtmlColor: "FFFFFF" })], [item("P", "Black", "M", 1, 1), item("P", "White", "M", 1, 1)]));
+    expect(mixed.held.join(" ")).toMatch(/light and dark garments/);
+  });
+  test("hats: Woman to Woman -> DTF; the main store waits on the team (E-94)", () => {
+    const cap = (store) => run(ord(store, [card({ ProductName: "C", ProductId: 3 })], [item("C", "Black", "OSFA", 1, 3)]));
+    expect(cap(W2W).data.products.map((p) => p.productName)).toEqual(["Direct-to-Film"]);
+    expect(cap(MAIN).held.join(" ")).toMatch(/hats wait on the team's print-method rule \(E-94\)/);
+  });
+  test("a store with no rule keeps the old hold; a design described on other colours keeps its own department", () => {
+    expect(run(ord(OTHER, [card()], [item("P", "Black", "M", 1, 1)])).held).toContain('new design "NewArt" -- no onboarding describes it yet');
+    const profs = { NewArt: { product: "Embroidery", colors: ["Navy"], graphic: { graphicDescription: "x", tartiaryBranches: [] }, from: "onboarding of order 1" } };
+    const r = run(ord(OTHER, [card()], [item("P", "Black", "M", 1, 1)]), profs);
+    expect(r.held).toEqual([]);
+    expect(r.data.products[0].productName).toBe("Embroidery");
+    expect(r.data.products[0].primaryBranches[0].secondaryBranches[0].graphicDescription).toMatch(/not yet described on Black/);
+  });
+  test("E-93: a hoodie and a tee with the same art are two garment types, not a hold", () => {
+    const o = ord(W2W, [card(), card({ ProductName: "H", ProductId: 2 })], [item("P", "Black", "M", 1, 1), item("H", "Black", "L", 1, 2)]);
+    const r = run(o);
+    expect(r.held).toEqual([]);
+    expect(prod(r, "Direct-to-Garment").primaryBranches.map((g) => g.garmentKind)).toEqual(["Tee / Long Sleeve / Tank / Button-up", "Hoodie / Crew / Zip"]);
+  });
+  test("stickers onboard as Korie does (D-46); USDOT decals are left to the team (D-44)", () => {
+    const r = run(ord(MAIN, [card({ ProductName: "S", ProductId: 50, ProductStyleName: "White", DesignName: "Logo" })], [item("S", "White", "2 x 2", 100, 50)]));
+    expect(r.held).toEqual([]);
+    expect(prod(r, "Stickers")).toMatchObject({ productType: "nongarment", quantityOrdered: "100", dimensions: '2" by 2"', vendorsUsed: "In house" });
+    expect(r.data.suppliesMaterialsNeeded).toMatch(/Printable sticker vinyl/);
+    const u = run(ord(MAIN, [card({ ProductName: "U", ProductId: 51, DesignName: null })], [item("U", "Blue", "2 Line", 2, 51)]));
+    expect(u.held.join(" ")).toMatch(/is a USDOT decal -- not onboarded automatically, by design \(D-44\)/);
   });
 });

@@ -1,0 +1,7 @@
+{
+  "_about": "E-90 (2026-10-19): InkSoft non-garment products by ProductId. { product } = onboard as that form product (D-46: stickers as Korie does them); { skip } = left to the team on purpose (D-44: staff never onboard USDOT decals / magnets with the form). A non-garment not listed here is held as 'not in the style table'.",
+  "1001551": { "product": "Stickers", "_name": "Custom Die-Cut Stickers" },
+  "1001534": { "skip": "a USDOT decal", "_name": "Custom USDOT Compliant Decal" },
+  "1001753": { "skip": "a USDOT magnet", "_name": "Custom USDOT Magnet on White" },
+  "1001754": { "skip": "a USDOT magnet", "_name": "Custom USDOT Magnet on Black" }
+}

@@ -35,7 +35,26 @@ export const RULES = {
     tenFourteenBusinessDayTurnaround: false,
   },
   dtfSupplies: 'DTF Powder\nDTF Ink\nDTF Film',
+  stickerSupplies: 'Printable sticker vinyl\nDie-cut\nVinyl ink',  // Korie's 1000203 (D-46)
+  // E-90 / D-47 (owner, 2026-10-19): the department for a design no staff onboarding describes on these garments, by
+  // InkSoft StoreId. Shirts and sweaters -> DTG. Hats wait on the team (E-94): the main store embroiders hats by
+  // default, Woman to Woman prints them DTF. A store not listed here keeps such designs for a person.
+  designMethodByStore: {
+    563840: { name: 'Woman to Woman', hat: 'Direct-to-Film', other: 'Direct-to-Garment' },
+    432983: { name: 'The Print Plug', hat: null, other: 'Direct-to-Garment' },
+  },
 };
+
+const HAT_KINDS = ['Hat / Cap', 'Beanie'];
+const SEE_ART = 'See art file';
+
+/** A garment colour InkSoft gives as hex ("1D1D1D") -> dark? null when unknown (D-45: DTG underbase by garment colour). */
+export function isDark(hex) {
+  const m = String(hex || '').replace('#', '').match(/^([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i);
+  if (!m) return null;
+  const [r, g, b] = m.slice(1).map((x) => parseInt(x, 16));
+  return (0.299 * r + 0.587 * g + 0.114 * b) / 255 < 0.5;
+}
 
 const SIDE_ORDER = { front: 0, back: 1, sleeveleft: 2, sleeveright: 3 };
 
@@ -119,9 +138,10 @@ function countColorSize(styleRows) {
  * @param productStyles  E-89: InkSoft ProductId -> style (productStyles.json + productStylesCarried.json). When given,
  *                       a product's style is looked up by its id ONLY -- the SKU-prefix rule (styleOf) is not used, and
  *                       a product not in the table is held. Without it (old callers, tests), the prefix rule applies.
+ * @param nonGarments    E-90: InkSoft ProductId -> { product: "Stickers" } or { skip: "why" } (nonGarments.json).
  * @returns { data, held: string[], notes: string[], due }
  */
-export function inksoftToFormData(order, deal, profiles, styles, rules = RULES, productStyles = null) {
+export function inksoftToFormData(order, deal, profiles, styles, rules = RULES, productStyles = null, nonGarments = null) {
   const s = order.summary || {};
   const pkg = order.package?.Orders?.[0] || order.package || {};
   const cards = s.ProductionCards || [];
@@ -141,17 +161,30 @@ export function inksoftToFormData(order, deal, profiles, styles, rules = RULES, 
   const artFor = new Map();     // `${product}|${color}` -> Map(art -> side)
   const skuFor = new Map();     // product -> card ProductSku
   const pidFor = new Map();     // product -> card ProductId (E-89)
+  const cardsFor = new Map();   // `${product}|${color}|${art}` -> every card (one per side) -- E-90 "see art file"
+  const hexFor = new Map();     // `${product}|${color}` -> InkSoft's garment colour hex (D-45)
   for (const c of cards) {
     const key = `${c.ProductName}|${c.ProductStyleName}`;
     if (!artFor.has(key)) artFor.set(key, new Map());
     artFor.get(key).set(artBase(c.DesignName), String(c.SideInternalName || c.Side || '').toLowerCase());
     skuFor.set(c.ProductName, c.ProductSku);
     if (c.ProductId != null) pidFor.set(c.ProductName, String(c.ProductId));
+    const ck = `${key}|${artBase(c.DesignName)}`;
+    if (!cardsFor.has(ck)) cardsFor.set(ck, []);
+    cardsFor.get(ck).push(c);
+    if (c.ProductHtmlColor) hexFor.set(key, c.ProductHtmlColor);
   }
+  const storeRule = rules.designMethodByStore?.[s.StoreId] || null;
+  const stickerLines = [];
 
   // 3 · group lines that carry the same art into one garment entry, as staff do
   const groups = new Map();     // signature -> { arts: Map(art->side), styles: Map(code -> {label, rows}) , colors:Set }
   for (const l of lines) {
+    // E-90: non-garments by InkSoft product -- USDOT decals / magnets are left to the team on purpose (D-44), die-cut
+    // stickers onboard as Korie does them (D-46).
+    const ng = nonGarments?.[String(l.productId ?? pidFor.get(l.product) ?? '')];
+    if (ng?.skip) { held.push(`"${l.product}" is ${ng.skip} -- not onboarded automatically, by design (D-44); the team handles it as today`); continue; }
+    if (ng?.product) { stickerLines.push({ ...l, ng }); continue; }
     const arts = artFor.get(`${l.product}|${l.color}`);
     if (!arts) { if (cards.length) held.push(`no production card for "${l.product}" in ${l.color}`); continue; }
     let style;
@@ -166,12 +199,68 @@ export function inksoftToFormData(order, deal, profiles, styles, rules = RULES, 
       style = styleOf(skuFor.get(l.product), styles);
       if (!style) { held.push(`style of "${l.product}" (SKU ${skuFor.get(l.product)}) is not in styles.json`); continue; }
     }
-    const sig = [...arts.keys()].sort().join('+');
-    if (!groups.has(sig)) groups.set(sig, { arts, styles: new Map(), colors: new Set() });
+    // E-93: one garment entry per garment kind -- a hoodie and a tee carrying the same art are two garment types.
+    const sig = [...arts.keys()].sort().join('+') + '#' + style.kind;
+    if (!groups.has(sig)) groups.set(sig, { arts, styles: new Map(), colors: new Set(), keys: new Set(), kind: style.kind });
     const g = groups.get(sig);
     if (!g.styles.has(style.code)) g.styles.set(style.code, { label: `${style.code} ${style.name}`, vendor: style.vendor, kind: style.kind, rows: [] });
     g.styles.get(style.code).rows.push({ color: l.color, size: l.size, qty: l.qty });
     g.colors.add(l.color);
+    g.keys.add(`${l.product}|${l.color}`);
+  }
+
+  // E-90: a graphic for an art no staff onboarding describes on these garments. Returns { product, graphic, from } or
+  // { held }. The held messages for a store without a rule are the ones the robot always gave.
+  function seeArtFile(art, g, variants) {
+    const products = [...new Set(variants.map((v) => v.product))];
+    const known = [...new Set(variants.flatMap((v) => v.colors))];
+    const asBefore = variants.length
+      ? `"${art}" has only been described on ${known.join(' / ')} garments, not ${[...g.colors].filter((c) => !known.includes(c)).join(' / ') || [...g.colors].join(' / ')}`
+      : `new design "${art}" -- no onboarding describes it yet`;
+    const hat = HAT_KINDS.includes(g.kind);
+    let product = products.length === 1 ? products[0] : null;
+    if (!product && products.length > 1) return { held: asBefore };
+    if (!product) {
+      if (!storeRule) return { held: asBefore };
+      product = hat ? storeRule.hat : storeRule.other;
+      if (!product) return { held: `"${art}" on a hat has no description yet -- ${storeRule.name} hats wait on the team's print-method rule (E-94)` };
+    }
+    const sideCards = [];
+    for (const k of g.keys) for (const c of cardsFor.get(`${k}|${art}`) || []) {
+      const where = c.RegionName || c.Side || '';
+      if (!sideCards.some((x) => (x.RegionName || x.Side || '') === where)) sideCards.push(c);
+    }
+    let underbase = 'None';
+    if (product === 'Direct-to-Garment') {                 // D-45: dark garments get a double-pass underbase
+      const dark = [...g.keys].map((k) => isDark(hexFor.get(k)));
+      if (dark.some((d) => d === null)) return { held: `"${art}": InkSoft gave no garment colour code -- a person sets the DTG underbase` };
+      if (new Set(dark).size > 1) return { held: `"${art}": light and dark garments in one entry -- a person sets the DTG underbase` };
+      underbase = dark[0] ? 'Double-pass' : 'None';
+    }
+    const customer = sideCards.some((c) => c.DesignType === 'Design');
+    const what = customer ? `Customer's own design "${art}"`
+      : variants.length ? `Store design "${art}", not yet described on ${[...g.colors].join(' / ')}`
+      : `Store design "${art}", not yet described by staff`;
+    return {
+      product,
+      from: customer ? 'customer design (see art file)' : 'store design not described on these colours (see art file)',
+      graphic: {
+        graphicDescription: `${what} -- see art file for print size and ink colors`,
+        isGraphicPrintReady: false,
+        currentGraphicFormat: SEE_ART,
+        fineDetail: '',
+        specialtyThread: false,
+        upchargeAcknowledged: false,
+        numberOfColorsUsed: SEE_ART,
+        underbase,
+        colorsUsed: SEE_ART,
+        colorChange: 'No',
+        detailsOfColorChange: '',
+        fontsUsed: '',
+        numberOfPlacements: String(sideCards.length),
+        tartiaryBranches: sideCards.map((c) => ({ placementLocation: c.RegionName || c.Side || '', sizeAndDimensions: SEE_ART, placementSize: '' })),
+      },
+    };
   }
 
   // 4 · each group -> a garment; its art -> graphics from the profiles
@@ -182,17 +271,18 @@ export function inksoftToFormData(order, deal, profiles, styles, rules = RULES, 
     const arts = [...g.arts].sort((a, b) => (SIDE_ORDER[a[1]] ?? 9) - (SIDE_ORDER[b[1]] ?? 9));
     for (const [art] of arts) {
       const found = profiles[art];
-      if (!found) { held.push(`new design "${art}" -- no onboarding describes it yet`); continue; }
       // E-79: an art may be described separately per set of garment colors (navy only; white + navy). Use the most
-      // specific description that covers every color in this garment entry; none covers them -> held, as before.
-      const variants = found.variants || [found];
+      // specific description that covers every color in this garment entry.
+      const variants = found ? found.variants || [found] : [];
       const fits = variants.filter((v) => [...g.colors].every((c) => v.colors.includes(c)))
         .sort((a, b) => a.colors.length - b.colors.length);
-      const p = fits[0] || variants[variants.length - 1];
-      if (!fits.length) {
-        const known = [...new Set(variants.flatMap((v) => v.colors))];
-        const uncovered = [...g.colors].filter((c) => !known.includes(c));
-        held.push(`"${art}" has only been described on ${known.join(' / ')} garments, not ${(uncovered.length ? uncovered : [...g.colors]).join(' / ')}`);
+      let p = fits[0];
+      if (!p) {
+        // E-90 (owner, 2026-10-19): no staff description covers these garments -> onboard anyway with "See art file"
+        // for print size and ink colours, in the design's own department when it has one, else the store's rule.
+        const a = seeArtFile(art, g, variants);
+        if (a.held) { held.push(a.held); continue; }
+        p = a;
       }
       if (product && product !== p.product) held.push(`one garment mixes ${product} and ${p.product} art`);
       product = product || p.product;
@@ -230,10 +320,35 @@ export function inksoftToFormData(order, deal, profiles, styles, rules = RULES, 
     numberOfGarmentTypes: String(garments.length), otherInformation: '',
   }));
 
+  // E-90 / D-46: die-cut stickers, as Korie onboarded 1000203 ("Custom Die-Cut Stickers - White - 2 x 2", 100).
+  if (stickerLines.length) {
+    const sizes = [...new Set(stickerLines.map((l) => l.size))];
+    const m = sizes.length === 1 && String(sizes[0]).match(/^(\d+(?:\.\d+)?)\s*x\s*(\d+(?:\.\d+)?)$/i);
+    if (!m) held.push(`stickers in ${sizes.length === 1 ? `a size not read as W x H ("${sizes[0]}")` : 'several sizes'} -- a person onboards them`);
+    else {
+      const qty = stickerLines.reduce((n, l) => n + l.qty, 0);
+      const dims = `${m[1]}" by ${m[2]}"`;
+      const arts = [...new Set(stickerLines.flatMap((l) => [...(artFor.get(`${l.product}|${l.color}`) || new Map()).keys()]))].filter(Boolean);
+      const material = [...new Set(stickerLines.map((l) => l.color))].join(' / ');
+      products.push({
+        productName: stickerLines[0].ng.product, productType: 'nongarment',
+        numberOfGraphics: '1', quantityOrdered: String(qty), dimensions: dims, numberOfSides: '1',
+        specialInstructions: '', isOutsourced: false, vendorsUsed: 'In house', otherInformation: '',
+        branches: [{
+          graphicDescription: `${qty}- Die cut ${dims} stickers on ${material} -- customer art ${arts.map((a) => `"${a}"`).join(', ') || '(no file name)'}, see art file`,
+          isGraphicPrintReady: false, numberOfColorsUsed: '1', colorsUsed: 'Full color printable vinyl',
+          currentGraphicFormat: SEE_ART, upchargedAcknowledged: false, fontsUsed: 'NA',
+        }],
+      });
+      notes.push(`stickers: ${qty} at ${dims} (D-46)`);
+    }
+  }
+
   // 5 · supplies: DTF is fixed; embroidery = the threads the graphics use
   const supplies = [];
   for (const p of products) {
     if (p.productName === 'Direct-to-Film') supplies.push(rules.dtfSupplies);
+    if (p.productName === 'Stickers') supplies.push(rules.stickerSupplies);
     if (p.productName === 'Embroidery') {
       const threads = new Set();
       for (const g of p.primaryBranches) for (const gr of g.secondaryBranches)

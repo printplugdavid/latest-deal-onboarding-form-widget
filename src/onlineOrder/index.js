@@ -15,6 +15,7 @@ import profiles from "./profiles.json";
 import styles from "./styles.json";
 import productStylesPulled from "./productStyles.json";
 import productStylesCarried from "./productStylesCarried.json";
+import nonGarments from "./nonGarments.json";
 import * as placements from "../placements";
 import { applyGarmentSplits } from "../garmentSplit";
 import { lumpedConcerns } from "../lumpedOrder";
@@ -28,7 +29,7 @@ import { AUTO_SOURCE, buildSubmission } from "../submission";
  *          ok=false means a person must onboard it; nothing else is meaningful then.
  */
 export function buildForOrder(order, deal, opts = {}) {
-  const mapped = inksoftToFormData(order, deal, profiles, styles, undefined, PRODUCT_STYLES);
+  const mapped = inksoftToFormData(order, deal, profiles, styles, undefined, PRODUCT_STYLES, nonGarments);
   const held = [...mapped.held];
   const answers = structurePlacements(mapped.data, placements);
 
