@@ -166,8 +166,8 @@ export default function NewProductForm({ initialStyle = "", garmentKind = "", on
   if (kind === "outsourced" && vendorPicked && vendorPicked.name && !vendorCodeFor(vendorPicked.name))
     extra.push(`${vendorPicked.name} has no vendor code yet (docs/25 §2c) -- ask David to pick one`);
   if (kind === "supplier" && !style) extra.push("type the supplier's style or item number");
-  if (lookup && (lookup.discontinued || /\bdiscontinued\b/i.test(lookup.title || "")))
-    extra.push("the supplier lists this style as discontinued -- ask before adding it");
+  // David 10-20 (NE205): a flag, never a stop -- often only some colors are discontinued, and if the supplier still sells it we sell it.
+  const discontinued = !!(lookup && (lookup.discontinued || /\bdiscontinued\b/i.test(lookup.title || "")));
   const ready = items.length > 0 && problems.every((p) => p.length === 0) && extra.length === 0;
   const booksOn = lists.status === "ok";
   const allFree = booksCheck && booksCheck.status === "ok" && booksCheck.results.length === items.length && booksCheck.results.every((r) => r.result === "free");
@@ -535,6 +535,12 @@ export default function NewProductForm({ initialStyle = "", garmentKind = "", on
         {productTypeFor(finalCategory)} / {itemType === "sales" ? "sales only" : "sales and purchases"} · sales account Sales · cost account{" "}
         {account ? account.name : "(open -- Korie)"} · taxable.
       </Typography>
+      {discontinued && (
+        <Alert severity="info" sx={{ mt: 1 }}>
+          The supplier marks this style (or some of its colors) as discontinued. You can still add it while the supplier sells it;
+          check the colors the order needs are in stock.
+        </Alert>
+      )}
       {extra.map((m) => (
         <Alert key={m} severity="warning" sx={{ mt: 1 }}>
           {m}
