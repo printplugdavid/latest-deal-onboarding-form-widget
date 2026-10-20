@@ -246,4 +246,12 @@ describe("calling the CRM functions by name (Deluge docs/38 §3)", () => {
     expect(a.status).toBe("unavailable");
     expect(a.message).toMatch(/WIDGET_Books_Items.*widget_books_items/);
   });
+  test("installed but failed while running: said so, and not retried under another name", async () => {
+    const names = [];
+    window.ZOHO = { CRM: { FUNCTIONS: { execute: async (n) => { names.push(n); throw new Error("Internal Server Error"); } } } };
+    const a = await call("WIDGET_Supplier_Style", {});
+    expect(a.reason).toBe("failed");
+    expect(a.message).toBe("WIDGET_Supplier_Style failed while running (Internal Server Error)");
+    expect(names).toEqual(["WIDGET_Supplier_Style"]);
+  });
 });

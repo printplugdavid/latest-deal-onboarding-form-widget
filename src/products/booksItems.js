@@ -38,7 +38,15 @@ async function callOnce(name, args) {
     const response = await zoho.CRM.FUNCTIONS.execute(name, { arguments: JSON.stringify(args) });
     return readAnswer(response, name);
   } catch (e) {
-    return { status: "unavailable", message: name + " is not installed yet (" + str((e && e.message) || e) + ")" };
+    // Zoho says "not found" / "inactive" when the function (or its REST API) is missing, and "Internal Server Error" when it
+    // is installed but failed while running (an error inside it, or Zoho's time limit for widget calls).
+    const why = str((e && (e.message || e.code)) || e) || "no reason given";
+    const missing = /not ?found|inactive|does ?not ?exist|no such|invalid.*function/i.test(why);
+    return {
+      status: "unavailable",
+      reason: missing ? "missing" : "failed",
+      message: missing ? name + " is not installed yet (" + why + ")" : name + " failed while running (" + why + ")",
+    };
   }
 }
 
@@ -51,7 +59,8 @@ async function callOnce(name, args) {
 export async function call(name, args) {
   const first = await callOnce(name, args);
   const lower = name.toLowerCase();
-  if (first.status !== "unavailable" || lower === name || first.message === "not inside Zoho") return first;
+  // Only a function that is not there is worth trying under its other name; one that failed while running is reported as is.
+  if (first.status !== "unavailable" || lower === name || first.reason !== "missing") return first;
   const second = await callOnce(lower, args);
   return second.status !== "unavailable" ? second : { ...first, message: first.message + "; " + second.message };
 }
