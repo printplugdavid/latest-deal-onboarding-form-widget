@@ -96,12 +96,14 @@ export default function NewProductForm({ initialStyle = "", garmentKind = "", on
   const account = purchaseAccountFor(finalCategory, kind);
   const itemType = itemTypeFor(finalCategory, kind);
 
+  // A different style or supplier: the earlier lookup (and its brand question) no longer applies.
+  useEffect(() => setLookup(null), [supplier, style]);
   // Anything the rep changes after the Books check makes that check stale.
   useEffect(() => setBooksCheck(null), [kind, supplier, style, words, colorStyle, brand, leadBrand, finalCategory, unit, rows, vendor]);
 
-  async function doLookup() {
+  async function doLookup(pickedBrand = "") {
     setLooking(true);
-    const r = await supplierStyle(supplier, style);
+    const r = await supplierStyle(supplier, style, pickedBrand);
     setLooking(false);
     setLookup(r);
     if (r.status !== "ok") return;
@@ -268,11 +270,23 @@ export default function NewProductForm({ initialStyle = "", garmentKind = "", on
             sx={{ mr: 2, mb: 2 }}
           />
           {supplier !== "other" && (
-            <Button variant="outlined" disabled={!style || looking} onClick={doLookup} sx={{ mt: "2px" }}>
+            <Button variant="outlined" disabled={!style || looking} onClick={() => doLookup()} sx={{ mt: "2px" }}>
               {looking ? <CircularProgress size={18} /> : "Look up price and sizes"}
             </Button>
           )}
-          {lookup && lookup.status !== "ok" && (
+          {lookup && lookup.status === "choose_brand" && (
+            <Alert severity="info" sx={{ mb: 2 }}>
+              More than one brand uses style {style} at {RULES.suppliers[supplier] ? RULES.suppliers[supplier].label : "this supplier"}. Which one?
+              <Box sx={{ mt: 1, display: "flex", gap: 1, flexWrap: "wrap" }}>
+                {lookup.candidates.map((b) => (
+                  <Button key={b} size="small" variant="outlined" disabled={looking} onClick={() => doLookup(b)}>
+                    {b}
+                  </Button>
+                ))}
+              </Box>
+            </Alert>
+          )}
+          {lookup && lookup.status !== "ok" && lookup.status !== "choose_brand" && (
             <Alert severity="warning" sx={{ mb: 2 }}>
               Live supplier lookup is not available ({lookup.message || "no answer"}). Type the title and the case price per
               size band from the supplier's site; those prices are marked "typed" for the Books thread to check.

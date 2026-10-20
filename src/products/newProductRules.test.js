@@ -207,3 +207,17 @@ describe("product search and function answers", () => {
     expect(readAnswer(null, "f").status).toBe("unavailable");
   });
 });
+
+describe("supplier lookup answers (wholesale thread doc 08)", () => {
+  test("a style number two brands share asks which brand", () => {
+    const a = readAnswer({ details: { output: JSON.stringify({ status: "choose_brand", message: "", candidates: ["Bayside", "Gildan"] }) } }, "f");
+    expect(a.status).toBe("choose_brand");
+    expect(a.candidates).toEqual(["Bayside", "Gildan"]);
+  });
+  test("an S&S title has no brand in front; the trademark sign goes", () => {
+    expect(productWordsFromTitle("Unisex Heavy Cotton™ T-Shirt", ["Gildan"], "5000")).toBe("Unisex Heavy Cotton T-Shirt");
+  });
+  test("SanMar's XXL and 2XL are one size", () => {
+    expect(bandsFromSizes([{ size: "XXL", cost: 6.68 }, { size: "2XL", cost: 6.68 }, { size: "XL", cost: 5.68 }]).map((b) => b.label)).toEqual(["XL", "2XL"]);
+  });
+});
