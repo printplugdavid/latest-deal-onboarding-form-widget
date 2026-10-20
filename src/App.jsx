@@ -13,6 +13,7 @@ import {
   CircularProgress,
 } from "@mui/material";
 import { Suspense, lazy, useEffect, useMemo, useRef, useState } from "react";
+import { garmentFill } from "./products/garmentFromBooks";
 import { Controller, FormProvider, useForm, useWatch } from "react-hook-form";
 import { useFieldArray } from "react-hook-form";
 import GarmentForm from "./components/GarmentForm";
@@ -48,7 +49,6 @@ import dayjs from "dayjs";
 
 // E-103: downloaded only when a rep opens it.
 const NewProductDialog = lazy(() => import("./components/NewProductDialog"));
-import { garmentFill } from "./products/garmentFromBooks";
 
 const ZOHO = window.ZOHO;
 
