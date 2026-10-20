@@ -77,7 +77,10 @@ export default function NewProductForm({ initialStyle = "", garmentKind = "", on
     let live = true;
     booksLists().then((r) => {
       if (!live) return;
-      setLists(r.status === "ok" ? { ...r, brands: r.brands.length ? r.brands : RULES.booksBrands } : { ...r, vendors: [], brands: RULES.booksBrands });
+      // Books docs/38: the live brand scan can stop early (partial: true) and miss brands late in the alphabet (Sport-Tek), so the
+      // list offered is always the snapshot PLUS whatever the live scan found -- never the live list alone.
+      const brands = [...new Set([...RULES.booksBrands, ...(r.status === "ok" ? r.brands : [])])].sort((a, b) => a.localeCompare(b));
+      setLists(r.status === "ok" ? { ...r, brands } : { ...r, vendors: [], brands });
     });
     return () => {
       live = false;

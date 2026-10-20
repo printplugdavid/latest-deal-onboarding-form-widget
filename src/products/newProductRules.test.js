@@ -255,3 +255,8 @@ describe("calling the CRM functions by name (Deluge docs/38 §3)", () => {
     expect(names).toEqual(["WIDGET_Supplier_Style"]);
   });
 });
+
+test("the brand snapshot carries the late-alphabet brands the live scan can miss (Books docs/38)", () => {
+  expect(RULES.booksBrands).toEqual(expect.arrayContaining(["Sport-Tek", "Liberty Bags", "Under Armour", "YETI"]));
+  expect(booksBrandFor("Sport-Tek")).toBe("Sport-Tek");
+});
