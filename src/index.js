@@ -2,23 +2,26 @@ import React, { Suspense, lazy } from "react";
 import ReactDOM from "react-dom/client";
 import "./index.css";
 
-// One app, four Zoho buttons:
+// One app, five Zoho buttons:
 //   default                 -> the Deal Onboarding Form
 //   ?view=cards  or  #cards -> the production card viewer (see CardViewer.jsx)
 //   ?view=amendment         -> the Onboarding Amendment Form (see amendment/AmendmentApp.jsx, E-24/D-24)
 //   ?view=qc                -> the Quality Check form (see qc/QcApp.jsx, E-52)
+//   ?view=newproduct        -> the New Product form (see products/NewProductApp.jsx, E-85 / E-100)
 // Each is loaded on demand, so one view never downloads another -- and a runtime crash in one
 // cannot reach the others. (A COMPILE error still breaks all four: the build is the gate.)
 const App = lazy(() => import("./App"));
 const CardViewer = lazy(() => import("./CardViewer"));
 const AmendmentApp = lazy(() => import("./amendment/AmendmentApp"));
 const QcApp = lazy(() => import("./qc/QcApp"));
+const NewProductApp = lazy(() => import("./products/NewProductApp"));
 
 const params = new URLSearchParams(window.location.search);
 const showCards =
   params.get("view") === "cards" || window.location.hash.replace("#", "") === "cards";
 const showAmendment = !showCards && params.get("view") === "amendment";
 const showQc = !showCards && params.get("view") === "qc";
+const showNewProduct = !showCards && params.get("view") === "newproduct";
 
 const root = ReactDOM.createRoot(document.getElementById("root"));
 root.render(
@@ -32,7 +35,7 @@ root.render(
         ) : null
       }
     >
-      {showCards ? <CardViewer /> : showAmendment ? <AmendmentApp /> : showQc ? <QcApp /> : <App />}
+      {showCards ? <CardViewer /> : showAmendment ? <AmendmentApp /> : showQc ? <QcApp /> : showNewProduct ? <NewProductApp /> : <App />}
     </Suspense>
   </React.StrictMode>
 );

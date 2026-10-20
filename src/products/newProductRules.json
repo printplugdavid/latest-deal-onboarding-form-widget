@@ -1,0 +1,92 @@
+{
+  "_source": "Books SKU thread docs/25-item-convention-2026-10-19.md and docs/30-new-product-form-rules-2026-10-19.md (E-85 / E-100). Books owns the rules; change this file only to follow them, in a tagged release.",
+  "booksOrgId": "774544002",
+  "categoryFieldId": "3165330000023714397",
+  "functions": {
+    "books": "WIDGET_Books_Items",
+    "supplier": "WIDGET_Supplier_Style"
+  },
+  "categories": [
+    "Garment - Accessories", "Garment - Bottoms", "Garment - Hats", "Garment - Hoodies & Sweatshirts", "Garment - Infant/Toddler",
+    "Garment - Outerwear", "Garment - Polos", "Garment - Tops", "Garment - Youth",
+    "Product - Magnets", "Product - Patches", "Product - Print", "Product - Promotional", "Product - Signage", "Product - Specials",
+    "Product - Stickers/Decals",
+    "Service - DTF", "Service - DTG", "Service - Embroidery", "Service - Graphic Design", "Service - HTV", "Service - Laser Engraving",
+    "Service - Screen Print",
+    "Fee", "Donation"
+  ],
+  "salesAccount": { "id": "3165330000000000388", "name": "Sales" },
+  "purchaseAccounts": {
+    "COG Garments": "3165330000044287197",
+    "COG Signage": "3165330000044287257",
+    "COG Outsourced": "3165330000017106031",
+    "COG Vinyl": "3165330000017106025",
+    "COG Magnets": "3165330000046574290",
+    "COG Promo": "3165330000044287289",
+    "COG Screen Print": "3165330000017106007",
+    "COG Embroidery": "3165330000017106019",
+    "COG DTG": "3165330000017106013",
+    "COG DTF": "3165330000042315377"
+  },
+  "_purchaseAccountByCategory": "docs/25 §4, proposed, Korie to confirm. null = still open (Korie): the form stops. Stickers/Decals: in-house -> COG Vinyl, bought -> COG Outsourced.",
+  "purchaseAccountByCategory": {
+    "Garment - *": "COG Garments",
+    "Product - Signage": "COG Signage",
+    "Product - Patches": "COG Outsourced",
+    "Product - Print": "COG Outsourced",
+    "Product - Stickers/Decals": { "inHouse": "COG Vinyl", "bought": "COG Outsourced" },
+    "Product - Magnets": "COG Magnets",
+    "Product - Promotional": "COG Promo",
+    "Service - Screen Print": "COG Screen Print",
+    "Service - Embroidery": "COG Embroidery",
+    "Service - DTG": "COG DTG",
+    "Service - DTF": "COG DTF",
+    "Service - HTV": "COG Vinyl",
+    "Service - Graphic Design": "COG Outsourced",
+    "Fee": "COG Outsourced",
+    "Product - Specials": null,
+    "Donation": null,
+    "Service - Laser Engraving": null
+  },
+  "units": ["Pieces", "Quantity", "Square Feet", "Hour(s)"],
+  "suppliers": {
+    "sanmar": { "label": "SanMar", "vendor": "San Mar", "vendorId": "3165330000000569041" },
+    "ss": { "label": "S&S Activewear", "vendor": "S&S Activewear", "vendorId": "3165330000002453029" }
+  },
+  "inHouseVendor": "The Print Plug",
+  "inHouseBrand": "The Print Plug",
+  "_vendorCodes": "docs/25 §2c registry: one vendor = one code. A vendor not here -> David picks a code.",
+  "vendorCodes": {
+    "PRINTOGRAPH": "PRI", "Stahl's": "STA", "GS-JJ": "GSJ", "Banner Buzz": "BB", "Swag Brokers": "BP", "Brilliant Promos": "BP",
+    "Koozie Group": "KOO", "PrintRunner": "PRU", "Showdown Display": "SHO", "AnyPromo.com": "AP", "Sticker Mule": "STM",
+    "UPrinting": "UP", "YETI": "YET", "Heat Transfer Warehouse": "HTW", "Discount Mugs": "DM", "Patches 4 Less": "P4L"
+  },
+  "_brandAliases": "supplier catalogue spelling -> the one Books spelling (docs/25 §4, Books step 034). Anything else is matched ignoring case, spaces and punctuation.",
+  "brandAliases": {
+    "Port & Co": "Port & Company",
+    "Bella + Canvas": "BELLA+CANVAS",
+    "Next Level Apparel": "Next Level",
+    "Live & Tell by LAT": "LAT",
+    "AllMade": "Allmade",
+    "Stahls": "Stahls'"
+  },
+  "_booksBrands": "snapshot of the brands on active Books items, pull-2026-10-19k; the live list comes from the books function (action lists).",
+  "booksBrands": [
+    "47 Brand", "A4", "AS Colour", "Adidas", "Alleson Athletic", "Allmade", "American Apparel", "AnyPromo.com", "Atlantis Headwear",
+    "Augusta Sportswear", "BELLA+CANVAS", "Badger", "Banner Buzz", "Bayside", "Big Accessories", "Big Promotions", "Brooks Brothers",
+    "Brotallion", "C2 Sport", "CAP AMERICA", "CORE365", "Carhartt", "Champion", "Colortone", "Columbia", "Comfort Colors", "CornerStone",
+    "Cutter & Buck", "DECKY", "DRI DUCK", "Dickies", "Discount Mugs", "District", "Doggie Skins", "Eddie Bauer", "Elite Sport Socks",
+    "Flexfit", "GS-JJ", "Gildan", "Hanes", "Harriton", "Heat Transfer Warehouse", "High Five", "Hit Promotional Products", "Holloway",
+    "Independent Trading Co.", "J. America", "Jaanuu", "Jerzees", "Kishigo", "Koozie Group", "LAT", "M&O", "MV Sport",
+    "Mercer+Mettle", "New Era", "Next Level", "Nike", "OGIO", "OTTO", "Oakley", "Pacific Headwear", "Paragon", "Port & Company",
+    "Port Authority", "Print Runner", "Printograph", "Puma Golf", "Q-Tees", "Rabbit Skins", "Red Kap", "Richardson", "Riteline USA",
+    "Shaka Wear", "Showdown Displays", "Signicade", "Sport-Tek", "Stahls'", "Stanley/Stella", "Sticker Mule", "Stormtech",
+    "Swag Brokers", "Swannies", "Team 365", "The Game", "The North Face", "The Print Plug", "Threadfast Apparel", "TravisMathew",
+    "Tultex", "UPrinting", "Under Armour", "Uniform Advantage", "Valucap", "Volunteer Knitwear", "Vulcan", "Wink", "WonderWink", "YETI",
+    "YP Classics"
+  ],
+  "_sizeOrder": "docs/25 §3c tokens, smallest first; the SKU's upcharge number follows this order.",
+  "sizeOrder": ["NB", "0-3M", "3-6M", "6M", "6-12M", "12M", "18M", "24M", "2T", "3T", "4T", "5T", "6T", "XXS", "XS", "S", "M", "L", "XL",
+    "2XL", "3XL", "4XL", "5XL", "6XL", "LT", "XLT", "2XLT", "3XLT", "4XLT", "S-M", "M-L", "L-XL", "OSFM", "OSFA"],
+  "sizeTokens": { "XXL": "2XL", "XXXL": "3XL", "SM": "S-M", "S/M": "S-M", "M/L": "M-L", "L/XL": "L-XL", "ONE SIZE": "OSFA", "OS": "OSFA" }
+}
