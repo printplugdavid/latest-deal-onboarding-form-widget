@@ -83,11 +83,15 @@ export default function NewProductForm({ initialStyle = "", garmentKind = "", on
   }, []);
 
   const apiSupplier = kind === "supplier" && supplier !== "other" ? RULES.suppliers[supplier] : null;
-  const vendorPicked = apiSupplier
-    ? { id: apiSupplier.vendorId, name: apiSupplier.vendor }
-    : kind === "inHouse"
-    ? lists.vendors.find((v) => v.name === RULES.inHouseVendor) || { id: "", name: RULES.inHouseVendor }
-    : vendor;
+  const vendorPicked = useMemo(
+    () =>
+      apiSupplier
+        ? { id: apiSupplier.vendorId, name: apiSupplier.vendor }
+        : kind === "inHouse"
+        ? lists.vendors.find((v) => v.name === RULES.inHouseVendor) || { id: "", name: RULES.inHouseVendor }
+        : vendor,
+    [apiSupplier, kind, lists.vendors, vendor]
+  );
   const finalCategory = youth && isGarmentCategory(category) ? "Garment - Youth" : category;
   const account = purchaseAccountFor(finalCategory, kind);
   const itemType = itemTypeFor(finalCategory, kind);
