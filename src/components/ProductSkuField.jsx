@@ -196,7 +196,23 @@ export default function ProductSkuField({ rowPath, label, garmentKind, allowClie
                   }}
                   onCreated={(products) => {
                     rememberCreated(products);
-                    if (products && products[0]) pick(field, { ...products[0], justCreated: true }, "created");
+                    const list = (products || []).filter((p) => p && p.sku);
+                    if (list[0]) pick(field, { ...list[0], justCreated: true }, "created");
+                    // D-51 step 2: several new items (e.g. S-XL, 2XL, 3XL-4XL) -> one SKU row each, right after this one.
+                    const m = /^(.*)\.(\d+)$/.exec(rowPath);
+                    if (m && list.length > 1) {
+                      const arrayPath = m[1];
+                      const at = Number(m[2]);
+                      const rows = [...(getValues(arrayPath) || [])];
+                      const have = new Set(rows.map((r) => String((r && r.sku) || "").toUpperCase()));
+                      const extra = list
+                        .slice(1)
+                        .filter((p) => !have.has(p.sku.toUpperCase()))
+                        .map((p) => ({ sku: p.sku, productId: p.id || "", productName: p.name || "", productSource: "created" }));
+                      rows.splice(at + 1, 0, ...extra);
+                      setValue(arrayPath, rows);
+                      if (/\.garmentSkus$/.test(arrayPath)) setValue(arrayPath.replace(/\.garmentSkus$/, ".numberOfSkus"), String(rows.length));
+                    }
                     setInput(null);
                     addingRef.current = false;
                     setAdding(false);

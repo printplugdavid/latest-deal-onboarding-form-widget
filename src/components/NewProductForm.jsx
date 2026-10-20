@@ -71,6 +71,7 @@ export default function NewProductForm({ initialStyle = "", garmentKind = "", on
   const [booksCheck, setBooksCheck] = useState(null);
   const [busy, setBusy] = useState("");
   const [created, setCreated] = useState(null);
+  const [toOrder, setToOrder] = useState([]); // D-51 step 2: which of the new items go on this order
 
   useEffect(() => {
     let live = true;
@@ -174,6 +175,7 @@ export default function NewProductForm({ initialStyle = "", garmentKind = "", on
     const r = await createInBooks(items.map(toBooksItem), submittedBy);
     setBusy("");
     setCreated(r);
+    if (r.status === "ok") setToOrder(r.results.filter((x) => x.result === "created").map((x) => x.sku));
     // New items reach CRM only at the next sync; offer them in every SKU search of this session now.
     if (r.status === "ok")
       rememberCreated(r.results.filter((x) => x.result === "created").map((x) => ({ id: "", sku: x.sku, name: (x.read_back && x.read_back.name) || x.name })));
@@ -185,10 +187,16 @@ export default function NewProductForm({ initialStyle = "", garmentKind = "", on
     const made = created.results.filter((r) => r.result === "created");
     return (
       <Box>
-        <Typography sx={section}>Result from Books</Typography>
+        <Typography sx={section}>Step 1 done: added to Books</Typography>
+        {onCreated && made.length > 0 && (
+          <Typography sx={{ fontSize: "0.85rem", mb: 1 }}>
+            Step 2 (separate): tick the items this order uses, then add them to the order. Nothing goes on the order until you do.
+          </Typography>
+        )}
         <Table size="small">
           <TableHead>
             <TableRow>
+              {onCreated && <TableCell>On this order</TableCell>}
               <TableCell>SKU</TableCell>
               <TableCell>Name</TableCell>
               <TableCell>Result</TableCell>
@@ -197,6 +205,17 @@ export default function NewProductForm({ initialStyle = "", garmentKind = "", on
           <TableBody>
             {created.results.map((r) => (
               <TableRow key={r.sku}>
+                {onCreated && (
+                  <TableCell padding="checkbox">
+                    {r.result === "created" && (
+                      <Checkbox
+                        size="small"
+                        checked={toOrder.includes(r.sku)}
+                        onChange={(e) => setToOrder((list) => (e.target.checked ? [...list, r.sku] : list.filter((s) => s !== r.sku)))}
+                      />
+                    )}
+                  </TableCell>
+                )}
                 <TableCell>{r.sku}</TableCell>
                 <TableCell>{(r.read_back && r.read_back.name) || r.name}</TableCell>
                 <TableCell>
@@ -221,14 +240,19 @@ export default function NewProductForm({ initialStyle = "", garmentKind = "", on
           {made.length > 0 && onCreated && (
             <Button
               variant="contained"
+              disabled={toOrder.length === 0}
               onClick={() =>
-                onCreated(made.map((r) => ({ id: "", sku: r.sku, name: (r.read_back && r.read_back.name) || r.name, brand, category: finalCategory })))
+                onCreated(
+                  made
+                    .filter((r) => toOrder.includes(r.sku))
+                    .map((r) => ({ id: "", sku: r.sku, name: (r.read_back && r.read_back.name) || r.name, brand, category: finalCategory }))
+                )
               }
             >
-              Use {made[0].sku} on this order
+              Add {toOrder.length === 1 ? "this product" : `these ${toOrder.length} products`} to the order
             </Button>
           )}
-          {onCancel && <Button onClick={onCancel}>Close</Button>}
+          {onCancel && <Button onClick={onCancel}>{onCreated ? "Close without adding to the order" : "Close"}</Button>}
         </Box>
       </Box>
     );
@@ -479,9 +503,9 @@ export default function NewProductForm({ initialStyle = "", garmentKind = "", on
           {busy === "create" ? (
             <CircularProgress size={18} />
           ) : kind === "supplier" ? (
-            `Create this product in Books (${items.length} size band${items.length === 1 ? "" : "s"})`
+            `Add this product to Books (${items.length} size band${items.length === 1 ? "" : "s"})`
           ) : (
-            `Create ${items.length === 1 ? "this product" : `these ${items.length} products`} in Books`
+            `Add ${items.length === 1 ? "this product" : `these ${items.length} products`} to Books`
           )}
         </Button>
         {onCancel && <Button onClick={onCancel}>Cancel</Button>}
