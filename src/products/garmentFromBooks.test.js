@@ -44,3 +44,65 @@ test("garment kind from the Books category, and from the name where the category
   expect(kindFromBooks("Garment - Accessories", "Port Authority - Core Cotton Tote")).toBe("Bag / Tote / Backpack");
   expect(kindFromBooks("Product - Signage", "Vinyl Banner")).toBe("");
 });
+
+import { bandOf, skusForSizes } from "./garmentFromBooks";
+
+const ST290 = [
+  { sku: "ST290", name: "Sport-Tek - Repel Fleece Hooded Pullover - XS-XL" },
+  { sku: "ST2901", name: "Sport-Tek - Repel Fleece Hooded Pullover - 2XL" },
+  { sku: "ST2902", name: "Sport-Tek - Repel Fleece Hooded Pullover - 3XL" },
+  { sku: "ST2903", name: "Sport-Tek - Repel Fleece Hooded Pullover - 4XL" },
+];
+
+describe("E-107: SKU rows follow the sizes", () => {
+  test("a band from the name", () => {
+    expect(bandOf("X - S-XL")).not.toBeNull();
+    expect(bandOf("Richardson - 112 Trucker Cap - OSFM")).toBeNull();
+    expect(bandOf("No band here")).toBeNull();
+  });
+  test("only the bands the size lines need", () => {
+    expect(skusForSizes(ST290, "Black\n4- M\n6- L").items.map((p) => p.sku)).toEqual(["ST290"]);
+    expect(skusForSizes(ST290, "Black\n4- M\n2- 2XL\n1- 4XL").items.map((p) => p.sku)).toEqual(["ST290", "ST2901", "ST2903"]);
+  });
+  test("no sizes yet: the standard band only", () => {
+    expect(skusForSizes(ST290, "").items.map((p) => p.sku)).toEqual(["ST290"]);
+  });
+  test("a size no band covers is reported, not guessed", () => {
+    expect(skusForSizes(ST290, "Navy\n1- 5XL")).toEqual({ items: [], unmatched: ["5XL"] });
+  });
+  test("youth sizes on a style whose band reads XS-XL", () => {
+    const youth = [{ sku: "PC78YH", name: "Port & Company - Youth Core Fleece Pullover Hooded Sweatshirt - XS-XL" }];
+    expect(skusForSizes(youth, "Red\n3- Youth M\n2- Youth L").items.map((p) => p.sku)).toEqual(["PC78YH"]);
+  });
+  test("one item for every size (hats)", () => {
+    const hat = [{ sku: "112", name: "Richardson - 112 Trucker Cap - OSFM" }];
+    expect(skusForSizes(hat, "Black\n12- OSFA").items.map((p) => p.sku)).toEqual(["112"]);
+  });
+});
+
+describe("E-106: Books lookup by exact SKU (check action)", () => {
+  const { findSkusInBooks } = require("./booksItems");
+  afterEach(() => {
+    delete window.ZOHO;
+  });
+  test("reads 'SKU already used by' answers; free codes are not products", async () => {
+    window.ZOHO = {
+      CRM: {
+        FUNCTIONS: {
+          execute: async () => ({
+            details: {
+              output: JSON.stringify({
+                status: "ok",
+                results: [
+                  { sku: "ST290", result: "refused", clash: "SKU already used by: Sport-Tek - Repel Fleece Hooded Pullover - XS-XL (active)" },
+                  { sku: "ST2904", result: "free", clash: "" },
+                ],
+              }),
+            },
+          }),
+        },
+      },
+    };
+    expect(await findSkusInBooks(["ST290", "ST2904"])).toEqual([{ sku: "ST290", name: "Sport-Tek - Repel Fleece Hooded Pullover - XS-XL", active: true }]);
+  });
+});

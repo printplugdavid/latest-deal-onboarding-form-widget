@@ -4,6 +4,8 @@
  * products carry a Product Code. Search is by the start of the code (exact codes only: 6400 is not 64000, 220 Paragon is
  * not 220 Richardson -- the brand is shown on every option) and by words of the name.
  */
+import { findSkusInBooks } from "./booksItems";
+
 const str = (v) => (v == null ? "" : String(v));
 
 /* CRM search criteria need ( ) , escaped. */
@@ -69,5 +71,27 @@ export async function searchProducts(term) {
     }),
     t.length >= 3 ? search(zoho, { Entity: "Products", Type: "word", Query: t, per_page: 30 }) : Promise.resolve([]),
   ]);
-  return { status: "ok", products: rankProducts([...local, ...byCode, ...byWord], t).slice(0, 30) };
+  let ranked = rankProducts([...local, ...byCode, ...byWord], t);
+  // E-106: a code CRM does not know yet may already be in Books (added in another sitting, not synced): ask Books for that code.
+  if (/^[A-Z0-9]{3,}$/.test(code) && /\d/.test(code) && !ranked.some((p) => p.sku.toUpperCase() === code)) {
+    const fromBooks = await booksLookup(code);
+    if (fromBooks) ranked = [fromBooks, ...ranked];
+  }
+  return { status: "ok", products: ranked.slice(0, 30) };
+}
+
+const lookedUp = new Map(); // code -> product | null, for this sitting
+async function booksLookup(code) {
+  if (lookedUp.has(code)) return lookedUp.get(code);
+  const [hit] = (await findSkusInBooks([code])).filter((x) => x.active);
+  const p = hit ? { id: "", sku: hit.sku, name: hit.name, brand: "", category: "", active: true, fromBooks: true } : null;
+  lookedUp.set(code, p);
+  return p;
+}
+
+/* E-106: the rest of a Books-only item's size-band family (ST290 -> ST2901, ST2902 …), looked up in Books in one call. */
+export async function booksFamilyOf(base) {
+  const b = str(base).trim().toUpperCase();
+  const found = await findSkusInBooks([b, `${b}1`, `${b}2`, `${b}3`, `${b}4`]);
+  return found.filter((x) => x.active).map((x) => ({ id: "", sku: x.sku, name: x.name, brand: "", category: "", active: true, fromBooks: true }));
 }
