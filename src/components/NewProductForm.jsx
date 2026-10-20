@@ -292,8 +292,9 @@ export default function NewProductForm({ initialStyle = "", garmentKind = "", on
           )}
           {lookup && lookup.status !== "ok" && lookup.status !== "choose_brand" && (
             <Alert severity="warning" sx={{ mb: 2 }}>
-              Live supplier lookup is not available ({lookup.message || "no answer"}). Type the title and the case price per
-              size band from the supplier's site; those prices are marked "typed" for the Books thread to check.
+              {lookup.reason === "failed" ? "The live supplier lookup failed" : "Live supplier lookup is not available"} (
+              {lookup.message || "no answer"}). You can try Look up again, or type the title and the case price per size band from
+              the supplier's site; those prices are marked "typed" for the Books thread to check.
             </Alert>
           )}
           {lookup && lookup.status === "ok" && (
