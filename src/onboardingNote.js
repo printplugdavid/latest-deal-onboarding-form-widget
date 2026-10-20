@@ -150,7 +150,17 @@ export function buildOnboardingNote(data) {
           "Number of Garment Types: " +
           product?.numberOfGarmentTypes +
           newLine +
-          newLine;
+          newLine +
+          // E-101 / D-49: only when the client provides this product's garments, so every other note reads as before.
+          (product?.clientProvided
+            ? "Client Provided Garments?: Yes" +
+              newLine +
+              newLine +
+              `${product?.clientOwnedUpchargePercent || CLIENT_OWNED.upchargePercent}% Client-Owned Garment Upcharge Added?: ` +
+              (product?.clientOwnedUpcharge || "") +
+              newLine +
+              newLine
+            : "");
 
         if (product?.premiumIronPass) {
           content =
@@ -352,7 +362,7 @@ export function buildOnboardingNote(data) {
               newLine +
               newLine +
               // E-101 / D-49: only on a client-owned garment, so every other note reads as before.
-              (isClientOwnedGarment(branch)
+              (isClientOwnedGarment(branch) && !product?.clientProvided
                 ? `${branch?.clientOwnedUpchargePercent || CLIENT_OWNED.upchargePercent}% Client-Owned Garment Upcharge Added?: ` +
                   (branch?.clientOwnedUpcharge || "") +
                   newLine +

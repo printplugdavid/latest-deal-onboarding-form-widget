@@ -1,5 +1,5 @@
-import React, { useEffect } from "react";
-import { Autocomplete, Box, TextField, Typography } from "@mui/material";
+import React, { useContext, useEffect } from "react";
+import { Autocomplete, Box, Checkbox, FormControlLabel, MenuItem, TextField, Typography } from "@mui/material";
 import {
   Controller,
   useFieldArray,
@@ -8,6 +8,8 @@ import {
 } from "react-hook-form";
 import GarmentPrimaryBranchForm from "./GarmentPrimaryBranchForm";
 import { splitCopy, splitInfo } from "../garmentSplit";
+import { CLIENT_OWNED, isClientOwnedSku, upchargeLabel } from "../products/clientOwned";
+import { StrictEntry } from "./strictEntry";
 
 const GarmentForm = ({ index, options, productName }) => {
   const { control, getValues, setValue } = useFormContext();
@@ -60,6 +62,29 @@ const GarmentForm = ({ index, options, productName }) => {
     setValue(`products.${index}.numberOfGarmentTypes`, String(Math.max(0, primaryBranches.length - 1)));
   };
 
+  // E-101 / D-49: "Client provided garments" -- the client brings every garment type of this product. Each one gets the
+  // client-owned SKU (PPCO) and "Client Owned" in Vendors Used; its own details (type, kind, sizes, graphics) are filled in as usual.
+  const strict = useContext(StrictEntry);
+  const clientProvided = useWatch({ control, name: `products.${index}.clientProvided` });
+  const branchPath = (b) => `products.${index}.primaryBranches.${b}`;
+  const markClientOwned = (b) => {
+    const rows = getValues(`${branchPath(b)}.garmentSkus`) || [];
+    if (rows.some((r) => isClientOwnedSku(r && r.sku))) return;
+    setValue(`${branchPath(b)}.garmentSkus`, [{ sku: CLIENT_OWNED.sku, productId: "", productName: CLIENT_OWNED.name, productSource: "clientOwned" }]);
+    setValue(`${branchPath(b)}.numberOfSkus`, "1");
+    if (!String(getValues(`${branchPath(b)}.vendorsUsed`) || "").trim()) setValue(`${branchPath(b)}.vendorsUsed`, CLIENT_OWNED.vendorsUsed);
+  };
+  const unmarkClientOwned = (b) => {
+    const rows = (getValues(`${branchPath(b)}.garmentSkus`) || []).filter((r) => !isClientOwnedSku(r && r.sku));
+    setValue(`${branchPath(b)}.garmentSkus`, rows);
+    setValue(`${branchPath(b)}.numberOfSkus`, rows.length ? String(rows.length) : "");
+    if (getValues(`${branchPath(b)}.vendorsUsed`) === CLIENT_OWNED.vendorsUsed) setValue(`${branchPath(b)}.vendorsUsed`, "");
+  };
+  // A garment type added while it is ticked is client-provided too.
+  useEffect(() => {
+    if (clientProvided) primaryBranches.forEach((_, b) => markClientOwned(b));
+  }, [clientProvided, primaryBranches.length]);
+
   return (
     <Box sx={{ width: "100%" }}>
       <Typography
@@ -73,6 +98,55 @@ const GarmentForm = ({ index, options, productName }) => {
       >
         Garment & Graphic Information
       </Typography>
+
+      <Controller
+        control={control}
+        name={`products.${index}.clientProvided`}
+        defaultValue={false}
+        render={({ field }) => (
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={!!field.value}
+                onChange={(e) => {
+                  field.onChange(e.target.checked);
+                  if (!e.target.checked) primaryBranches.forEach((_, b) => unmarkClientOwned(b));
+                }}
+              />
+            }
+            label={`Client provided garments (the client brings every garment type below; SKU ${CLIENT_OWNED.sku})`}
+            sx={{ display: "block", mb: "0.5rem" }}
+          />
+        )}
+      />
+
+      {clientProvided && (
+        <Controller
+          control={control}
+          name={`products.${index}.clientOwnedUpcharge`}
+          defaultValue=""
+          rules={{ validate: (v) => !strict || !clientProvided || !!v || "Say whether the upcharge was added" }}
+          render={({ field, fieldState }) => (
+            <TextField
+              select
+              size="small"
+              fullWidth
+              label={upchargeLabel() + (strict ? " *" : "")}
+              {...field}
+              onChange={(e) => {
+                field.onChange(e.target.value);
+                setValue(`products.${index}.clientOwnedUpchargePercent`, CLIENT_OWNED.upchargePercent);
+              }}
+              error={!!fieldState.error}
+              helperText={fieldState.error ? fieldState.error.message : "One answer for this product's garments. No = waived for this order"}
+              sx={{ mb: "1rem", mt: "5px" }}
+            >
+              <MenuItem value="Yes">Yes</MenuItem>
+              <MenuItem value="No">No (waived)</MenuItem>
+            </TextField>
+          )}
+        />
+      )}
 
       <Controller
         control={control}

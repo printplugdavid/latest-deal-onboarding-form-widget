@@ -49,3 +49,12 @@ test("a garment we supply: no upcharge line", () => {
   const c = buildOnboardingNote(garmentDeal({ garmentSkus: [{ sku: "CT100617" }], vendorsUsed: "San Mar" })).content;
   expect(c).not.toMatch(/Client-Owned/);
 });
+
+test("client provided for the whole product: asked once under the product, not again per garment", () => {
+  const d = garmentDeal({ garmentSkus: [{ sku: "PPCO", productSource: "clientOwned" }] });
+  d.products[0] = { ...d.products[0], clientProvided: true, clientOwnedUpcharge: "Yes", clientOwnedUpchargePercent: 10, numberOfGarmentTypes: "2" };
+  d.products[0].primaryBranches.push({ garmentType: "Richardson 112 (client's)", garmentQuantity: "6", numberOfGraphics: "0", vendorsUsed: "Client Owned", garmentSkus: [{ sku: "PPCO" }] });
+  const c = buildOnboardingNote(d).content;
+  expect(c).toMatch(/Number of Garment Types: 2\n\nClient Provided Garments\?: Yes\n\n10% Client-Owned Garment Upcharge Added\?: Yes\n\n/);
+  expect(c.match(/Client-Owned Garment Upcharge Added/g)).toHaveLength(1);
+});

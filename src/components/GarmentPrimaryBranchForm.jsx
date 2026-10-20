@@ -110,6 +110,8 @@ const GarmentPrimaryBranchForm = ({
     name: `products.${index}.primaryBranches.${branchIndex}.garmentSkus`,
   });
 
+  // E-101: when the whole product is "Client provided", its one upcharge question is asked there, not per garment.
+  const productClientProvided = useWatch({ control, name: `products.${index}.clientProvided` });
   // E-100: the garment kind proposes the Books category when a rep adds a new product from a SKU row.
   const garmentKindValue = useWatch({
     control,
@@ -291,7 +293,7 @@ const GarmentPrimaryBranchForm = ({
       ))}
 
       {/* E-101 / D-49: a client-owned garment takes the order upcharge; the rep says whether it was added. */}
-      {isClientOwnedGarment({ garmentSkus: garmentSkuValues }) && (
+      {isClientOwnedGarment({ garmentSkus: garmentSkuValues }) && !productClientProvided && (
         <Controller
           control={control}
           name={`products.${index}.primaryBranches.${branchIndex}.clientOwnedUpcharge`}
