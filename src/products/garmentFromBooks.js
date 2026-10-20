@@ -5,6 +5,8 @@
  * items whose name, without its band, is the same. Pure functions; the screen is components/GarmentProductPick.jsx.
  */
 import { canonicalKind } from "../placements";
+import { parseSizeText } from "../sizeRows";
+import RULES from "./newProductRules.json";
 
 const str = (v) => (v == null ? "" : String(v));
 
@@ -18,6 +20,17 @@ export const nameStem = (name) => str(name).trim().replace(/\s+-\s+[^\s]+$/, "")
 export function familySearchCodes(sku) {
   const s = str(sku).trim().toUpperCase();
   return /\d$/.test(s) && s.length > 2 ? [s, s.slice(0, -1)] : [s];
+}
+
+/*
+ * E-106: the base code of a picked item's family. The standard band (XS-XL, S-XL, OSFM …) carries the base code itself (ST290); an
+ * upcharge band carries base + digit (ST2901 = 2XL), so its last digit is dropped.
+ */
+export function familyBase(picked) {
+  const sku = str(picked && picked.sku).trim().toUpperCase();
+  const band = bandOf(picked && picked.name);
+  const standard = !band || band[0] <= RULES.sizeOrder.indexOf("XL");
+  return standard || !/\d$/.test(sku) ? sku : sku.slice(0, -1);
 }
 
 /* The picked product's family among search results: same name stem, codes that share the base. Smallest code first. */
@@ -73,4 +86,50 @@ export function garmentFill(family, category) {
     garmentKind: kindFromBooks(category || first.category, first.name),
     garmentSkus: family.map((p) => ({ sku: p.sku, productId: p.id || "", productName: p.name || "", productSource: p.justCreated ? "created" : "books" })),
   };
+}
+
+/*
+ * E-107: the size band a Books item covers, from the end of its name: "- S-XL" -> S..XL, "- 2XL" -> 2XL, "- 3XL-6XL" -> 3XL..6XL.
+ * Returns [fromRank, toRank] in the naming guide's size order, or null when the name has no band (then it covers every size).
+ */
+const rank = (s) => RULES.sizeOrder.indexOf(s);
+export function bandOf(name) {
+  const m = /\s-\s([^\s]+)$/.exec(str(name).trim());
+  if (!m) return null;
+  const token = m[1].toUpperCase();
+  if (token === "OSFA" || token === "OSFM") return null;
+  const whole = rank(token);
+  if (whole >= 0) return [whole, whole];
+  const [a, b] = token.split("-");
+  const ra = rank(a);
+  const rb = rank(b);
+  return ra >= 0 && rb >= 0 ? [Math.min(ra, rb), Math.max(ra, rb)] : null;
+}
+
+/*
+ * The family items the order's size lines need, in family order. Each size goes to the band that covers it (a youth size on a style
+ * whose bands read XS-XL is matched without its Y). No sizes yet -> the first (standard) band only. Sizes no band covers are returned
+ * in `unmatched`, never guessed.
+ */
+export function skusForSizes(family, countColorSize) {
+  const fam = family || [];
+  const sizes = [...new Set(parseSizeText(countColorSize).rows.map((r) => r.size).filter(Boolean))];
+  if (!fam.length) return { items: [], unmatched: [] };
+  if (!sizes.length) return { items: [fam[0]], unmatched: [] };
+  const bands = fam.map((p) => ({ p, band: bandOf(p.name) }));
+  const need = new Set();
+  const unmatched = [];
+  sizes.forEach((size) => {
+    const tries = [size, /^Y(XS|S|M|L|XL)$/.test(size) ? size.slice(1) : null].filter(Boolean);
+    let hit = null;
+    for (const t of tries) {
+      const r = rank(t);
+      hit = bands.find((b) => b.band && r >= b.band[0] && r <= b.band[1]) || null;
+      if (hit) break;
+    }
+    if (!hit) hit = bands.find((b) => !b.band) || null; // one item for every size (hats, bags)
+    if (hit) need.add(hit.p.sku);
+    else unmatched.push(size);
+  });
+  return { items: fam.filter((p) => need.has(p.sku)), unmatched };
 }

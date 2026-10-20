@@ -430,7 +430,8 @@ function App() {
                     const f = garmentFill(items, items[0] && items[0].category);
                     methods.setValue(`products.${i}.primaryBranches`, [
                       ...branches,
-                      { name: "", garmentType: f.garmentType, garmentKind: f.garmentKind, garmentSkus: f.garmentSkus, numberOfSkus: String(f.garmentSkus.length) },
+                      // E-107: keep the family; the SKU rows then follow the sizes entered (base band until then).
+                      { name: "", garmentType: f.garmentType, garmentKind: f.garmentKind, booksFamily: f.garmentSkus, garmentSkus: f.garmentSkus.slice(0, 1), numberOfSkus: "1" },
                     ]);
                     methods.setValue(`products.${i}.numberOfGarmentTypes`, String(branches.length + 1));
                     setAddingProduct(false);

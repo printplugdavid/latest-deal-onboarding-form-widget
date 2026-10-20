@@ -108,3 +108,20 @@ export async function supplierStyle(supplier, style, brand = "") {
       : [],
   };
 }
+
+/*
+ * E-106: is this exact SKU an item in Books, even if CRM's copy has not synced yet (35 min - 2 h)? The live "check" action already
+ * answers it -- "SKU already used by: <name> (active)" -- and writes nothing. Up to 5 codes per call (the function stops at 7 s).
+ * Returns [{ sku, name, active }] for the codes Books has; [] when it cannot tell.
+ */
+const HELD = /^SKU already used by: (.*) \((active|inactive)\)$/;
+export async function findSkusInBooks(skus) {
+  const list = [...new Set((skus || []).map((s) => str(s).trim().toUpperCase()).filter(Boolean))].slice(0, 5);
+  if (!list.length) return [];
+  const a = await checkInBooks(list.map((sku) => ({ sku, name: `zz lookup ${sku} zz`, brand: "lookup" })));
+  if (a.status !== "ok") return [];
+  return a.results
+    .map((r) => ({ r, m: HELD.exec(str(r && r.clash)) }))
+    .filter((x) => x.m)
+    .map((x) => ({ sku: str(x.r.sku).toUpperCase(), name: x.m[1], active: x.m[2] === "active" }));
+}
