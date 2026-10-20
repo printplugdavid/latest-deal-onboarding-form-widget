@@ -86,6 +86,8 @@ export default function ProductSkuField({ rowPath, label, garmentKind, allowClie
             ? productName
             : unavailable
             ? "Books products could not be searched right now -- type the code"
+            : allowClientOwned
+            ? "Type the style code or words of the name; the client's own garment is at the top of the list"
             : "Type the style code or words of the name";
         return (
           <Box sx={{ mb: "1rem", mt: "5px" }}>
@@ -93,7 +95,6 @@ export default function ProductSkuField({ rowPath, label, garmentKind, allowClie
               freeSolo
               autoHighlight
               filterOptions={(x) => x}
-              openOnFocus={allowClientOwned}
               options={[...pinned, ...options.filter((o) => o.sku !== CLIENT_OWNED.sku), ...extra]}
               loading={loading}
               value={field.value || null}
