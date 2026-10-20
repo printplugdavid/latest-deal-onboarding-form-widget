@@ -22,6 +22,17 @@ export function familySearchCodes(sku) {
   return /\d$/.test(s) && s.length > 2 ? [s, s.slice(0, -1)] : [s];
 }
 
+/*
+ * E-106: the base code of a picked item's family. The standard band (XS-XL, S-XL, OSFM …) carries the base code itself (ST290); an
+ * upcharge band carries base + digit (ST2901 = 2XL), so its last digit is dropped.
+ */
+export function familyBase(picked) {
+  const sku = str(picked && picked.sku).trim().toUpperCase();
+  const band = bandOf(picked && picked.name);
+  const standard = !band || band[0] <= RULES.sizeOrder.indexOf("XL");
+  return standard || !/\d$/.test(sku) ? sku : sku.slice(0, -1);
+}
+
 /* The picked product's family among search results: same name stem, codes that share the base. Smallest code first. */
 export function familyOf(picked, results) {
   const stem = nameStem(picked && picked.name).toLowerCase();

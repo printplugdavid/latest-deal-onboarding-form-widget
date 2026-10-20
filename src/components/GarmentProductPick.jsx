@@ -2,7 +2,7 @@ import { Alert, Autocomplete, Box, CircularProgress, TextField, Typography } fro
 import React, { Suspense, lazy, useEffect, useRef, useState } from "react";
 import { useFormContext, useWatch } from "react-hook-form";
 import { booksFamilyOf, rememberCreated, searchProducts } from "../products/productSearch";
-import { familyOf, familySearchCodes, garmentFill, nameStem, skusForSizes } from "../products/garmentFromBooks";
+import { familyBase, familyOf, familySearchCodes, garmentFill, nameStem, skusForSizes } from "../products/garmentFromBooks";
 
 const NewProductDialog = lazy(() => import("./NewProductDialog"));
 const ADD = { kind: "add" };
@@ -80,8 +80,7 @@ export default function GarmentProductPick({ index, branchIndex }) {
     let fam = familyOf(p, found);
     // E-106: an item CRM does not have yet -- ask Books for the rest of its family.
     if (p.fromBooks || fam.length === 1) {
-      const codes = familySearchCodes(p.sku);
-      const more = await booksFamilyOf(codes[codes.length - 1]);
+      const more = await booksFamilyOf(familyBase(p));
       fam = familyOf(p, [...found, ...more.filter((x) => nameStem(x.name).toLowerCase() === nameStem(p.name).toLowerCase())]);
     }
     setLoading(false);

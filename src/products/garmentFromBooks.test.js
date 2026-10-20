@@ -45,7 +45,7 @@ test("garment kind from the Books category, and from the name where the category
   expect(kindFromBooks("Product - Signage", "Vinyl Banner")).toBe("");
 });
 
-import { bandOf, skusForSizes } from "./garmentFromBooks";
+import { bandOf, familyBase, skusForSizes } from "./garmentFromBooks";
 
 const ST290 = [
   { sku: "ST290", name: "Sport-Tek - Repel Fleece Hooded Pullover - XS-XL" },
@@ -105,4 +105,11 @@ describe("E-106: Books lookup by exact SKU (check action)", () => {
     };
     expect(await findSkusInBooks(["ST290", "ST2904"])).toEqual([{ sku: "ST290", name: "Sport-Tek - Repel Fleece Hooded Pullover - XS-XL", active: true }]);
   });
+});
+
+test("E-106: the family base -- the standard band is the base, an upcharge band drops its digit", () => {
+  expect(familyBase(ST290[0])).toBe("ST290");
+  expect(familyBase(ST290[1])).toBe("ST290");
+  expect(familyBase({ sku: "PC54", name: "Port & Company - Core Cotton Tee - S-XL" })).toBe("PC54");
+  expect(familyBase({ sku: "112", name: "Richardson - 112 Trucker Cap - OSFM" })).toBe("112");
 });
