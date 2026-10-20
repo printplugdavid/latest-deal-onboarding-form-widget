@@ -132,9 +132,10 @@ export default function NewProductForm({ initialStyle = "", garmentKind = "", on
         name: buildName({
           brand: leadBrand ? brand : "",
           product: productWords,
-          colorStyle,
+          // D-51: supplier goods are named without color or quantity (one item covers every color)
+          colorStyle: kind === "supplier" ? "" : colorStyle,
           size: r.size,
-          quantity: r.quantity,
+          quantity: kind === "supplier" ? "" : r.quantity,
         }),
         brand: kind === "inHouse" && !brand ? RULES.inHouseBrand : brand,
         vendorId: (vendorPicked && vendorPicked.id) || "",
@@ -341,7 +342,10 @@ export default function NewProductForm({ initialStyle = "", garmentKind = "", on
         onChange={(e) => setWords(e.target.value)}
         sx={{ mb: 2 }}
       />
-      <TextField size="small" label="Color / style (if it is part of the product)" value={colorStyle} onChange={(e) => setColorStyle(e.target.value)} sx={{ mb: 2, minWidth: 320 }} />
+      {/* D-51: a supplier garment's Books items cover every color, so no color here; colors go on the order. */}
+      {kind !== "supplier" && (
+        <TextField size="small" label="Color / style (only if it is part of the product, e.g. White stickers)" value={colorStyle} onChange={(e) => setColorStyle(e.target.value)} sx={{ mb: 2, minWidth: 320 }} />
+      )}
       <Autocomplete
         options={lists.brands}
         value={brand || null}
@@ -377,15 +381,23 @@ export default function NewProductForm({ initialStyle = "", garmentKind = "", on
         {category && unitFor(finalCategory) !== unit ? ` Usual for this category: ${unitFor(finalCategory)}.` : ""}
       </Typography>
 
-      <Typography sx={section}>5. Size bands / tiers, cost and price (one Books item each)</Typography>
+      <Typography sx={section}>{kind === "supplier" ? "5. Size bands, cost and price" : "5. Size bands / tiers, cost and price (one Books item each)"}</Typography>
+      {kind === "supplier" && (
+        <Alert severity="info" icon={false} sx={{ mb: 1 }}>
+          This adds the <b>whole product</b> to Books: one item per size band below, each covering <b>every color</b>. Colors and
+          quantities are not asked here; they go on the order.
+        </Alert>
+      )}
       <Typography sx={{ fontSize: "0.8rem", color: "#555", mb: 1 }}>
         Sizes priced together are one item; sizes priced separately are one item each (S-XL, 2XL, 3XL-4XL). Cost is the
         supplier's case price. The price starts at the floor; you can go higher, never lower.
       </Typography>
       {rows.map((r, i) => (
         <Box key={i} sx={{ display: "flex", gap: 1, mb: 1, flexWrap: "wrap" }}>
-          <TextField size="small" label="Size / dimension" value={r.size} onChange={(e) => setRow(i, { size: e.target.value })} sx={{ width: 150 }} />
-          <TextField size="small" label="Quantity tier" value={r.quantity} onChange={(e) => setRow(i, { quantity: e.target.value })} sx={{ width: 120 }} />
+          <TextField size="small" label={kind === "supplier" ? "Size band" : "Size / dimension"} value={r.size} onChange={(e) => setRow(i, { size: e.target.value })} sx={{ width: 150 }} />
+          {kind !== "supplier" && (
+            <TextField size="small" label="Quantity tier (price is for)" value={r.quantity} onChange={(e) => setRow(i, { quantity: e.target.value })} sx={{ width: 160 }} />
+          )}
           <TextField
             size="small"
             label={r.costSource === "live" ? "Cost (live)" : "Cost (typed)"}
@@ -464,7 +476,13 @@ export default function NewProductForm({ initialStyle = "", garmentKind = "", on
           {busy === "check" ? <CircularProgress size={18} /> : "Check in Books"}
         </Button>
         <Button variant="contained" disabled={!ready || !allFree || busy !== ""} onClick={doCreate}>
-          {busy === "create" ? <CircularProgress size={18} /> : `Create ${items.length === 1 ? "this product" : `these ${items.length} products`} in Books`}
+          {busy === "create" ? (
+            <CircularProgress size={18} />
+          ) : kind === "supplier" ? (
+            `Create this product in Books (${items.length} size band${items.length === 1 ? "" : "s"})`
+          ) : (
+            `Create ${items.length === 1 ? "this product" : `these ${items.length} products`} in Books`
+          )}
         </Button>
         {onCancel && <Button onClick={onCancel}>Cancel</Button>}
       </Box>
