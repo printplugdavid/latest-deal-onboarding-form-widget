@@ -163,7 +163,8 @@ export default function NewProductForm({ initialStyle = "", garmentKind = "", on
   if (kind === "outsourced" && vendorPicked && vendorPicked.name && !vendorCodeFor(vendorPicked.name))
     extra.push(`${vendorPicked.name} has no vendor code yet (docs/25 §2c) -- ask David to pick one`);
   if (kind === "supplier" && !style) extra.push("type the supplier's style or item number");
-  if (lookup && lookup.discontinued) extra.push("the supplier lists this style as discontinued -- ask before adding it");
+  if (lookup && (lookup.discontinued || /\bdiscontinued\b/i.test(lookup.title || "")))
+    extra.push("the supplier lists this style as discontinued -- ask before adding it");
   const ready = items.length > 0 && problems.every((p) => p.length === 0) && extra.length === 0;
   const booksOn = lists.status === "ok";
   const allFree = booksCheck && booksCheck.status === "ok" && booksCheck.results.length === items.length && booksCheck.results.every((r) => r.result === "free");
@@ -384,6 +385,17 @@ export default function NewProductForm({ initialStyle = "", garmentKind = "", on
         control={<Checkbox size="small" checked={leadBrand} onChange={(e) => setLeadBrand(e.target.checked)} />}
         label="Start the name with the brand (garments and branded promo; not our own products)"
       />
+
+      {/* The finished name, built by the naming guide (Brand - Product - Color/Style - Size - Quantity) as the rep types. */}
+      {items[0] && items[0].name && (
+        <Box sx={{ mt: 1, mb: 1, p: 1, background: "#f3f6f9", borderRadius: 1 }}>
+          <Typography sx={{ fontSize: "0.8rem", color: "#555" }}>
+            Name in Books{items.length > 1 ? ` (one per size band; ${items.length} items, see step 6)` : ""}:
+          </Typography>
+          <Typography sx={{ fontSize: "0.95rem", fontWeight: "bold" }}>{items[0].name}</Typography>
+          {!brand && <Typography sx={{ fontSize: "0.8rem", color: "#9a2c00" }}>Pick the brand: the name must start with it.</Typography>}
+        </Box>
+      )}
 
       <Typography sx={section}>4. Category and unit</Typography>
       <TextField select size="small" label="Category" value={category} onChange={(e) => setCategory(e.target.value)} sx={{ minWidth: 320, mr: 2, mb: 1 }}>

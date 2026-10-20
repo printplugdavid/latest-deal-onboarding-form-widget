@@ -267,3 +267,12 @@ test("a garment name that does not lead with its brand is refused (Books docs/38
   expect(checkItems([{ ...st290, name: "Sport-Tek - PosiCharge Competitor Tee - XS-XL" }])[0]).toEqual([]);
   expect(checkItems([{ ...st290, brand: "" }])[0]).toContain("no brand");
 });
+
+test("SanMar's DISCONTINUED marker never reaches a name (10-20 check of 400 real titles)", () => {
+  expect(productWordsFromTitle("DISCONTINUED Gildan - DryBlend Crewneck Sweatshirt. 12000", ["Gildan"], "12000")).toBe("DryBlend Crewneck Sweatshirt");
+  expect(productWordsFromTitle("DISCONTINUED Sport-Tek  PosiCharge  Sport-Wick  Heather Fleece 1/4-Zip Pullover. ST263", ["Sport-Tek"], "ST263")).toBe(
+    "PosiCharge Sport-Wick Heather Fleece 1/4-Zip Pullover"
+  );
+  expect(productWordsFromTitle("Sport-Tek Repel Fleece Hooded Pullover. ST290", ["Sport-Tek"], "ST290")).toBe("Repel Fleece Hooded Pullover");
+  expect(buildName({ brand: booksBrandFor("Sport-Tek"), product: "Repel Fleece Hooded Pullover", size: "XS-XL" })).toBe("Sport-Tek - Repel Fleece Hooded Pullover - XS-XL");
+});
