@@ -54,6 +54,8 @@
     "sanmar": { "label": "SanMar", "vendor": "San Mar", "vendorId": "3165330000000569041" },
     "ss": { "label": "S&S Activewear", "vendor": "S&S Activewear", "vendorId": "3165330000002453029" }
   },
+  "_clientOwned": "E-101 / D-49: a garment the client brings in. One Books item (Books thread creates it); the upcharge is a working number David may change -- change it here.",
+  "clientOwned": { "sku": "PPCOG", "name": "Client Owned Garment", "vendorsUsed": "Client Owned", "upchargePercent": 10 },
   "inHouseVendor": "The Print Plug",
   "inHouseBrand": "The Print Plug",
   "_vendorCodes": "docs/25 §2c registry: one vendor = one code. A vendor not here -> David picks a code.",
