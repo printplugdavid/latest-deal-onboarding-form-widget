@@ -260,3 +260,10 @@ test("the brand snapshot carries the late-alphabet brands the live scan can miss
   expect(RULES.booksBrands).toEqual(expect.arrayContaining(["Sport-Tek", "Liberty Bags", "Under Armour", "YETI"]));
   expect(booksBrandFor("Sport-Tek")).toBe("Sport-Tek");
 });
+
+test("a garment name that does not lead with its brand is refused (Books docs/38: ST290 lost 'Sport-Tek - ')", () => {
+  const st290 = { ...PC78YP, sku: "ST290", brand: "Sport-Tek", category: "Garment - Tops", name: "PosiCharge Competitor Tee - XS-XL" };
+  expect(checkItems([st290])[0]).toContain('name must start with the brand: "Sport-Tek - ..."');
+  expect(checkItems([{ ...st290, name: "Sport-Tek - PosiCharge Competitor Tee - XS-XL" }])[0]).toEqual([]);
+  expect(checkItems([{ ...st290, brand: "" }])[0]).toContain("no brand");
+});

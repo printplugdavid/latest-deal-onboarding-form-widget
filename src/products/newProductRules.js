@@ -218,6 +218,9 @@ export function checkItems(items, { booksBrands = RULES.booksBrands } = {}) {
       p.push("name: our SKU must not be in the name");
     if ((seenName.get(squash(name)) || []).length > 1) p.push("two items in this batch have the same name");
     if (!it.brand) p.push("no brand");
+    // Books docs/38 + docs/25 §3: a garment / supplier product's name leads with its brand ("Sport-Tek - PosiCharge ... - XS-XL").
+    else if ((it.kind === "supplier" || isGarmentCategory(it.category)) && !name.startsWith(it.brand + " - "))
+      p.push(`name must start with the brand: "${it.brand} - ..."`);
     else if (!(booksBrands || []).includes(it.brand)) p.push(`brand "${it.brand}" is not in Books yet (ask David)`);
     if (!RULES.categories.includes(it.category)) p.push("pick a category");
     if (!RULES.units.includes(it.unit)) p.push("pick a unit");
