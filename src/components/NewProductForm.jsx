@@ -238,7 +238,8 @@ export default function NewProductForm({ initialStyle = "", garmentKind = "", on
           </Alert>
         )}
         <Alert severity="info" sx={{ mt: 2 }}>
-          New products reach CRM at the next Books sync (about every 2 hours). This form already knows them.
+          The product is in Books now and can go on an invoice right away. CRM's product list catches up at the next sync; this
+          form already knows the new items.
         </Alert>
         <Box sx={{ mt: 2, display: "flex", gap: 1 }}>
           {made.length > 0 && onCreated && (
