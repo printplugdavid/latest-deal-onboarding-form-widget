@@ -23,6 +23,7 @@ import LumpedGuard from "./LumpedGuard";
 import { ON_GARMENT, SPLIT_LABEL } from "../garmentSplit";
 import { GARMENT_KINDS, canonicalKind } from "../placements";
 import { StrictEntry } from "./strictEntry";
+import ProductSkuField from "./ProductSkuField";
 
 const GarmentPrimaryBranchForm = ({
   index,
@@ -105,6 +106,12 @@ const GarmentPrimaryBranchForm = ({
   const garmentSkuValues = useWatch({
     control,
     name: `products.${index}.primaryBranches.${branchIndex}.garmentSkus`,
+  });
+
+  // E-100: the garment kind proposes the Books category when a rep adds a new product from a SKU row.
+  const garmentKindValue = useWatch({
+    control,
+    name: `products.${index}.primaryBranches.${branchIndex}.garmentKind`,
   });
 
   const numberOfSkus = useWatch({
@@ -270,22 +277,13 @@ const GarmentPrimaryBranchForm = ({
         )}
       />
 
+      {/* E-100: each SKU is picked from the real Books / CRM products, or added through the New Product form. */}
       {garmentSkus?.map((_, skuIndex) => (
-        <Controller
+        <ProductSkuField
           key={`${index}-${branchIndex}-sku-${skuIndex}`}
-          control={control}
-          name={`products.${index}.primaryBranches.${branchIndex}.garmentSkus.${skuIndex}.sku`}
-          defaultValue=""
-          render={({ field }) => (
-            <TextField
-              size="small"
-              variant="outlined"
-              fullWidth
-              label={`SKU ${skuIndex + 1}`}
-              {...field}
-              sx={{ mb: "1rem", mt: "5px" }}
-            />
-          )}
+          rowPath={`products.${index}.primaryBranches.${branchIndex}.garmentSkus.${skuIndex}`}
+          label={`SKU ${skuIndex + 1}`}
+          garmentKind={garmentKindValue}
         />
       ))}
 

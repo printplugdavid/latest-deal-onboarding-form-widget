@@ -451,6 +451,8 @@ export function buildOnboardingNote(data) {
           product?.vendorsUsed +
           newLine +
           newLine +
+          // E-100: the Books product(s) picked for this line -- only when there are any, so every older note reads as before.
+          (skuList(product?.productSkus) ? "SKU(s): " + skuList(product?.productSkus) + newLine + newLine : "") +
           newLine;
       } else if (productType === "gangsheet") {
         // DTF Gang Sheet: print-only DTF. Counts are computed from the sheet + graphic sizes

@@ -15,6 +15,7 @@ import {
 } from "react-hook-form";
 import ColorsUsedField from "./ColorsUsedField";
 import GraphicArt from "./GraphicArt";
+import ProductSkuRows from "./ProductSkuRows";
 
 const NonGarmentForm = ({ index }) => {
   const { control } = useFormContext();
@@ -340,6 +341,9 @@ const NonGarmentForm = ({ index }) => {
           />
         )}
       />
+
+      {/* E-100: which Books product(s) this line is, picked or added through the New Product form. */}
+      <ProductSkuRows basePath={`products.${index}.productSkus`} />
 
       <Controller
         control={control}
