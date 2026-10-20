@@ -25,6 +25,7 @@ import { ON_GARMENT, SPLIT_LABEL } from "../garmentSplit";
 import { GARMENT_KINDS, canonicalKind } from "../placements";
 import { StrictEntry } from "./strictEntry";
 import ProductSkuField from "./ProductSkuField";
+import GarmentProductPick from "./GarmentProductPick";
 import { CLIENT_OWNED, isClientOwnedGarment, isClientOwnedSku, upchargeLabel } from "../products/clientOwned";
 
 const GarmentPrimaryBranchForm = ({
@@ -203,6 +204,9 @@ const GarmentPrimaryBranchForm = ({
           {hasCopies && !split.canUndo ? " To undo the split, lower Number of Garment Types (the copy must be the last garment)." : ""}
         </Alert>
       )}
+
+      {/* E-104: start from the Books product -- fills type, kind and the size-band SKUs. */}
+      <GarmentProductPick index={index} branchIndex={branchIndex} />
 
       <FormControlLabel
         control={
