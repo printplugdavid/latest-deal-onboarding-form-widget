@@ -30,7 +30,7 @@ export function readAnswer(response, name) {
   }
 }
 
-async function call(name, args) {
+async function callOnce(name, args) {
   try {
     const zoho = typeof window !== "undefined" ? window.ZOHO : null;
     const execute = zoho && zoho.CRM && zoho.CRM.FUNCTIONS && zoho.CRM.FUNCTIONS.execute;
@@ -40,6 +40,20 @@ async function call(name, args) {
   } catch (e) {
     return { status: "unavailable", message: name + " is not installed yet (" + str((e && e.message) || e) + ")" };
   }
+}
+
+/*
+ * Which name a widget must use is not settled for these two: the folder and copy calls use the lower-case REST API name
+ * (widget_create_deal_folders), the Quality Check invoice read works with WIDGET_Get_Deal_Invoices (docs/35), and the
+ * Deluge thread expects lower case (their docs/38 §3). So: the name as written, then its lower-case form. A function
+ * that answers at all (ok / error / choose_brand) is never called twice -- a create cannot run twice this way.
+ */
+export async function call(name, args) {
+  const first = await callOnce(name, args);
+  const lower = name.toLowerCase();
+  if (first.status !== "unavailable" || lower === name || first.message === "not inside Zoho") return first;
+  const second = await callOnce(lower, args);
+  return second.status !== "unavailable" ? second : { ...first, message: first.message + "; " + second.message };
 }
 
 const books = (action, payload) => call(RULES.functions.books, { action, payload: JSON.stringify(payload || {}) });
