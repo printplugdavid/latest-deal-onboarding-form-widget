@@ -48,6 +48,7 @@ import dayjs from "dayjs";
 
 // E-103: downloaded only when a rep opens it.
 const NewProductDialog = lazy(() => import("./components/NewProductDialog"));
+import { garmentFill } from "./products/garmentFromBooks";
 
 const ZOHO = window.ZOHO;
 
@@ -416,7 +417,25 @@ function App() {
             </Box>
             {addingProduct && (
               <Suspense fallback={null}>
-                <NewProductDialog open onClose={() => setAddingProduct(false)} />
+                <NewProductDialog
+                  open
+                  onClose={() => setAddingProduct(false)}
+                  // E-103 step 2: the new items become a filled garment type under one of this onboarding's garment products.
+                  orderTargets={(methods.getValues("products") || [])
+                    .map((p, i) => ({ key: String(i), label: `${p.productName} (new garment type)`, garment: p.productType === "garment" }))
+                    .filter((t) => t.garment)}
+                  onAddToOrder={(items, key) => {
+                    const i = Number(key);
+                    const branches = methods.getValues(`products.${i}.primaryBranches`) || [];
+                    const f = garmentFill(items, items[0] && items[0].category);
+                    methods.setValue(`products.${i}.primaryBranches`, [
+                      ...branches,
+                      { name: "", garmentType: f.garmentType, garmentKind: f.garmentKind, garmentSkus: f.garmentSkus, numberOfSkus: String(f.garmentSkus.length) },
+                    ]);
+                    methods.setValue(`products.${i}.numberOfGarmentTypes`, String(branches.length + 1));
+                    setAddingProduct(false);
+                  }}
+                />
               </Suspense>
             )}
 
