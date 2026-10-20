@@ -40,6 +40,7 @@ import {
   vendorCodeFor,
 } from "../products/newProductRules";
 import { booksLists, checkInBooks, createInBooks, supplierStyle } from "../products/booksItems";
+import { rememberCreated } from "../products/productSearch";
 
 /*
  * E-85 / E-100: the New Product form. A rep answers plain questions; the SKU, name, category, unit, accounts and price
@@ -172,6 +173,9 @@ export default function NewProductForm({ initialStyle = "", garmentKind = "", on
     const r = await createInBooks(items.map(toBooksItem), submittedBy);
     setBusy("");
     setCreated(r);
+    // New items reach CRM only at the next sync; offer them in every SKU search of this session now.
+    if (r.status === "ok")
+      rememberCreated(r.results.filter((x) => x.result === "created").map((x) => ({ id: "", sku: x.sku, name: (x.read_back && x.read_back.name) || x.name })));
   }
 
   const setRow = (i, patch) => setRows((rs) => rs.map((r, j) => (j === i ? { ...r, ...patch } : r)));

@@ -12,7 +12,7 @@ import {
   Alert,
   CircularProgress,
 } from "@mui/material";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, lazy, useEffect, useMemo, useRef, useState } from "react";
 import { Controller, FormProvider, useForm, useWatch } from "react-hook-form";
 import { useFieldArray } from "react-hook-form";
 import GarmentForm from "./components/GarmentForm";
@@ -46,10 +46,14 @@ import { DatePicker, LocalizationProvider } from "@mui/x-date-pickers";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import dayjs from "dayjs";
 
+// E-103: downloaded only when a rep opens it.
+const NewProductDialog = lazy(() => import("./components/NewProductDialog"));
+
 const ZOHO = window.ZOHO;
 
 function App() {
   const [initialized, setInitialized] = useState(false); // initialize the widget
+  const [addingProduct, setAddingProduct] = useState(false); // E-103: the New Product form, opened from the top of this form
   const [entity, setEntity] = useState(null); // keeps the module
   const [entityId, setEntityId] = useState(null); // keeps the module id
   const [recordData, setRecordData] = useState(null); // holds record response
@@ -403,6 +407,18 @@ function App() {
             >
               Deal Onboarding Form
             </Typography>
+
+            {/* E-103: add a product to Books on the fly, without onboarding a client (until it has its own widget). */}
+            <Box sx={{ textAlign: "center", mt: "-0.75rem", mb: "1rem" }}>
+              <Button size="small" variant="outlined" onClick={() => setAddingProduct(true)}>
+                Add a new product to Books
+              </Button>
+            </Box>
+            {addingProduct && (
+              <Suspense fallback={null}>
+                <NewProductDialog open onClose={() => setAddingProduct(false)} />
+              </Suspense>
+            )}
 
             <Typography
               variant="p"
