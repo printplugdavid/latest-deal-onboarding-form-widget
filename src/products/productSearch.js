@@ -48,7 +48,7 @@ async function search(zoho, config) {
 }
 
 /*
- * { status: "ok" | "unavailable", products } -- never throws. Two or more characters; at most 30 results.
+ * { status: "ok" | "unavailable", products } -- never throws. Two or more characters; the best 30 shown.
  */
 export async function searchProducts(term) {
   const t = str(term).trim();
@@ -64,7 +64,8 @@ export async function searchProducts(term) {
       Entity: "Products",
       Type: "criteria",
       Query: `((Product_Code:starts_with:${esc(code)})and(Product_Active:equals:true))`,
-      per_page: 30,
+      // a style's bands and variants (PC54, PC541 ... PC54LS, PC54Y ...) can pass 30: fetch the page, rank, then cut
+      per_page: 200,
     }),
     t.length >= 3 ? search(zoho, { Entity: "Products", Type: "word", Query: t, per_page: 30 }) : Promise.resolve([]),
   ]);
