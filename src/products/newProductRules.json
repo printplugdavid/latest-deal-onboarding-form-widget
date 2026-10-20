@@ -2,9 +2,10 @@
   "_source": "Books SKU thread docs/25-item-convention-2026-10-19.md and docs/30-new-product-form-rules-2026-10-19.md (E-85 / E-100). Books owns the rules; change this file only to follow them, in a tagged release.",
   "booksOrgId": "774544002",
   "categoryFieldId": "3165330000023714397",
+  "_functions": "the REST API names a widget calls (lower case, measured by the Deluge thread 10-20, their docs/39 §7); code names WIDGET_Books_Items / WIDGET_Supplier_Style",
   "functions": {
-    "books": "WIDGET_Books_Items",
-    "supplier": "WIDGET_Supplier_Style"
+    "books": "widget_books_items",
+    "supplier": "widget_supplier_style"
   },
   "categories": [
     "Garment - Accessories", "Garment - Bottoms", "Garment - Hats", "Garment - Hoodies & Sweatshirts", "Garment - Infant/Toddler",
