@@ -25,7 +25,7 @@ import { ON_GARMENT, SPLIT_LABEL } from "../garmentSplit";
 import { GARMENT_KINDS, canonicalKind } from "../placements";
 import { StrictEntry } from "./strictEntry";
 import ProductSkuField from "./ProductSkuField";
-import { CLIENT_OWNED, isClientOwnedGarment, upchargeLabel } from "../products/clientOwned";
+import { CLIENT_OWNED, isClientOwnedGarment, isClientOwnedSku, upchargeLabel } from "../products/clientOwned";
 
 const GarmentPrimaryBranchForm = ({
   index,
@@ -35,8 +35,9 @@ const GarmentPrimaryBranchForm = ({
   split,
   onSplit,
   onUndoSplit,
+  askUpchargeHere = true, // E-101: the onboarding form asks once per product (GarmentForm); the Amendment Form asks here
 }) => {
-  const { control, setValue } = useFormContext();
+  const { control, getValues, setValue } = useFormContext();
   const strict = useContext(StrictEntry); // E-74: the onboarding form requires the Garment kind
   // E-58: this garment is part of a split when it has copies or is one (garmentSplit.splitInfo).
   const inSplit = !!split && split.group.length > 1;
@@ -110,8 +111,19 @@ const GarmentPrimaryBranchForm = ({
     name: `products.${index}.primaryBranches.${branchIndex}.garmentSkus`,
   });
 
-  // E-101: when the whole product is "Client provided", its one upcharge question is asked there, not per garment.
-  const productClientProvided = useWatch({ control, name: `products.${index}.clientProvided` });
+  // E-101: "Client provided" -- the client brings THIS garment type: its SKU becomes PPCO; its details are filled in as usual.
+  // Other garment types of the same product can still be garments we order.
+  const branchPath = `products.${index}.primaryBranches.${branchIndex}`;
+  const setClientProvided = (on) => {
+    const rows = (getValues(`${branchPath}.garmentSkus`) || []).filter((r) => !isClientOwnedSku(r && r.sku));
+    const next = on ? [{ sku: CLIENT_OWNED.sku, productId: "", productName: CLIENT_OWNED.name, productSource: "clientOwned" }] : rows;
+    setValue(`${branchPath}.garmentSkus`, next);
+    setValue(`${branchPath}.numberOfSkus`, next.length ? String(next.length) : "");
+    const vendors = String(getValues(`${branchPath}.vendorsUsed`) || "").trim();
+    if (on && !vendors) setValue(`${branchPath}.vendorsUsed`, CLIENT_OWNED.vendorsUsed);
+    if (!on && vendors === CLIENT_OWNED.vendorsUsed) setValue(`${branchPath}.vendorsUsed`, "");
+  };
+
   // E-100: the garment kind proposes the Books category when a rep adds a new product from a SKU row.
   const garmentKindValue = useWatch({
     control,
@@ -191,6 +203,17 @@ const GarmentPrimaryBranchForm = ({
           {hasCopies && !split.canUndo ? " To undo the split, lower Number of Garment Types (the copy must be the last garment)." : ""}
         </Alert>
       )}
+
+      <FormControlLabel
+        control={
+          <Checkbox
+            checked={isClientOwnedGarment({ garmentSkus: garmentSkuValues })}
+            onChange={(e) => setClientProvided(e.target.checked)}
+          />
+        }
+        label={`Client provided (the client brings this garment type; SKU ${CLIENT_OWNED.sku})`}
+        sx={{ display: "block", mb: "0.5rem" }}
+      />
 
       <Controller
         control={control}
@@ -292,8 +315,8 @@ const GarmentPrimaryBranchForm = ({
         />
       ))}
 
-      {/* E-101 / D-49: a client-owned garment takes the order upcharge; the rep says whether it was added. */}
-      {isClientOwnedGarment({ garmentSkus: garmentSkuValues }) && !productClientProvided && (
+      {/* E-101 / D-49: the Amendment Form has no product section, so a client-provided garment's upcharge is asked here. */}
+      {askUpchargeHere && isClientOwnedGarment({ garmentSkus: garmentSkuValues }) && (
         <Controller
           control={control}
           name={`products.${index}.primaryBranches.${branchIndex}.clientOwnedUpcharge`}
