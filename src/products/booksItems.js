@@ -6,9 +6,11 @@
  *   WIDGET_Books_Items(action, payload)      action "lists"  -> Books vendors + brands (live)
  *                                            action "check"  -> is each SKU / name free (active AND inactive)?
  *                                            action "create" -> create each item, read it back, list what Books did not keep
- *   WIDGET_Supplier_Style(supplier, style)   live SanMar / S&S style: title, brand, case price per size
+ *   WIDGET_Supplier_Style(supplier, style, brand)   live SanMar / S&S style: title, brand, case price per size. brand is
+ *                                            optional; an S&S style number two brands share ("5000" = Gildan, Bayside)
+ *                                            answers "choose_brand" with the candidates (wholesale thread doc 08)
  *
- * Every call answers { status: "ok" | "error" | "unavailable", message, ... } and never throws. "unavailable" = the
+ * Every call answers { status: "ok" | "error" | "choose_brand" | "unavailable", message, ... } and never throws. "unavailable" = the
  * function is not installed or gave no usable answer, so the screen can say "not switched on yet" instead of failing.
  */
 import { RULES } from "./newProductRules";
@@ -21,7 +23,8 @@ export function readAnswer(response, name) {
     const raw = response && response.details ? response.details.output : undefined;
     const out = typeof raw === "string" ? JSON.parse(raw) : raw;
     if (!out || typeof out !== "object") return none("no answer from " + name);
-    return { ...out, status: out.status === "ok" ? "ok" : out.status === "error" ? "error" : "unavailable", message: str(out.message) };
+    const status = ["ok", "error", "choose_brand"].includes(out.status) ? out.status : "unavailable";
+    return { ...out, status, message: str(out.message) };
   } catch (e) {
     return none("unreadable answer from " + name + ": " + str((e && e.message) || e));
   }
@@ -65,14 +68,18 @@ export async function createInBooks(items, submittedBy) {
   return { ...a, results: results(a) };
 }
 
-/* { status, title, brand, sizes: [{ size, cost }], discontinued, priced_at } -- cost = the case price per size. */
-export async function supplierStyle(supplier, style) {
-  const a = await call(RULES.functions.supplier, { supplier: str(supplier), style: str(style).trim() });
+/*
+ * { status, title, brand, sizes: [{ size, cost }], discontinued, priced_at, candidates } -- cost = the case price per size.
+ * status "choose_brand": the style number belongs to more than one brand; ask the rep, then call again with `brand`.
+ */
+export async function supplierStyle(supplier, style, brand = "") {
+  const a = await call(RULES.functions.supplier, { supplier: str(supplier), style: str(style).trim(), brand: str(brand).trim() });
   return {
     ...a,
     title: str(a.title),
     brand: str(a.brand),
     discontinued: a.discontinued === true || a.discontinued === "true",
+    candidates: Array.isArray(a.candidates) ? a.candidates.map(str).filter(Boolean) : [],
     sizes: Array.isArray(a.sizes)
       ? a.sizes.map((s) => ({ size: str(s && s.size), cost: Number(s && s.cost) })).filter((s) => s.size && Number.isFinite(s.cost))
       : [],
