@@ -36,12 +36,12 @@ const garmentDeal = (branch) => ({
 });
 
 test("client-owned garment: the upcharge line follows Vendors Used", () => {
-  const c = buildOnboardingNote(garmentDeal({ garmentSkus: [{ sku: "PPCOG", productSource: "clientOwned" }], clientOwnedUpcharge: "Yes", clientOwnedUpchargePercent: 10 })).content;
+  const c = buildOnboardingNote(garmentDeal({ garmentSkus: [{ sku: "PPCO", productSource: "clientOwned" }], clientOwnedUpcharge: "Yes", clientOwnedUpchargePercent: 10 })).content;
   expect(c).toMatch(/Vendors Used: Client Owned\n\n10% Client-Owned Garment Upcharge Added\?: Yes\n\nSpecial Instructions/);
 });
 
 test("the percent recorded on the order is the one printed (the rule may change later)", () => {
-  const c = buildOnboardingNote(garmentDeal({ garmentSkus: [{ sku: "ppcog" }], clientOwnedUpcharge: "No", clientOwnedUpchargePercent: 12 })).content;
+  const c = buildOnboardingNote(garmentDeal({ garmentSkus: [{ sku: "ppco" }], clientOwnedUpcharge: "No", clientOwnedUpchargePercent: 12 })).content;
   expect(c).toMatch(/12% Client-Owned Garment Upcharge Added\?: No/);
 });
 
