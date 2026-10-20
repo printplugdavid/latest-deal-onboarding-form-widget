@@ -19,3 +19,33 @@ test("picked products follow Vendors Used as one line", () => {
   const c = buildOnboardingNote(deal({ productSkus: [{ sku: "PPCSS", productId: "1", productName: "Custom Square Stickers - White - 3x3\"", productSource: "books" }, { sku: "PPCSS1" }] })).content;
   expect(c).toMatch(/Vendors Used: In house\n\nSKU\(s\): PPCSS, PPCSS1\n\n/);
 });
+
+/* E-101 / D-49: a client-owned garment prints the upcharge answer after Vendors Used; any other garment reads as before. */
+const garmentDeal = (branch) => ({
+  contactInfo: { Account_Name: "Evergreen", Contact_Name: "Pat", Deal_Name: "Deal 4", Sales_Person: "Ray" },
+  products: [
+    {
+      productName: "Embroidery",
+      productType: "garment",
+      numberOfGarmentTypes: "1",
+      primaryBranches: [{ garmentType: "Carhartt quarter zip (client's)", garmentQuantity: "2", numberOfGraphics: "0", vendorsUsed: "Client Owned", ...branch }],
+    },
+  ],
+  hardDueDate: "No",
+  typicalMockup: "Yes",
+});
+
+test("client-owned garment: the upcharge line follows Vendors Used", () => {
+  const c = buildOnboardingNote(garmentDeal({ garmentSkus: [{ sku: "PPCO", productSource: "clientOwned" }], clientOwnedUpcharge: "Yes", clientOwnedUpchargePercent: 10 })).content;
+  expect(c).toMatch(/Vendors Used: Client Owned\n\n10% Client-Owned Garment Upcharge Added\?: Yes\n\nSpecial Instructions/);
+});
+
+test("the percent recorded on the order is the one printed (the rule may change later)", () => {
+  const c = buildOnboardingNote(garmentDeal({ garmentSkus: [{ sku: "ppco" }], clientOwnedUpcharge: "No", clientOwnedUpchargePercent: 12 })).content;
+  expect(c).toMatch(/12% Client-Owned Garment Upcharge Added\?: No/);
+});
+
+test("a garment we supply: no upcharge line", () => {
+  const c = buildOnboardingNote(garmentDeal({ garmentSkus: [{ sku: "CT100617" }], vendorsUsed: "San Mar" })).content;
+  expect(c).not.toMatch(/Client-Owned/);
+});

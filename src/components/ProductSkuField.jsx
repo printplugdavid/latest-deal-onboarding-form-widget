@@ -2,6 +2,7 @@ import { Autocomplete, Box, CircularProgress, TextField, Typography } from "@mui
 import React, { Suspense, lazy, useEffect, useRef, useState } from "react";
 import { Controller, useFormContext, useWatch } from "react-hook-form";
 import { rememberCreated, searchProducts } from "../products/productSearch";
+import { CLIENT_OWNED } from "../products/clientOwned";
 
 // The add-new screen is only downloaded when a rep opens it.
 const NewProductDialog = lazy(() => import("./NewProductDialog"));
@@ -15,9 +16,11 @@ const NewProductDialog = lazy(() => import("./NewProductDialog"));
  * an odd case) -- productSource "typed", shown in orange, so it can be found and fixed later.
  */
 const ADD = { kind: "add" };
+// E-101: the client brings the garment in -- one Books item, pinned at the top of garment SKU rows.
+const CLIENT = { kind: "client", sku: CLIENT_OWNED.sku, name: CLIENT_OWNED.name, id: "" };
 
-export default function ProductSkuField({ rowPath, label, garmentKind }) {
-  const { control, setValue } = useFormContext();
+export default function ProductSkuField({ rowPath, label, garmentKind, allowClientOwned = false }) {
+  const { control, setValue, getValues } = useFormContext();
   const productName = useWatch({ control, name: `${rowPath}.productName` });
   const productSource = useWatch({ control, name: `${rowPath}.productSource` });
   // null = not typing: the box shows the saved code. A string = what the rep is typing now.
@@ -65,20 +68,26 @@ export default function ProductSkuField({ rowPath, label, garmentKind }) {
           const sku = String(text || "").trim().toUpperCase().replace(/\s+/g, "");
           const hit = options.find((o) => o.sku.toUpperCase() === sku);
           if (!sku) pick(field, { sku: "" }, "");
+          else if (sku === CLIENT_OWNED.sku) pick(field, CLIENT, "clientOwned");
           else if (hit) pick(field, hit, "books");
           else if (sku !== field.value) pick(field, { sku }, "typed");
           setInput(null);
         };
         const exact = options.some((o) => o.sku.toUpperCase() === typed);
         const extra = [ADD];
+        const pinned = allowClientOwned ? [CLIENT] : [];
         if (typed && !exact) extra.unshift({ kind: "typed", sku: typed });
         const helper =
-          productSource === "typed"
+          productSource === "clientOwned"
+            ? `The client's own garment -- ${CLIENT_OWNED.upchargePercent}% upcharge on the order; describe it in Garment Type`
+            : productSource === "typed"
             ? "Typed, not a Books product -- add it to Books when you can"
             : productName
             ? productName
             : unavailable
             ? "Books products could not be searched right now -- type the code"
+            : allowClientOwned
+            ? "Type the style code or words of the name; the client's own garment is at the top of the list"
             : "Type the style code or words of the name";
         return (
           <Box sx={{ mb: "1rem", mt: "5px" }}>
@@ -86,7 +95,7 @@ export default function ProductSkuField({ rowPath, label, garmentKind }) {
               freeSolo
               autoHighlight
               filterOptions={(x) => x}
-              options={[...options, ...extra]}
+              options={[...pinned, ...options.filter((o) => o.sku !== CLIENT_OWNED.sku), ...extra]}
               loading={loading}
               value={field.value || null}
               inputValue={input === null ? field.value || "" : input}
@@ -101,6 +110,14 @@ export default function ProductSkuField({ rowPath, label, garmentKind }) {
               onChange={(_, v) => {
                 if (!v) return takeTyped("");
                 if (typeof v === "string") return takeTyped(v);
+                if (v.kind === "client") {
+                  pick(field, v, "clientOwned");
+                  // Vendors Used is how reps have marked these (588 notes): fill it when empty.
+                  const vendorPath = rowPath.replace(/\.garmentSkus\.\d+$/, ".vendorsUsed");
+                  if (vendorPath !== rowPath && !String(getValues(vendorPath) || "").trim()) setValue(vendorPath, CLIENT_OWNED.vendorsUsed);
+                  setInput(null);
+                  return;
+                }
                 if (v.kind === "add") {
                   addingRef.current = true;
                   setAdding(true);
@@ -115,6 +132,15 @@ export default function ProductSkuField({ rowPath, label, garmentKind }) {
                   return (
                     <li key="add" {...rest}>
                       <Typography sx={{ fontWeight: "bold", fontSize: "0.9rem" }}>Not in Books? Add a new product</Typography>
+                    </li>
+                  );
+                if (o.kind === "client")
+                  return (
+                    <li key="client" {...rest}>
+                      <Box>
+                        <Typography sx={{ fontSize: "0.9rem", fontWeight: "bold" }}>Client's own garment ({o.sku})</Typography>
+                        <Typography sx={{ fontSize: "0.8rem" }}>The client brings it in -- {CLIENT_OWNED.upchargePercent}% upcharge on the order</Typography>
+                      </Box>
                     </li>
                   );
                 if (o.kind === "typed")

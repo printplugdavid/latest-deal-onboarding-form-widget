@@ -12,6 +12,7 @@
  * Hard rule 5: line breaks are the `newLine` variable (hex 0A), never a literal "\n".
  * Hard rule 7: the print-count calculation stays at the TOP; everything below reads its locals.
  */
+import { CLIENT_OWNED, isClientOwnedGarment } from "./products/clientOwned";
 import { formatSizeVariants } from "./sizeVariants";
 import { computePrints } from "./printMath";
 import { gangSheetPrints } from "./gangSheet";
@@ -350,6 +351,13 @@ export function buildOnboardingNote(data) {
               branch?.vendorsUsed +
               newLine +
               newLine +
+              // E-101 / D-49: only on a client-owned garment, so every other note reads as before.
+              (isClientOwnedGarment(branch)
+                ? `${branch?.clientOwnedUpchargePercent || CLIENT_OWNED.upchargePercent}% Client-Owned Garment Upcharge Added?: ` +
+                  (branch?.clientOwnedUpcharge || "") +
+                  newLine +
+                  newLine
+                : "") +
               "Special Instructions / Considerations: " +
               branch?.specialInstructions +
               newLine +

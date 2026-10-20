@@ -5,6 +5,7 @@ import {
   Checkbox,
   FormControlLabel,
   FormGroup,
+  MenuItem,
   TextField,
   Typography,
 } from "@mui/material";
@@ -24,6 +25,7 @@ import { ON_GARMENT, SPLIT_LABEL } from "../garmentSplit";
 import { GARMENT_KINDS, canonicalKind } from "../placements";
 import { StrictEntry } from "./strictEntry";
 import ProductSkuField from "./ProductSkuField";
+import { CLIENT_OWNED, isClientOwnedGarment, upchargeLabel } from "../products/clientOwned";
 
 const GarmentPrimaryBranchForm = ({
   index,
@@ -34,7 +36,7 @@ const GarmentPrimaryBranchForm = ({
   onSplit,
   onUndoSplit,
 }) => {
-  const { control } = useFormContext();
+  const { control, setValue } = useFormContext();
   const strict = useContext(StrictEntry); // E-74: the onboarding form requires the Garment kind
   // E-58: this garment is part of a split when it has copies or is one (garmentSplit.splitInfo).
   const inSplit = !!split && split.group.length > 1;
@@ -284,8 +286,38 @@ const GarmentPrimaryBranchForm = ({
           rowPath={`products.${index}.primaryBranches.${branchIndex}.garmentSkus.${skuIndex}`}
           label={`SKU ${skuIndex + 1}`}
           garmentKind={garmentKindValue}
+          allowClientOwned
         />
       ))}
+
+      {/* E-101 / D-49: a client-owned garment takes the order upcharge; the rep says whether it was added. */}
+      {isClientOwnedGarment({ garmentSkus: garmentSkuValues }) && (
+        <Controller
+          control={control}
+          name={`products.${index}.primaryBranches.${branchIndex}.clientOwnedUpcharge`}
+          defaultValue=""
+          rules={{ validate: (v) => !strict || !!v || "Say whether the upcharge was added" }}
+          render={({ field, fieldState }) => (
+            <TextField
+              select
+              size="small"
+              fullWidth
+              label={upchargeLabel() + (strict ? " *" : "")}
+              {...field}
+              onChange={(e) => {
+                field.onChange(e.target.value);
+                setValue(`products.${index}.primaryBranches.${branchIndex}.clientOwnedUpchargePercent`, CLIENT_OWNED.upchargePercent);
+              }}
+              error={!!fieldState.error}
+              helperText={fieldState.error ? fieldState.error.message : "No = waived for this order"}
+              sx={{ mb: "1rem", mt: "5px" }}
+            >
+              <MenuItem value="Yes">Yes</MenuItem>
+              <MenuItem value="No">No (waived)</MenuItem>
+            </TextField>
+          )}
+        />
+      )}
 
       <Typography
         variant="p"
