@@ -150,7 +150,14 @@ export function buildOnboardingNote(data) {
           "Number of Garment Types: " +
           product?.numberOfGarmentTypes +
           newLine +
-          newLine;
+          newLine +
+          // E-101 / D-49: once per product, only when one of its garment types is client provided (PPCO).
+          ((product?.primaryBranches || []).some(isClientOwnedGarment) && product?.clientOwnedUpcharge
+            ? `${product?.clientOwnedUpchargePercent || CLIENT_OWNED.upchargePercent}% Client-Owned Garment Upcharge Added?: ` +
+              product.clientOwnedUpcharge +
+              newLine +
+              newLine
+            : "");
 
         if (product?.premiumIronPass) {
           content =
@@ -351,8 +358,8 @@ export function buildOnboardingNote(data) {
               branch?.vendorsUsed +
               newLine +
               newLine +
-              // E-101 / D-49: only on a client-owned garment, so every other note reads as before.
-              (isClientOwnedGarment(branch)
+              // E-101 / D-49: only when this garment carries its own answer (asked per garment in the Amendment Form).
+              (isClientOwnedGarment(branch) && branch?.clientOwnedUpcharge
                 ? `${branch?.clientOwnedUpchargePercent || CLIENT_OWNED.upchargePercent}% Client-Owned Garment Upcharge Added?: ` +
                   (branch?.clientOwnedUpcharge || "") +
                   newLine +

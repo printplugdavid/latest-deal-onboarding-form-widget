@@ -1,5 +1,5 @@
-import React, { useEffect } from "react";
-import { Autocomplete, Box, TextField, Typography } from "@mui/material";
+import React, { useContext, useEffect } from "react";
+import { Autocomplete, Box, MenuItem, TextField, Typography } from "@mui/material";
 import {
   Controller,
   useFieldArray,
@@ -8,6 +8,8 @@ import {
 } from "react-hook-form";
 import GarmentPrimaryBranchForm from "./GarmentPrimaryBranchForm";
 import { splitCopy, splitInfo } from "../garmentSplit";
+import { CLIENT_OWNED, isClientOwnedGarment, upchargeLabel } from "../products/clientOwned";
+import { StrictEntry } from "./strictEntry";
 
 const GarmentForm = ({ index, options, productName }) => {
   const { control, getValues, setValue } = useFormContext();
@@ -60,6 +62,11 @@ const GarmentForm = ({ index, options, productName }) => {
     setValue(`products.${index}.numberOfGarmentTypes`, String(Math.max(0, primaryBranches.length - 1)));
   };
 
+  // E-101 / D-49: any garment type the client provides (SKU PPCO) -> one upcharge question for this product. Other garment
+  // types in the same product can still be garments we order (David: "want the ability to do both").
+  const strict = useContext(StrictEntry);
+  const anyClientOwned = (garmentValues || []).some(isClientOwnedGarment);
+
   return (
     <Box sx={{ width: "100%" }}>
       <Typography
@@ -110,8 +117,37 @@ const GarmentForm = ({ index, options, productName }) => {
           split={splitInfo(garmentValues, branchIndex)}
           onSplit={() => splitGarment(branchIndex)}
           onUndoSplit={undoSplit}
+          askUpchargeHere={false}
         />
       ))}
+
+      {anyClientOwned && (
+        <Controller
+          control={control}
+          name={`products.${index}.clientOwnedUpcharge`}
+          defaultValue=""
+          rules={{ validate: (v) => !strict || !!v || "Say whether the upcharge was added" }}
+          render={({ field, fieldState }) => (
+            <TextField
+              select
+              size="small"
+              fullWidth
+              label={upchargeLabel() + (strict ? " *" : "")}
+              {...field}
+              onChange={(e) => {
+                field.onChange(e.target.value);
+                setValue(`products.${index}.clientOwnedUpchargePercent`, CLIENT_OWNED.upchargePercent);
+              }}
+              error={!!fieldState.error}
+              helperText={fieldState.error ? fieldState.error.message : "One answer for this product's client-provided garments. No = waived for this order"}
+              sx={{ mb: "1rem", mt: "5px" }}
+            >
+              <MenuItem value="Yes">Yes</MenuItem>
+              <MenuItem value="No">No (waived)</MenuItem>
+            </TextField>
+          )}
+        />
+      )}
 
       {productName === "Screen Printing" && (
         <Controller
