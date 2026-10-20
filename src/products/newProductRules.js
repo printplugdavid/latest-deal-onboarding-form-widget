@@ -108,7 +108,8 @@ const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
  * our SKU / the trailing style code, minus ® ™ ©. A maker's style number inside the title stays (ruling 7).
  */
 export function productWordsFromTitle(title, brands, style) {
-  let t = cleanWords(title);
+  // SanMar marks retired styles in the title itself ("DISCONTINUED Gildan - DryBlend …"): never part of a name.
+  let t = cleanWords(str(title).replace(/\bdiscontinued\b/gi, " "));
   const lead = (brands || []).map(cleanWords).filter(Boolean).sort((a, b) => b.length - a.length);
   for (const b of lead) {
     const re = new RegExp("^" + escapeRe(b).replace(/\\ /g, "\\s*") + "(\\s*-\\s*|\\s+)", "i");
