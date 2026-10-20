@@ -221,3 +221,29 @@ describe("supplier lookup answers (wholesale thread doc 08)", () => {
     expect(bandsFromSizes([{ size: "XXL", cost: 6.68 }, { size: "2XL", cost: 6.68 }, { size: "XL", cost: 5.68 }]).map((b) => b.label)).toEqual(["XL", "2XL"]);
   });
 });
+
+describe("calling the CRM functions by name (Deluge docs/38 §3)", () => {
+  const { call } = require("./booksItems");
+  const ok = { details: { output: JSON.stringify({ status: "ok", message: "", results: [] }) } };
+  afterEach(() => {
+    delete window.ZOHO;
+  });
+  test("the name as written first; the lower-case API name when that is not found", async () => {
+    const names = [];
+    window.ZOHO = { CRM: { FUNCTIONS: { execute: async (n) => { names.push(n); if (n !== n.toLowerCase()) throw new Error("function not found"); return ok; } } } };
+    expect((await call("WIDGET_Books_Items", {})).status).toBe("ok");
+    expect(names).toEqual(["WIDGET_Books_Items", "widget_books_items"]);
+  });
+  test("a function that answered is never called a second time (a create cannot run twice)", async () => {
+    const names = [];
+    window.ZOHO = { CRM: { FUNCTIONS: { execute: async (n) => { names.push(n); return { details: { output: JSON.stringify({ status: "error", message: "Books refused" }) } }; } } } };
+    expect((await call("WIDGET_Books_Items", {})).status).toBe("error");
+    expect(names).toEqual(["WIDGET_Books_Items"]);
+  });
+  test("neither name installed: one 'not installed' answer with both reasons", async () => {
+    window.ZOHO = { CRM: { FUNCTIONS: { execute: async () => { throw new Error("api is inactive"); } } } };
+    const a = await call("WIDGET_Books_Items", {});
+    expect(a.status).toBe("unavailable");
+    expect(a.message).toMatch(/WIDGET_Books_Items.*widget_books_items/);
+  });
+});
