@@ -73,21 +73,8 @@
     "AllMade": "Allmade",
     "Stahls": "Stahls'"
   },
-  "_booksBrands": "snapshot of the brands on active Books items, pull-2026-10-19k; the live list comes from the books function (action lists).",
-  "booksBrands": [
-    "47 Brand", "A4", "AS Colour", "Adidas", "Alleson Athletic", "Allmade", "American Apparel", "AnyPromo.com", "Atlantis Headwear",
-    "Augusta Sportswear", "BELLA+CANVAS", "Badger", "Banner Buzz", "Bayside", "Big Accessories", "Big Promotions", "Brooks Brothers",
-    "Brotallion", "C2 Sport", "CAP AMERICA", "CORE365", "Carhartt", "Champion", "Colortone", "Columbia", "Comfort Colors", "CornerStone",
-    "Cutter & Buck", "DECKY", "DRI DUCK", "Dickies", "Discount Mugs", "District", "Doggie Skins", "Eddie Bauer", "Elite Sport Socks",
-    "Flexfit", "GS-JJ", "Gildan", "Hanes", "Harriton", "Heat Transfer Warehouse", "High Five", "Hit Promotional Products", "Holloway",
-    "Independent Trading Co.", "J. America", "Jaanuu", "Jerzees", "Kishigo", "Koozie Group", "LAT", "M&O", "MV Sport",
-    "Mercer+Mettle", "New Era", "Next Level", "Nike", "OGIO", "OTTO", "Oakley", "Pacific Headwear", "Paragon", "Port & Company",
-    "Port Authority", "Print Runner", "Printograph", "Puma Golf", "Q-Tees", "Rabbit Skins", "Red Kap", "Richardson", "Riteline USA",
-    "Shaka Wear", "Showdown Displays", "Signicade", "Sport-Tek", "Stahls'", "Stanley/Stella", "Sticker Mule", "Stormtech",
-    "Swag Brokers", "Swannies", "Team 365", "The Game", "The North Face", "The Print Plug", "Threadfast Apparel", "TravisMathew",
-    "Tultex", "UPrinting", "Under Armour", "Uniform Advantage", "Valucap", "Volunteer Knitwear", "Vulcan", "Wink", "WonderWink", "YETI",
-    "YP Classics"
-  ],
+  "_booksBrands": "snapshot of the brands on active Books items (Books docs/38 list, 2026-10-20; LEGACY held for David). The form offers this PLUS the live list, never the live list alone: the live scan can stop early (partial).",
+  "booksBrands": ["47 Brand", "A4", "AS Colour", "Adidas", "Alleson Athletic", "Allmade", "American Apparel", "AnyPromo.com", "Atlantis Headwear", "Augusta Sportswear", "BELLA+CANVAS", "Badger", "Banner Buzz", "Bayside", "Big Accessories", "Big Promotions", "Brooks Brothers", "Brotallion", "C2 Sport", "CAP AMERICA", "CORE365", "Carhartt", "Champion", "Colortone", "Columbia", "Comfort Colors", "CornerStone", "Cutter & Buck", "DECKY", "DRI DUCK", "Dickies", "Discount Mugs", "District", "Doggie Skins", "Eddie Bauer", "Elite Sport Socks", "Flexfit", "GS-JJ", "Gildan", "Hanes", "Harriton", "Heat Transfer Warehouse", "High Five", "Hit Promotional Products", "Holloway", "Independent Trading Co.", "J. America", "Jaanuu", "Jerzees", "Kishigo", "Koozie Group", "LAT", "Liberty Bags", "M&O", "MV Sport", "Mercer+Mettle", "New Era", "Next Level", "Nike", "OGIO", "OTTO", "Oakley", "Pacific Headwear", "Paragon", "Port & Company", "Port Authority", "Print Runner", "Printograph", "Puma Golf", "Q-Tees", "Rabbit Skins", "Red Kap", "Richardson", "Riteline USA", "Shaka Wear", "Showdown Displays", "Signicade", "Sport-Tek", "Stahls'", "Stanley/Stella", "Sticker Mule", "Stormtech", "Swag Brokers", "Swannies", "Team 365", "The Game", "The North Face", "The Print Plug", "Threadfast Apparel", "TravisMathew", "Tultex", "UPrinting", "Under Armour", "Uniform Advantage", "Valucap", "Volunteer Knitwear", "Vulcan", "Wink", "WonderWink", "YETI", "YP Classics"],
   "_sizeOrder": "docs/25 §3c tokens, smallest first; the SKU's upcharge number follows this order.",
   "sizeOrder": ["NB", "0-3M", "3-6M", "6M", "6-12M", "12M", "18M", "24M", "2T", "3T", "4T", "5T", "6T", "XXS", "XS", "S", "M", "L", "XL",
     "2XL", "3XL", "4XL", "5XL", "6XL", "LT", "XLT", "2XLT", "3XLT", "4XLT", "S-M", "M-L", "L-XL", "OSFM", "OSFA"],
