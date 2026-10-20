@@ -51,7 +51,7 @@ import { rememberCreated } from "../products/productSearch";
 const money = (n) => (Number.isFinite(Number(n)) && Number(n) > 0 ? Number(n).toFixed(2) : "");
 const section = { fontSize: "0.85rem", fontWeight: "bold", mt: 3, mb: 1, display: "block" };
 
-export default function NewProductForm({ initialStyle = "", garmentKind = "", onCreated, onCancel, submittedBy = "" }) {
+export default function NewProductForm({ initialStyle = "", garmentKind = "", onCreated, onCancel, submittedBy = "", orderTargets, onAddToOrder }) {
   const [kind, setKind] = useState("supplier");
   const [supplier, setSupplier] = useState("sanmar");
   const [style, setStyle] = useState(normalizeSku(initialStyle));
@@ -72,6 +72,9 @@ export default function NewProductForm({ initialStyle = "", garmentKind = "", on
   const [busy, setBusy] = useState("");
   const [created, setCreated] = useState(null);
   const [toOrder, setToOrder] = useState([]); // D-51 step 2: which of the new items go on this order
+  // E-103: opened from the top of the onboarding form there is no garment yet -- the rep picks which product it goes under.
+  const [target, setTarget] = useState("");
+  const canOrder = !!onCreated || Array.isArray(orderTargets);
 
   useEffect(() => {
     let live = true;
@@ -192,7 +195,7 @@ export default function NewProductForm({ initialStyle = "", garmentKind = "", on
     return (
       <Box>
         <Typography sx={section}>Step 1 done: added to Books</Typography>
-        {onCreated && made.length > 0 && (
+        {canOrder && made.length > 0 && (
           <Typography sx={{ fontSize: "0.85rem", mb: 1 }}>
             Step 2 (separate): tick the items this order uses, then add them to the order. Nothing goes on the order until you do.
           </Typography>
@@ -200,7 +203,7 @@ export default function NewProductForm({ initialStyle = "", garmentKind = "", on
         <Table size="small">
           <TableHead>
             <TableRow>
-              {onCreated && <TableCell>On this order</TableCell>}
+              {canOrder && <TableCell>On this order</TableCell>}
               <TableCell>SKU</TableCell>
               <TableCell>Name</TableCell>
               <TableCell>Result</TableCell>
@@ -209,7 +212,7 @@ export default function NewProductForm({ initialStyle = "", garmentKind = "", on
           <TableBody>
             {created.results.map((r) => (
               <TableRow key={r.sku}>
-                {onCreated && (
+                {canOrder && (
                   <TableCell padding="checkbox">
                     {r.result === "created" && (
                       <Checkbox
@@ -237,6 +240,12 @@ export default function NewProductForm({ initialStyle = "", garmentKind = "", on
             Books changed or dropped a field on a new item. It is created; tell David so the Books thread can correct it.
           </Alert>
         )}
+        {made.length > 0 && !onCreated && Array.isArray(orderTargets) && orderTargets.length === 0 && (
+          <Alert severity="info" sx={{ mt: 2 }}>
+            To put it on this order: pick its product type at the top of the onboarding (e.g. Embroidery), add a garment type, and use
+            "Find the product in Books". This form already knows the new items.
+          </Alert>
+        )}
         <Alert severity="info" sx={{ mt: 2 }}>
           Ready to invoice now; shows in the CRM product search within about 2 hours. This form already knows the new items.
         </Alert>
@@ -256,7 +265,39 @@ export default function NewProductForm({ initialStyle = "", garmentKind = "", on
               Add {toOrder.length === 1 ? "this product" : `these ${toOrder.length} products`} to the order
             </Button>
           )}
-          {onCancel && <Button onClick={onCancel}>{onCreated ? "Close without adding to the order" : "Close"}</Button>}
+          {made.length > 0 && !onCreated && Array.isArray(orderTargets) && orderTargets.length > 0 && (
+            <>
+              <TextField
+                select
+                size="small"
+                label="Add under"
+                value={target || orderTargets[0].key}
+                onChange={(e) => setTarget(e.target.value)}
+                sx={{ minWidth: 220 }}
+              >
+                {orderTargets.map((t) => (
+                  <MenuItem key={t.key} value={t.key}>
+                    {t.label}
+                  </MenuItem>
+                ))}
+              </TextField>
+              <Button
+                variant="contained"
+                disabled={toOrder.length === 0}
+                onClick={() =>
+                  onAddToOrder(
+                    made
+                      .filter((r) => toOrder.includes(r.sku))
+                      .map((r) => ({ id: "", sku: r.sku, name: (r.read_back && r.read_back.name) || r.name, brand, category: finalCategory, justCreated: true })),
+                    target || orderTargets[0].key
+                  )
+                }
+              >
+                Add {toOrder.length === 1 ? "it" : `these ${toOrder.length}`} to this onboarding (new garment type)
+              </Button>
+            </>
+          )}
+          {onCancel && <Button onClick={onCancel}>{canOrder ? "Close without adding to the order" : "Close"}</Button>}
         </Box>
       </Box>
     );
