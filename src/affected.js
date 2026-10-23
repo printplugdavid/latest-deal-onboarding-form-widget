@@ -413,7 +413,7 @@ export function garmentStyles(branch) {
   const fams = [];
   rows.forEach((r) => {
     const stem = r.name ? stemOf(r.name).toLowerCase() : "";
-    let f = fams.find((x) => (stem && x.stem === stem) || x.skus.some((s) => r.sku === s || r.sku.slice(0, -1) === s || s.slice(0, -1) === r.sku && /\d$/.test(s)));
+    let f = fams.find((x) => (stem && x.stem === stem) || x.skus.some((s) => r.sku === s || (/\d$/.test(r.sku) && r.sku.slice(0, -1) === s) || (/\d$/.test(s) && s.slice(0, -1) === r.sku)));
     if (f && stem && f.stem && f.stem !== stem) f = null;
     if (!f) fams.push((f = { stem, name: r.name ? stemOf(r.name) : "", skus: [] }));
     if (!f.skus.includes(r.sku)) f.skus.push(r.sku);
