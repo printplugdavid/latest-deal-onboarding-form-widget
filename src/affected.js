@@ -387,3 +387,45 @@ export function embroiderySizes(products, item, formType) {
 
   return out;
 }
+
+/*
+ * E-124 (David 10-23, Gingerich Site & Underground): one garment type on the order can hold more than one style (long sleeves AND
+ * hoodies under one "Garment Type"). The revision / correction then named both and the wrong one was reordered. These are the
+ * styles to choose from -- [] when the garment type is a single style, so nothing is asked and the note reads as before.
+ *   style = { key, garment, skus }   garment: what to call it; skus: its SKU codes (one style can have several size-band codes)
+ * Sources, best first: product names from the picker (E-100) · the Garment Type lines paired in order with the SKU styles when the
+ * counts match (reps type both in the same order) · the SKU codes alone · the Garment Type lines alone (older orders, no SKUs).
+ */
+const BAND = /^(Y|T|LT)?\(?([0-9]?X{0,4}[SML]|[0-9]?X{1,4}L?T?|OSFA|[0-9]T|ONE SIZE)\)?(\s*-\s*([0-9]?X{0,4}[SML]|[0-9]?X{1,4}L?T?|[0-9]T))?$/i;
+const stemOf = (name) => {
+  const parts = String(name || "").split(/\s+-\s+/);
+  return parts.length > 1 && BAND.test(parts[parts.length - 1].trim()) ? parts.slice(0, -1).join(" - ") : String(name || "").trim();
+};
+export function garmentStyles(branch) {
+  const lines = String(branch?.garmentType || "")
+    .split(/\r?\n/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+  const rows = (branch?.garmentSkus || [])
+    .map((r) => ({ sku: String(r?.sku || "").trim().toUpperCase(), name: String(r?.productName || "").trim() }))
+    .filter((r) => r.sku && r.sku !== "PPCO"); // the client's own garment row is not a style
+  // Group size-band codes of one style: the same product name, or a code that is another code + one digit (PC78H, PC78H2).
+  const fams = [];
+  rows.forEach((r) => {
+    const stem = r.name ? stemOf(r.name).toLowerCase() : "";
+    let f = fams.find((x) => (stem && x.stem === stem) || x.skus.some((s) => r.sku === s || (/\d$/.test(r.sku) && r.sku.slice(0, -1) === s) || (/\d$/.test(s) && s.slice(0, -1) === r.sku)));
+    if (f && stem && f.stem && f.stem !== stem) f = null;
+    if (!f) fams.push((f = { stem, name: r.name ? stemOf(r.name) : "", skus: [] }));
+    if (!f.skus.includes(r.sku)) f.skus.push(r.sku);
+    if (!f.stem && stem) Object.assign(f, { stem, name: stemOf(r.name) });
+  });
+  if (fams.length >= 2) {
+    const paired = lines.length === fams.length && fams.every((f) => !f.name);
+    return fams.map((f, k) => ({ key: f.skus[0], garment: f.name || (paired ? lines[k] : ""), skus: f.skus }));
+  }
+  if (!rows.length && lines.length >= 2) return lines.map((l, k) => ({ key: "line" + k, garment: l, skus: [] }));
+  return [];
+}
+
+/* "Port and Company Hoodie (PC78H)" -- how a style reads in the picker. */
+export const styleLabel = (s) => (s.garment ? s.garment + (s.skus.length ? " (" + s.skus.join(", ") + ")" : "") : s.skus.join(", "));
