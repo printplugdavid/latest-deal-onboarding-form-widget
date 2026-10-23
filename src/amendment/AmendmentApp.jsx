@@ -31,6 +31,7 @@
  * revision-form branch, which stays a separate codebase (D-19). The view says so rather than showing
  * blanks as if they were answers.
  */
+import { productLabel } from "../productLabels";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
@@ -838,7 +839,7 @@ The panel at the bottom shows exactly what will be recorded. Saving posts a new 
                 value={i}
                 sx={{ textTransform: "none", textDecoration: isRemoved(i) ? "line-through" : "none" }}
               >
-                {p?.productName || `Product ${i + 1}`} ({p?.productType || "?"})
+                {productLabel(p?.productName) || `Product ${i + 1}`} ({p?.productType || "?"})
                 {i >= originalCount ? " · new" : ""}
                 {isRemoved(i) ? " · removed" : ""}
               </ToggleButton>
@@ -855,7 +856,7 @@ The panel at the bottom shows exactly what will be recorded. Saving posts a new 
             options={addable}
             value={null}
             blurOnSelect
-            getOptionLabel={(o) => o.split("#")[0]}
+            getOptionLabel={(o) => productLabel(o.split("#")[0])}
             onChange={(_, v) => addProduct(v)}
             noOptionsText="Every product type is already on this deal"
             renderInput={(params) => <TextField {...params} label="Add a product" />}
@@ -868,7 +869,7 @@ The panel at the bottom shows exactly what will be recorded. Saving posts a new 
           <Box sx={{ border: "1px solid #ccc", p: 2, my: 2 }}>
             <Box sx={{ mb: 2, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 2 }}>
               <Typography fontWeight="bold">
-                {product.productName} ({product.productType})
+                {productLabel(product.productName)} ({product.productType})
               </Typography>
               {(has("removed") || isRemoved(productIdx)) && (
                 <Button
@@ -885,11 +886,11 @@ The panel at the bottom shows exactly what will be recorded. Saving posts a new 
 
             {isRemoved(productIdx) ? (
               <Alert severity="error">
-                {product.productName} will be removed from this order. Its prints come off the counts below.
+                {productLabel(product.productName)} will be removed from this order. Its prints come off the counts below.
               </Alert>
             ) : product._unparsed ? (
               <Alert severity="info">
-                {product.productName} could not be rebuilt from the note, so its fields are not shown. It stays on
+                {productLabel(product.productName)} could not be rebuilt from the note, so its fields are not shown. It stays on
                 the order exactly as it was — describe any change to it in your own words in step 4.
               </Alert>
             ) : !isGarmentProduct || productIdx >= originalCount ? (
@@ -960,7 +961,7 @@ The panel at the bottom shows exactly what will be recorded. Saving posts a new 
                             options={garmentMethods.filter((o) => o.split("#")[0] !== product?.productName)}
                             value={null}
                             blurOnSelect
-                            getOptionLabel={(o) => o.split("#")[0]}
+                            getOptionLabel={(o) => productLabel(o.split("#")[0])}
                             onChange={(_, v) => v && moveGarment(garmentIdx, v)}
                             renderInput={(params) => <TextField {...params} label="Move to print method…" />}
                           />
