@@ -31,6 +31,7 @@
  * revision-form branch, which stays a separate codebase (D-19). The view says so rather than showing
  * blanks as if they were answers.
  */
+import { loadDealVendors } from "../products/dealVendorsLive";
 import { mergeDealVendors } from "../products/vendors";
 import { productLabel } from "../productLabels";
 import React, { useEffect, useMemo, useRef, useState } from "react";
@@ -173,7 +174,10 @@ async function loadDeal(entity, recordId) {
       per_page: 200,
     }),
     Promise.resolve()
-      .then(() => ZOHO.CRM.API.getOrgVariable("products"))
+      .then(() => {
+        loadDealVendors(); // E-126: the Deal's vendor choices, live (not awaited)
+        return ZOHO.CRM.API.getOrgVariable("products");
+      })
       .catch(() => null), // only feeds GarmentForm's option lists; never fatal
     Promise.resolve()
       .then(() =>
