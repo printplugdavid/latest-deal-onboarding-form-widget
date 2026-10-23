@@ -236,6 +236,25 @@ test("what the form cannot price goes to the hand list, never guessed", () => {
   expect(b.lines.map((l) => [l.sku, l.quantity])).toEqual([["PC78H", 6]]);
 });
 
+test("Lil Jon test (10-22): a blank graphic, no graphic, or no colors is listed for the rep, never skipped or guessed", () => {
+  const tee = (secondaryBranches) =>
+    branch({
+      garmentType: "Port & Company - Core Blend Tee (PC55)",
+      garmentQuantity: "",
+      garmentSkus: [sku("PC55", "Port & Company - Core Blend Tee - S-XL"), sku("PC552", "Port & Company - Core Blend Tee - 3XL-6XL")],
+      countColorSize: "Black\n1- XL\n1- 4XL",
+      secondaryBranches,
+    });
+  // the real test order: one graphic, no colors, no placements
+  const blank = buildBillingLines(order([garment("Screen Printing", [tee([{ isGraphicPrintReady: "No", numberOfColorsUsed: "", numberOfPlacements: "" }])])]));
+  expect(blank.lines.map((l) => [l.sku, l.quantity])).toEqual([["PC55", 1], ["PC552", 1]]);
+  expect(blank.handList).toEqual([{ what: "Screen print graphic 1 on Port & Company - Core Blend Tee (PC55)", quantity: 2, reason: "no placements entered, so no print line" }]);
+  expect(buildBillingLines(order([garment("Screen Printing", [tee([])])])).handList[0].reason).toBe("no graphic entered, so no print line");
+  const noColors = buildBillingLines(order([garment("Screen Printing", [tee([{ numberOfColorsUsed: "", numberOfPlacements: "1", tartiaryBranches: [place("Left Chest")] }])])]));
+  expect(noColors.handList.map((h) => h.reason)).toEqual(["number of colors not entered (it picks the screen print price)"]);
+  expect(noColors.lines.some((l) => l.group === "decoration")).toBe(false);
+});
+
 test("a graphic not on every garment (not split) covers only its garments; the rest are extras", () => {
   const b = buildBillingLines(
     order([
