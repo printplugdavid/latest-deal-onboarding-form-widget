@@ -1,11 +1,10 @@
-import React from "react";
+import React, { useState } from "react";
 import { Alert, Button, Dialog, DialogActions, DialogContent, DialogTitle, Typography } from "@mui/material";
 import { cleanBrand, nearBrands, newBrandProblem } from "../products/newProductRules";
 
 /*
  * E-127: "Add <brand> as a new brand" -- one confirm. onDone({ name }) to use it as a new Books brand, onDone({ use: existing }) for the
- * near match, onDone({ notRight: name, near }) when the rep says the suggestion is wrong (Books 10-23: then David decides, not a dead
- * end and not a free add), onDone(null) to cancel. `brands` = Books' brands in use + the snapshot (the New Product form's list). `fromSupplier` = the
+ * near match, onDone(null) to cancel. "Not right" (a different brand) opens Add here -- David 10-23: never a wait for him. `brands` = Books' brands in use + the snapshot (the New Product form's list). `fromSupplier` = the
  * name is the supplier's own spelling (SanMar / S&S lookup), not typed.
  */
 export default function AddBrandDialog({ name, brands, fromSupplier, onDone }) {
@@ -13,6 +12,9 @@ export default function AddBrandDialog({ name, brands, fromSupplier, onDone }) {
   const problem = newBrandProblem(n);
   const looks = nearBrands(n, brands); // up to 3 look-alikes, best first
   const near = looks[0] || "";
+  // David 10-23: "I want them to be able to add new even if there are look alikes flagged. Sending back to me is dead in the water."
+  // Not right = the rep says it is a different brand -> Add opens (with a plain warning); nothing waits for David.
+  const [different, setDifferent] = useState(false);
   return (
     <Dialog open={!!name} onClose={() => onDone(null)} maxWidth="sm" fullWidth>
       <DialogTitle>Add a new brand</DialogTitle>
@@ -21,7 +23,7 @@ export default function AddBrandDialog({ name, brands, fromSupplier, onDone }) {
           <b>{n}</b>
           {fromSupplier ? " (the supplier's spelling)" : ""}
         </Typography>
-        {near && (
+        {near && !different && (
           <Alert severity="warning" sx={{ mb: 1 }}>
             {looks.length === 1 ? (
               <>
@@ -36,11 +38,15 @@ export default function AddBrandDialog({ name, brands, fromSupplier, onDone }) {
                   Use {b}
                 </Button>
               ))}
-              <Button size="small" onClick={() => onDone({ notRight: n, near })}>
+              <Button size="small" onClick={() => setDifferent(true)}>
                 Not right: {n} is a different brand
               </Button>
             </div>
-            <div style={{ marginTop: 4, fontSize: "0.8rem" }}>Not right sends it to David to add in Books.</div>
+          </Alert>
+        )}
+        {near && different && (
+          <Alert severity="info" sx={{ mb: 1 }}>
+            Adding <b>{n}</b> as its own brand, separate from {looks.join(", ")}.
           </Alert>
         )}
         {problem ? (
@@ -53,7 +59,7 @@ export default function AddBrandDialog({ name, brands, fromSupplier, onDone }) {
       </DialogContent>
       <DialogActions>
         <Button onClick={() => onDone(null)}>Cancel</Button>
-        <Button variant="contained" onClick={() => onDone({ name: n })} disabled={!!problem || !!near}>
+        <Button variant="contained" onClick={() => onDone({ name: n })} disabled={!!problem || (!!near && !different)}>
           Add brand
         </Button>
       </DialogActions>

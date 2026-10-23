@@ -78,7 +78,6 @@ export default function NewProductForm({ initialStyle = "", garmentKind = "", on
   // E-127: a brand Books has never used -- added only through AddBrandDialog (never free text).
   const [addingBrand, setAddingBrand] = useState(null); // { name, fromSupplier }
   const [newBrand, setNewBrand] = useState(""); // the brand this product adds to Books (for the success note)
-  const [brandForDavid, setBrandForDavid] = useState(null); // { notRight, near }: the rep says the near match is wrong -> David
   const [brand, setBrand] = useState("");
   const [leadBrand, setLeadBrand] = useState(true);
   const [category, setCategory] = useState(garmentCategoryFor(garmentKind) || "");
@@ -547,12 +546,6 @@ export default function NewProductForm({ initialStyle = "", garmentKind = "", on
           No maker brand: use the vendor's name ({vendorPicked.name})
         </Button>
       )}
-      {brandForDavid && !brand && (
-        <Alert severity="info" sx={{ mb: 1, maxWidth: 620 }} onClose={() => setBrandForDavid(null)}>
-          "{brandForDavid.notRight}" looks like the Books brand "{brandForDavid.near}" but you say it is a different brand: ask David to add
-          it in Books, then pick it here.
-        </Alert>
-      )}
       {addingBrand && (
         <AddBrandDialog
           name={addingBrand.name}
@@ -560,8 +553,7 @@ export default function NewProductForm({ initialStyle = "", garmentKind = "", on
           brands={lists.brands}
           onDone={(a) => {
             setAddingBrand(null);
-            setBrandForDavid(a && a.notRight ? a : null);
-            if (!a || a.notRight) return;
+            if (!a) return;
             if (a.use) return setBrand(a.use);
             setLists((l) => ({ ...l, brands: [...new Set([...l.brands, a.name])].sort((x, y) => x.localeCompare(y)) }));
             setBrand(a.name);
