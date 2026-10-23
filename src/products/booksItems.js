@@ -78,7 +78,7 @@ export async function addVendor(name) {
   return {
     done: a.status === "ok" && ["added", "already_there", "partial"].includes(result),
     result: result || a.status,
-    message: str(a.message) || (a.status === "unavailable" ? "Adding vendors is not set up yet: ask David." : ""),
+    message: a.status === "unavailable" ? "Adding vendors is not set up yet: ask David." : str(a.message),
     name: str(a.name).trim() || str(name).trim(),
     vendorId: str(a.books_vendor_id),
     layouts: Array.isArray(a.layouts) ? a.layouts : [],
