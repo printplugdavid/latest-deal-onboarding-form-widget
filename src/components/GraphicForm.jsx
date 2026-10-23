@@ -11,6 +11,7 @@ import { Controller, useFormContext } from "react-hook-form";
 import { DatePicker, LocalizationProvider } from "@mui/x-date-pickers";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import dayjs from "dayjs";
+import FontsField from "./FontsField";
 
 const GraphicForm = ({ index }) => {
   const { control } = useFormContext();
@@ -87,24 +88,7 @@ const GraphicForm = ({ index }) => {
         )}
       />
 
-      <Controller
-        control={control}
-        name={`products.${index}.fontsUsed`}
-        defaultValue=""
-        render={({ field }) => (
-          <TextField
-            multiline
-            rows={3}
-            size="small"
-            id="fontsUsed"
-            variant="outlined"
-            fullWidth
-            label="Fonts Used"
-            {...field}
-            sx={{ mb: "1rem", mt: "5px" }}
-          />
-        )}
-      />
+      <FontsField name={`products.${index}.fontsUsed`} />
 
       <Controller
         control={control}

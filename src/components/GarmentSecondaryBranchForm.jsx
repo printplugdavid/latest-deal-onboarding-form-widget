@@ -19,6 +19,7 @@ import GarmentTartiaryBranch from "./GarmentTartiaryBranch";
 import ColorsUsedField from "./ColorsUsedField";
 import GraphicArt from "./GraphicArt";
 import GraphicBillingFields from "./GraphicBillingFields";
+import FontsField from "./FontsField";
 
 const GarmentSecondaryBranchForm = ({
   index,
@@ -324,24 +325,7 @@ const GarmentSecondaryBranchForm = ({
         />
       )}
 
-      <Controller
-        control={control}
-        name={`products.${index}.primaryBranches.${branchIndex}.secondaryBranches.${secBranchIndex}.fontsUsed`}
-        defaultValue=""
-        render={({ field }) => (
-          <TextField
-            multiline
-            rows={3}
-            size="small"
-            id="fontsUsed"
-            variant="outlined"
-            fullWidth
-            label="Fonts Used"
-            {...field}
-            sx={{ mb: "1rem", mt: "5px" }}
-          />
-        )}
-      />
+      <FontsField name={`products.${index}.primaryBranches.${branchIndex}.secondaryBranches.${secBranchIndex}.fontsUsed`} />
 
       {/* E-108: what the draft invoice needs from this graphic (HTV color; garments when not every graphic goes on every garment). */}
       <GraphicBillingFields index={index} branchIndex={branchIndex} secBranchIndex={secBranchIndex} productName={productName} />

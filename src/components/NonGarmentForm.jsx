@@ -16,6 +16,7 @@ import {
 import ColorsUsedField from "./ColorsUsedField";
 import GraphicArt from "./GraphicArt";
 import ProductSkuRows from "./ProductSkuRows";
+import FontsField from "./FontsField";
 
 const NonGarmentForm = ({ index }) => {
   const { control } = useFormContext();
@@ -213,24 +214,7 @@ const NonGarmentForm = ({ index }) => {
             />
           </Box>
 
-          <Controller
-            control={control}
-            name={`products.${index}.branches.${branchIndex}.fontsUsed`}
-            defaultValue=""
-            render={({ field }) => (
-              <TextField
-                multiline
-                rows={3}
-                id="fontsUsed"
-                variant="outlined"
-                size="small"
-                fullWidth
-                label="Fonts Used"
-                {...field}
-                sx={{ mt: "5px" }}
-              />
-            )}
-          />
+          <FontsField name={`products.${index}.branches.${branchIndex}.fontsUsed`} />
         </Box>
       ))}
 
