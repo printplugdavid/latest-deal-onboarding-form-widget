@@ -1,4 +1,6 @@
 import { Alert, Autocomplete, Box, CircularProgress, TextField, Typography } from "@mui/material";
+import { setVendors } from "./VendorsUsedField";
+import { vendorsOf, withVendor } from "../products/vendors";
 import React, { Suspense, lazy, useEffect, useRef, useState } from "react";
 import { useFormContext, useWatch } from "react-hook-form";
 import { booksFamilyOf, rememberCreated, searchProducts } from "../products/productSearch";
@@ -50,6 +52,9 @@ export default function GarmentProductPick({ index, branchIndex }) {
     if (!String(getValues(`${base}.garmentType`) || "").trim()) setValue(`${base}.garmentType`, f.garmentType);
     if (f.garmentKind && !String(getValues(`${base}.garmentKind`) || "").trim()) setValue(`${base}.garmentKind`, f.garmentKind);
     setValue(`${base}.booksFamily`, f.garmentSkus);
+    // E-113: the style's vendor fills Vendors Used (empty box, or a list of Deal choices).
+    const next = withVendor(vendorsOf({ vendorsList: getValues(`${base}.vendorsList`), vendorsUsed: getValues(`${base}.vendorsUsed`) }), (fam[0] || {}).vendor);
+    if (next) setVendors(setValue, base, next);
     const need = skusForSizes(f.garmentSkus.map((r) => ({ ...r, name: r.productName })), getValues(`${base}.countColorSize`));
     const shown = f.garmentSkus.filter((r) => need.items.some((p) => p.sku === r.sku));
     setValue(`${base}.garmentSkus`, shown);

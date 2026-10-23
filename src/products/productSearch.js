@@ -17,6 +17,7 @@ export function toProduct(rec) {
     sku: str(rec && rec.Product_Code).trim(),
     name: str(rec && rec.Product_Name).trim(),
     brand: str(rec && rec.Brand).trim(),
+    vendor: str(rec && rec.Vendor_Name && (rec.Vendor_Name.name || rec.Vendor_Name)).trim(), // E-113 (Books step 072)
     category: str(rec && (rec.Item_Category || rec.Product_Category)).trim(),
     active: !(rec && rec.Product_Active === false),
   };
@@ -97,4 +98,4 @@ export async function booksFamilyOf(base) {
 }
 
 /* A Books answer as a picker product (id = the CRM Product id, which a Books-only item does not have yet). */
-const asPickerProduct = (x) => ({ id: "", sku: x.sku, name: x.name, brand: str(x.brand), category: str(x.category), active: true, fromBooks: true });
+const asPickerProduct = (x) => ({ id: "", sku: x.sku, name: x.name, brand: str(x.brand), vendor: str(x.vendor), category: str(x.category), active: true, fromBooks: true });

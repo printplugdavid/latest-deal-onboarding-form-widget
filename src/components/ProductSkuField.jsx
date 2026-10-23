@@ -1,4 +1,6 @@
 import { Autocomplete, Box, CircularProgress, TextField, Typography } from "@mui/material";
+import { setVendors } from "./VendorsUsedField";
+import { vendorsOf, withVendor } from "../products/vendors";
 import React, { Suspense, lazy, useEffect, useRef, useState } from "react";
 import { Controller, useFormContext, useWatch } from "react-hook-form";
 import { rememberCreated, searchProducts } from "../products/productSearch";
@@ -55,6 +57,13 @@ export default function ProductSkuField({ rowPath, label, garmentKind, allowClie
     setValue(`${rowPath}.productId`, p.id || "");
     setValue(`${rowPath}.productName`, p.name || "");
     setValue(`${rowPath}.productSource`, source);
+    // E-113: the product's vendor (CRM Product / Books) is kept on the row and fills Vendors Used.
+    const base = rowPath.replace(/\.(garmentSkus|productSkus)\.\d+$/, "");
+    if (base !== rowPath && source !== "clientOwned") {
+      setValue(`${rowPath}.vendor`, p.vendor || "");
+      const next = withVendor(vendorsOf({ vendorsList: getValues(`${base}.vendorsList`), vendorsUsed: getValues(`${base}.vendorsUsed`) }), p.vendor);
+      if (next) setVendors(setValue, base, next);
+    }
   };
 
   return (
@@ -112,9 +121,10 @@ export default function ProductSkuField({ rowPath, label, garmentKind, allowClie
                 if (typeof v === "string") return takeTyped(v);
                 if (v.kind === "client") {
                   pick(field, v, "clientOwned");
-                  // Vendors Used is how reps have marked these (588 notes): fill it when empty.
-                  const vendorPath = rowPath.replace(/\.garmentSkus\.\d+$/, ".vendorsUsed");
-                  if (vendorPath !== rowPath && !String(getValues(vendorPath) || "").trim()) setValue(vendorPath, CLIENT_OWNED.vendorsUsed);
+                  // Vendors Used is how reps have marked these (588 notes): fill it when empty (E-113: as a list).
+                  const base = rowPath.replace(/\.garmentSkus\.\d+$/, "");
+                  if (base !== rowPath && !vendorsOf({ vendorsList: getValues(`${base}.vendorsList`), vendorsUsed: getValues(`${base}.vendorsUsed`) }).length)
+                    setVendors(setValue, base, [CLIENT_OWNED.vendorsUsed]);
                   setInput(null);
                   return;
                 }

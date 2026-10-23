@@ -84,7 +84,7 @@ export function garmentFill(family, category) {
   return {
     garmentType: `${nameStem(first.name)} (${first.sku})`,
     garmentKind: kindFromBooks(category || first.category, first.name),
-    garmentSkus: family.map((p) => ({ sku: p.sku, productId: p.id || "", productName: p.name || "", productSource: p.justCreated ? "created" : "books" })),
+    garmentSkus: family.map((p) => ({ sku: p.sku, productId: p.id || "", productName: p.name || "", productSource: p.justCreated ? "created" : "books", vendor: p.vendor || "" })),
   };
 }
 

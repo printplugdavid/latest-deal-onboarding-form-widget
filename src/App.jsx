@@ -1,3 +1,4 @@
+import { mergeDealVendors } from "./products/vendors";
 import { productLabel } from "./productLabels";
 import {
   Autocomplete,
@@ -302,6 +303,15 @@ function App() {
       });
     } catch (err) {
           console.log("Print count fields not yet on layout — skipping field update:", err);
+    }
+
+    // E-113: the Deal's Vendors follow the order's vendors (the form owns the field; never blanked) -- own call, no workflow trigger
+    // (Deluge docs/44 A2: nothing reacts to it).
+    try {
+      const vend = mergeDealVendors(recordData?.Vendors, data?.products);
+      if (vend.changed) await ZOHO.CRM.API.updateRecord({ Entity: entity, APIData: { id: entityId, Vendors: vend.value }, Trigger: [] });
+    } catch (err) {
+      console.log("Deal Vendors not set - skipping:", err);
     }
 
     // E-56: ask the CRM to create this Deal's WorkDrive folders. AFTER the print fields above (the

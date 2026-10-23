@@ -25,6 +25,8 @@ import { GARMENT_KINDS, canonicalKind } from "../placements";
 import { StrictEntry } from "./strictEntry";
 import ProductSkuField from "./ProductSkuField";
 import GarmentProductPick from "./GarmentProductPick";
+import VendorsUsedField, { setVendors } from "./VendorsUsedField";
+import { vendorsOf } from "../products/vendors";
 import { CLIENT_OWNED, isClientOwnedGarment, isClientOwnedSku } from "../products/clientOwned";
 
 const GarmentPrimaryBranchForm = ({
@@ -118,9 +120,10 @@ const GarmentPrimaryBranchForm = ({
     const next = on ? [{ sku: CLIENT_OWNED.sku, productId: "", productName: CLIENT_OWNED.name, productSource: "clientOwned" }] : rows;
     setValue(`${branchPath}.garmentSkus`, next);
     setValue(`${branchPath}.numberOfSkus`, next.length ? String(next.length) : "");
-    const vendors = String(getValues(`${branchPath}.vendorsUsed`) || "").trim();
-    if (on && !vendors) setValue(`${branchPath}.vendorsUsed`, CLIENT_OWNED.vendorsUsed);
-    if (!on && vendors === CLIENT_OWNED.vendorsUsed) setValue(`${branchPath}.vendorsUsed`, "");
+    // E-113: Vendors Used is a list now (VendorsUsedField); "Client Owned" fills an empty one and goes again when unticked.
+    const vendors = vendorsOf({ vendorsList: getValues(`${branchPath}.vendorsList`), vendorsUsed: getValues(`${branchPath}.vendorsUsed`) });
+    if (on && !vendors.length) setVendors(setValue, branchPath, [CLIENT_OWNED.vendorsUsed]);
+    if (!on && vendors.length === 1 && vendors[0] === CLIENT_OWNED.vendorsUsed) setVendors(setValue, branchPath, []);
   };
 
   // E-100: the garment kind proposes the Books category when a rep adds a new product from a SKU row.
@@ -466,22 +469,8 @@ const GarmentPrimaryBranchForm = ({
         />
       )}
 
-      <Controller
-        control={control}
-        name={`products.${index}.primaryBranches.${branchIndex}.vendorsUsed`}
-        defaultValue=""
-        render={({ field }) => (
-          <TextField
-            size="small"
-            id="vendorsUsed"
-            variant="outlined"
-            fullWidth
-            label="Vendors Used"
-            {...field}
-            sx={{ mb: "1rem", mt: "5px" }}
-          />
-        )}
-      />
+      {/* E-113: a pick list of the Deal's vendors, filled from the product picked. */}
+      <VendorsUsedField base={`products.${index}.primaryBranches.${branchIndex}`} />
 
       <Controller
         control={control}
