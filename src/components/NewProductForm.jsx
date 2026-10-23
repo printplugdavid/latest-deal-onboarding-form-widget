@@ -19,6 +19,7 @@ import {
   createFilterOptions,
 } from "@mui/material";
 import AddVendorDialog from "./AddVendorDialog";
+import AddBrandDialog from "./AddBrandDialog";
 import React, { useEffect, useMemo, useState } from "react";
 import {
   PRODUCT_KINDS,
@@ -41,6 +42,7 @@ import {
   unitFor,
   vendorCodeFor,
   suggestVendorCode,
+  cleanBrand,
   vendorCodeTaken,
 } from "../products/newProductRules";
 import { booksLists, checkInBooks, createInBooks, supplierStyle } from "../products/booksItems";
@@ -55,6 +57,8 @@ import { rememberCreated, searchProducts } from "../products/productSearch";
 const money = (n) => (Number.isFinite(Number(n)) && Number(n) > 0 ? Number(n).toFixed(2) : "");
 const section = { fontSize: "0.85rem", fontWeight: "bold", mt: 3, mb: 1, display: "block" };
 
+// E-127: the brand list (strings) with the default filter.
+const brandFilter = createFilterOptions();
 // E-126 B: the vendor list filters by name (its options are { id, name }).
 const vendorFilter = createFilterOptions({ stringify: (v) => (v && v.name) || "" });
 
@@ -71,6 +75,9 @@ export default function NewProductForm({ initialStyle = "", garmentKind = "", on
   // E-126 (David 10-23): an outsourced product's SKU is the supplier's own (pasted) or generated (vendor code + initials).
   const [pastedSku, setPastedSku] = useState("");
   const [gen, setGen] = useState(null); // { code, status: checking | ok | approved | taken | rejected, known, why }
+  // E-127: a brand Books has never used -- added only through AddBrandDialog (never free text).
+  const [addingBrand, setAddingBrand] = useState(null); // { name, fromSupplier }
+  const [newBrand, setNewBrand] = useState(""); // the brand this product adds to Books (for the success note)
   const [brand, setBrand] = useState("");
   const [leadBrand, setLeadBrand] = useState(true);
   const [category, setCategory] = useState(garmentCategoryFor(garmentKind) || "");
@@ -128,6 +135,8 @@ export default function NewProductForm({ initialStyle = "", garmentKind = "", on
     if (r.status !== "ok") return;
     const b = booksBrandFor(r.brand, lists.brands);
     setBrand(b);
+    // E-127: the supplier's brand is not in Books yet -- offer the supplier's own spelling (nothing typed).
+    if (!b && cleanBrand(r.brand)) setAddingBrand({ name: cleanBrand(r.brand), fromSupplier: true });
     setWords(productWordsFromTitle(r.title, [r.brand, b, ...Object.keys(RULES.brandAliases)], style));
     const bands = bandsFromSizes(r.sizes);
     if (bands.length) setRows(bands.map((x) => ({ size: x.label, quantity: "", cost: money(x.cost), price: "", costSource: "live" })));
@@ -232,6 +241,11 @@ export default function NewProductForm({ initialStyle = "", garmentKind = "", on
     return (
       <Box>
         <Typography sx={section}>Step 1 done: added to Books</Typography>
+        {newBrand && newBrand === brand && made.length > 0 && (
+          <Alert severity="info" sx={{ mb: 1 }}>
+            New brand <b>{newBrand}</b> is now in Books with this product. Tell David, so Books adds it to their brand list.
+          </Alert>
+        )}
         {kind === "outsourced" && gen && gen.status === "approved" && made.length > 0 && (
           <Alert severity="info" sx={{ mb: 1 }}>
             New vendor code <b>{gen.code}</b> for {vendorPicked && vendorPicked.name}. Tell David, so Books adds it to their vendor-code list.
@@ -414,6 +428,19 @@ export default function NewProductForm({ initialStyle = "", garmentKind = "", on
               {lookup.title} -- {lookup.brand}. Case prices as of {lookup.priced_at || "now"} (highest color price per size).
             </Alert>
           )}
+          {lookup && lookup.status === "ok" && !brand && cleanBrand(lookup.brand) && !addingBrand && (
+            <Alert
+              severity="warning"
+              sx={{ mb: 2 }}
+              action={
+                <Button size="small" onClick={() => setAddingBrand({ name: cleanBrand(lookup.brand), fromSupplier: true })}>
+                  Add {cleanBrand(lookup.brand)}
+                </Button>
+              }
+            >
+              Books has no brand "{cleanBrand(lookup.brand)}" yet (the supplier's spelling).
+            </Alert>
+          )}
         </>
       )}
 
@@ -486,10 +513,54 @@ export default function NewProductForm({ initialStyle = "", garmentKind = "", on
       <Autocomplete
         options={lists.brands}
         value={brand || null}
-        onChange={(_, v) => setBrand(v || "")}
-        renderInput={(p) => <TextField {...p} size="small" label="Brand (from Books)" helperText={kind === "inHouse" ? "Leave empty for The Print Plug" : "A brand that is not on the list: ask David"} />}
+        getOptionLabel={(o) => (o && typeof o === "object" ? `Add "${o.add}" as a new brand` : o || "")}
+        filterOptions={(opts, params) => {
+          const shown = brandFilter(opts, params);
+          const typed = cleanBrand(params.inputValue);
+          // E-127: a brand Books has never used is added through one confirm, never typed straight in
+          if (typed && kind !== "inHouse" && !opts.some((o) => o.toLowerCase() === typed.toLowerCase())) shown.push({ add: typed });
+          return shown;
+        }}
+        onChange={(_, v) => (v && typeof v === "object" ? setAddingBrand({ name: v.add, fromSupplier: false }) : setBrand(v || ""))}
+        renderInput={(p) => (
+          <TextField
+            {...p}
+            size="small"
+            label="Brand (from Books)"
+            helperText={kind === "inHouse" ? "Leave empty for The Print Plug" : "A brand Books does not have yet: type it and choose Add"}
+          />
+        )}
         sx={{ maxWidth: 420, mb: 1 }}
       />
+      {/* Books docs/25 (10-23 answer): an outsourced item with no maker brand takes the vendor's name (Printograph, Banner Buzz). */}
+      {kind === "outsourced" && !brand && vendorPicked && vendorPicked.name && (
+        <Button
+          size="small"
+          sx={{ mb: 1 }}
+          onClick={() => {
+            const hit = lists.brands.find((b) => b.toLowerCase().replace(/[^a-z0-9]/g, "") === vendorPicked.name.toLowerCase().replace(/[^a-z0-9]/g, ""));
+            if (hit) setBrand(hit);
+            else setAddingBrand({ name: cleanBrand(vendorPicked.name), fromSupplier: true });
+          }}
+        >
+          No maker brand: use the vendor's name ({vendorPicked.name})
+        </Button>
+      )}
+      {addingBrand && (
+        <AddBrandDialog
+          name={addingBrand.name}
+          fromSupplier={addingBrand.fromSupplier}
+          brands={lists.brands}
+          onDone={(a) => {
+            setAddingBrand(null);
+            if (!a) return;
+            if (a.use) return setBrand(a.use);
+            setLists((l) => ({ ...l, brands: [...new Set([...l.brands, a.name])].sort((x, y) => x.localeCompare(y)) }));
+            setBrand(a.name);
+            setNewBrand(a.name);
+          }}
+        />
+      )}
       <FormControlLabel
         control={<Checkbox size="small" checked={leadBrand} onChange={(e) => setLeadBrand(e.target.checked)} />}
         label="Start the name with the brand (garments and branded promo; not our own products)"

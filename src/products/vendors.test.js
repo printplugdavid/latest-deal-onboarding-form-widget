@@ -90,3 +90,16 @@ test("E-126: a new vendor's code = first 3 letters (docs/25 §2c); taken by anot
   expect(vendorCodeTaken("ACM", "Acme Supply", [{ sku: "ACMVB", vendor: "Acme Supply" }]).taken).toBe(false); // its own items
   expect(vendorCodeTaken("ACM", "Acme Supply", [{ sku: "ACM100", vendor: "" }]).taken).toBe(true); // unknown owner: ask David
 });
+
+test("E-127: a new brand -- cleaned, checked, near matches (aliases first) sent to the Books spelling", () => {
+  const { cleanBrand, newBrandProblem, nearBrand } = require("./newProductRules");
+  const books = ["Port & Company", "BELLA+CANVAS", "Gildan", "Comfort Wash"];
+  expect(cleanBrand("  Comfort  Colors® ")).toBe("Comfort Colors");
+  expect(newBrandProblem("X")).toMatch(/2 to 60/);
+  expect(newBrandProblem("123")).toMatch(/letters/);
+  expect(newBrandProblem("Comfort Colors")).toBe("");
+  expect(nearBrand("Port & Co", books)).toBe("Port & Company"); // alias
+  expect(nearBrand("Bella Canvas", books)).toBe("BELLA+CANVAS"); // same letters
+  expect(nearBrand("Gildian", books)).toBe("Gildan"); // a typo
+  expect(nearBrand("Comfort Colors", books)).toBe(""); // really new
+});
