@@ -439,3 +439,11 @@ describe("E-81 toddler sizes 2T / 3T / 4T", () => {
     expect(sumSizeCounts("Navy\n1- 2T, 1- 4T, 2- YS").sum).toBe(4);
   });
 });
+
+test("E-112: the garment total follows the size lines (null when nothing countable)", () => {
+  const { quantityFromSizes } = require("./quantityCheck");
+  expect(quantityFromSizes("Black\n6- L\n4- XL")).toBe(10);
+  expect(quantityFromSizes("PC54 Tees:\nBlack\n1- M")).toBe(1);
+  expect(quantityFromSizes("")).toBeNull();
+  expect(quantityFromSizes("Black")).toBeNull();
+});

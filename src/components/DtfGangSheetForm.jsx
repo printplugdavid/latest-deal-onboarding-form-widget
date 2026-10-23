@@ -16,6 +16,7 @@ import {
   useWatch,
 } from "react-hook-form";
 import { estimateGangSheet, GANG_GAP_INCHES } from "../gangSheet";
+import FontsField from "./FontsField";
 
 // E-69 (the team, 2026-10-14): on a print-only DTF order the designer needs to know what color garments the
 // transfers go on. Picked, not typed (David: structured answers over prose); "type another" is still allowed.
@@ -359,24 +360,7 @@ const DtfGangSheetForm = ({ index }) => {
             />
           </Box>
 
-          <Controller
-            control={control}
-            name={`products.${index}.gangGraphics.${branchIndex}.fontsUsed`}
-            defaultValue=""
-            render={({ field }) => (
-              <TextField
-                multiline
-                rows={2}
-                size="small"
-                id="fontsUsed"
-                variant="outlined"
-                fullWidth
-                label="Fonts Used"
-                {...field}
-                sx={{ mt: "5px", mb: 1 }}
-              />
-            )}
-          />
+          <FontsField name={`products.${index}.gangGraphics.${branchIndex}.fontsUsed`} />
         </Box>
       ))}
 

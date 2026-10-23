@@ -50,6 +50,15 @@ export function sumSizeCounts(text) {
 }
 
 /*
+ * E-112 (team feedback 10-23): "Total garment quantity should auto update … based on garment entries above instead of making them retype
+ * it." The total the size lines add up to, or null when nothing countable is there (the box is then left alone).
+ */
+export function quantityFromSizes(countColorSize) {
+  const { sum, parsed } = sumSizeCounts(countColorSize);
+  return parsed && sum > 0 ? sum : null;
+}
+
+/*
  * Compare one garment row's breakdown against its stated total.
  * Returns null when there is nothing to say -- no total yet, or nothing countable in the text.
  * Otherwise { sum, total, difference, message }.

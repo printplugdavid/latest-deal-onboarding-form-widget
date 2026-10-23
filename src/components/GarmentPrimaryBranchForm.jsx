@@ -19,7 +19,7 @@ import {
 import GarmentSecondaryBranchForm from "./GarmentSecondaryBranchForm";
 import SizeRowsField from "./SizeRowsField";
 import { styleOptionsFor } from "../sizeRows";
-import { checkGarmentQuantity } from "../quantityCheck";
+import { checkGarmentQuantity, quantityFromSizes } from "../quantityCheck";
 import LumpedGuard from "./LumpedGuard";
 import { ON_GARMENT, SPLIT_LABEL } from "../garmentSplit";
 import { GARMENT_KINDS, canonicalKind } from "../placements";
@@ -272,7 +272,7 @@ const GarmentPrimaryBranchForm = ({
         defaultValue=""
         render={({ field }) => (
           // E-29: structured rows in, the SAME string out. See SizeRowsField.jsx.
-          <SizeRowsField value={field.value} onChange={field.onChange} styleOptions={styleOptionsFor(garmentTypeText, garmentSkuValues)} />
+          <SizeRowsField value={field.value} onChange={(text) => { field.onChange(text); /* E-112: the total follows the sizes (rep edits only) */ const q = quantityFromSizes(text); if (q) setValue(`products.${index}.primaryBranches.${branchIndex}.garmentQuantity`, String(q), { shouldDirty: true }); }} styleOptions={styleOptionsFor(garmentTypeText, garmentSkuValues)} />
         )}
       />
 
@@ -440,6 +440,7 @@ const GarmentPrimaryBranchForm = ({
             fullWidth
             label="Total Garment Quantity"
             type="number"
+            helperText="Fills in from the sizes above. Change it only if the total really differs."
             {...field}
             sx={{ mb: "1rem", mt: "5px" }}
           />

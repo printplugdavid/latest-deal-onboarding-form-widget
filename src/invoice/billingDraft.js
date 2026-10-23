@@ -54,6 +54,7 @@ export function billingRecord(prepared, answer) {
     document: prepared.flags.document,
     lines: prepared.lines.map(({ sku, quantity, description, rate }) => ({ sku, quantity, description, ...(rate != null ? { rate } : {}) })),
     handList: prepared.handList,
+    warnings: prepared.warnings || [],
     flags: prepared.flags,
     result: answer ? { result: answer.result || "", number: answer.number || "", link: answer.link || "", message: answer.message || "" } : null,
   };

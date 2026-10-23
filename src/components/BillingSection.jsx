@@ -238,8 +238,8 @@ export default function BillingSection({ dealId, submittedBy }) {
       )}
 
       {shortfall && (
-        <Alert severity="error" sx={{ mt: 2 }}>
-          {shortfall.message} The form cannot be submitted until then.
+        <Alert severity="warning" sx={{ mt: 2 }}>
+          {shortfall.message}
         </Alert>
       )}
       <Typography sx={{ fontWeight: "bold", mt: 2 }}>Draft preview</Typography>

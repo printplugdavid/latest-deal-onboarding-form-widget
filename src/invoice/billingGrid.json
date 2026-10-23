@@ -1,5 +1,5 @@
 {
- "_source": "built by tools/invoice/build-grid.py from pull-2026-10-20e.jsonl (Books thread, read-only) -- never hand-edit",
+ "_source": "built by tools/invoice/build-grid.py from pull-2026-10-20e.jsonl + added-since-pull.json (Books thread, read-only) -- never hand-edit",
  "grids": {
   "screen": [
    {
@@ -482,6 +482,54 @@
     "tier": [
      480,
      null
+    ]
+   },
+   {
+    "sku": "PPSPH32",
+    "colors": 1,
+    "tier": [
+     0,
+     11
+    ]
+   },
+   {
+    "sku": "PPSPH33",
+    "colors": 2,
+    "tier": [
+     0,
+     11
+    ]
+   },
+   {
+    "sku": "PPSPH34",
+    "colors": 3,
+    "tier": [
+     0,
+     11
+    ]
+   },
+   {
+    "sku": "PPSPH35",
+    "colors": 4,
+    "tier": [
+     0,
+     11
+    ]
+   },
+   {
+    "sku": "PPSPH36",
+    "colors": 5,
+    "tier": [
+     0,
+     11
+    ]
+   },
+   {
+    "sku": "PPSPH37",
+    "colors": 6,
+    "tier": [
+     0,
+     11
     ]
    },
    {
@@ -1932,6 +1980,36 @@
    "name": "Screen Print - Hoodie - Extra Placement",
    "rate": 3,
    "unit": "Pieces"
+  },
+  "PPSPH32": {
+   "name": "Screen Print - Hoodie - 1 Color - Under 12 Pieces",
+   "rate": 30,
+   "unit": "Quantity"
+  },
+  "PPSPH33": {
+   "name": "Screen Print - Hoodie - 2 Color - Under 12 Pieces",
+   "rate": 31,
+   "unit": "Quantity"
+  },
+  "PPSPH34": {
+   "name": "Screen Print - Hoodie - 3 Color - Under 12 Pieces",
+   "rate": 32,
+   "unit": "Quantity"
+  },
+  "PPSPH35": {
+   "name": "Screen Print - Hoodie - 4 Color - Under 12 Pieces",
+   "rate": 33,
+   "unit": "Quantity"
+  },
+  "PPSPH36": {
+   "name": "Screen Print - Hoodie - 5 Color - Under 12 Pieces",
+   "rate": 33,
+   "unit": "Quantity"
+  },
+  "PPSPH37": {
+   "name": "Screen Print - Hoodie - 6 Color - Under 12 Pieces",
+   "rate": 34,
+   "unit": "Quantity"
   },
   "PPSPH4": {
    "name": "Screen Print - Hoodie - 4 Color - 12-23 Pieces",

@@ -18,6 +18,7 @@ import { bandOf, nameStem, familyBase } from "../products/garmentFromBooks";
 import { isClientOwnedGarment, isClientOwnedSku, CLIENT_OWNED } from "../products/clientOwned";
 import { canonicalKind, locationText, parseInches } from "../placements";
 import RULES from "../products/newProductRules.json";
+import { screenPrintShortfall } from "./minimums";
 
 const str = (v) => (v == null ? "" : String(v));
 const int = (v) => {
@@ -311,7 +312,7 @@ function decorationLines(products, handList, clientFee) {
         handList.push({
           what: `${METHOD_WORD[g.method]} (${g.label})`,
           quantity: g.qty,
-          reason: `Books has no price for ${decorated[g.method]} pieces${g.row.hoodie ? " on hoodies (the hoodie grid starts at 12)" : ""}`,
+          reason: `Books has no price for ${decorated[g.method]} pieces`,
         });
         return;
       }
@@ -414,7 +415,10 @@ export function buildBillingLines(data) {
   const lines = merge([...garments, ...deco, ...productLines(products, handList), ...other, ...fees]).filter(
     (l) => !GRID.fees.addedByZoho.includes(l.sku) // Zoho adds rush, extended turnaround and the card fee itself
   );
-  return { lines, handList, clientFee, flags: flagsOf(d), tiers, clientGarments: clientGarmentText(products) };
+  // E-109 (10-23): warnings the rep sees in the preview, on Submit and on the result -- they never stop the draft.
+  const short = screenPrintShortfall(d);
+  const warnings = short ? [short.message] : [];
+  return { lines, handList, clientFee, flags: flagsOf(d), tiers, warnings, clientGarments: clientGarmentText(products) };
 }
 
 /*
