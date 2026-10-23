@@ -36,7 +36,8 @@ import { ArtFilesContext } from "./components/GraphicArt";
 import BillingSection from "./components/BillingSection";
 import BillingResult from "./components/BillingResult";
 import { buildBillingLines } from "./invoice/billingLines";
-import { billingRecord, draftsOn, prepareDraft, sendDraft } from "./invoice/billingDraft";
+import { billingOnFor, billingRecord, draftsOn, prepareDraft, sendDraft } from "./invoice/billingDraft";
+import { BillingOn } from "./invoice/billingContext";
 import { MAX_UPLOAD_BYTES, artKey, collectArtFiles } from "./graphicArt";
 import {
   CUSTOMER_NOTES_QUESTION,
@@ -312,8 +313,8 @@ function App() {
     let billingPlan = null;
     let jsonText = onboardingJson;
     try {
-      billingPlan = buildBillingLines(data);
-      jsonText = JSON.stringify({ ...JSON.parse(onboardingJson), _billing: billingRecord(billingPlan, null) });
+      if (billingOnFor(entityId)) billingPlan = buildBillingLines(data);
+      if (billingPlan) jsonText = JSON.stringify({ ...JSON.parse(onboardingJson), _billing: billingRecord(billingPlan, null) });
     } catch (err) {
       console.log("Invoice lines could not be worked out - the JSON is saved without them:", err);
     }
@@ -429,6 +430,7 @@ function App() {
           {/* E-74: Garment kind, placement location and a width or height are required here (not in the Amendment Form). */}
           <StrictEntry.Provider value={true}>
           <ArtFilesContext.Provider value={artFiles}>
+          <BillingOn.Provider value={billingOnFor(entityId)}>
           <Box
             sx={{
               width: "90%",
@@ -1306,8 +1308,8 @@ function App() {
               Submit
             </Button> */}
 
-            {/* E-108: Invoice or Estimate, card, Other charges and the draft preview. */}
-            <BillingSection dealId={entityId} submittedBy={currentUser} />
+            {/* E-108: Invoice or Estimate, card, Other charges and the draft preview (pilot Deals only while the list has any). */}
+            {billingOnFor(entityId) && <BillingSection dealId={entityId} submittedBy={currentUser} />}
 
             {/* What this submission will book -- same printMath.js onSubmit runs (E-17). */}
             <PrintCountPreview />
@@ -1342,6 +1344,7 @@ function App() {
               </Button>
             </Box>
           </Box>
+          </BillingOn.Provider>
           </ArtFilesContext.Provider>
           </StrictEntry.Provider>
         </FormProvider>

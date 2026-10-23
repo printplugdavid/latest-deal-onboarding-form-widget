@@ -1,4 +1,12 @@
-import { prepareDraft, sendDraft, billingRecord } from "./billingDraft";
+import { prepareDraft, sendDraft, billingRecord, billingOnFor } from "./billingDraft";
+import CONFIG from "./billingConfig.json";
+
+test("the pilot: listed Deals only while the list has any (Lil Jon Deal 1 first)", () => {
+  expect(CONFIG.pilotDeals).toEqual(["5249739000127793103"]);
+  expect(billingOnFor("5249739000127793103")).toBe(true);
+  expect(billingOnFor("5249739000123007161")).toBe(false);
+  expect(billingOnFor(undefined)).toBe(false);
+});
 
 /* E-108: the two Zoho calls, with a fake ZOHO that answers like Deluge docs/43. */
 const order = {

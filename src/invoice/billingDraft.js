@@ -12,6 +12,12 @@ import CONFIG from "./billingConfig.json";
 
 export const draftsOn = () => CONFIG.createDraft === true;
 
+/* The pilot: while billingConfig.json lists Deals, only those get the Invoice section and a draft. */
+export const billingOnFor = (dealId) => {
+  const list = (CONFIG.pilotDeals || []).map(String);
+  return !list.length || list.includes(String(dealId || ""));
+};
+
 export async function prepareDraft(formData) {
   const built = buildBillingLines(formData);
   const skus = skusToFind(built);
