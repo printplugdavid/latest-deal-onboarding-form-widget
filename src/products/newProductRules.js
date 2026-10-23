@@ -289,3 +289,43 @@ export function vendorCodeTaken(code, vendorName, products = []) {
   if (clash) return { taken: true, why: `${c} already starts ${clash.sku}${clash.vendor ? ` (${clash.vendor})` : ""}` };
   return { taken: false, why: "" };
 }
+
+/*
+ * E-127 (David 10-23: vendor, brand, SKU and product name stay data-confident). A brand Books has never used can be added from the New
+ * Product form after one confirm: the name cleaned (no ® ™ ©, single spaces), a near-match warning against Books' brands and our aliases,
+ * then OK. In Books a brand is text on the item, so it exists once the first item with it is created.
+ */
+export const cleanBrand = (name) => cleanWords(name);
+
+export function newBrandProblem(name) {
+  const n = cleanBrand(name);
+  if (n.length < 2 || n.length > 60) return "A brand name is 2 to 60 characters.";
+  if (!/[a-z]/i.test(n)) return "A brand name needs letters.";
+  if (/[,;]/.test(n)) return "A brand name cannot have a comma or a semicolon.";
+  return "";
+}
+
+const bsq = (s) => String(s || "").toLowerCase().replace(/[^a-z0-9]+/g, "");
+const editDistance = (a, b) => {
+  const d = Array.from({ length: a.length + 1 }, (_, i) => [i, ...Array(b.length).fill(0)]);
+  for (let j = 1; j <= b.length; j++) d[0][j] = j;
+  for (let i = 1; i <= a.length; i++)
+    for (let j = 1; j <= b.length; j++) d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+  return d[a.length][b.length];
+};
+
+/* The Books brand this name probably is: an alias ("Port & Co" -> "Port & Company"), the same letters, ≤2 typos, or a prefix. "" = none. */
+export function nearBrand(name, brands = RULES.booksBrands) {
+  const n = bsq(cleanBrand(name));
+  if (!n) return "";
+  const alias = Object.keys(RULES.brandAliases).find((k) => bsq(k) === n);
+  if (alias) return RULES.brandAliases[alias];
+  const list = brands || [];
+  const same = list.find((b) => bsq(b) === n);
+  if (same) return same;
+  const close = list
+    .map((b) => ({ b, k: bsq(b) }))
+    .filter(({ k }) => k && ((n.length >= 4 && k.length >= 4 && (k.startsWith(n) || n.startsWith(k))) || editDistance(n, k) <= 2))
+    .sort((x, y) => editDistance(n, x.k) - editDistance(n, y.k));
+  return close.length ? close[0].b : "";
+}
