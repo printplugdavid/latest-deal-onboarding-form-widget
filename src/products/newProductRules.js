@@ -325,7 +325,8 @@ export function nearBrand(name, brands = RULES.booksBrands) {
   if (same) return same;
   const close = list
     .map((b) => ({ b, k: bsq(b) }))
-    .filter(({ k }) => k && ((n.length >= 4 && k.length >= 4 && (k.startsWith(n) || n.startsWith(k))) || editDistance(n, k) <= 2))
+    // a prefix only counts when the shorter name has 6+ letters ("Port" or "The" alone never match); typos only on 5+ letters
+    .filter(({ k }) => k && ((Math.min(n.length, k.length) >= 6 && (k.startsWith(n) || n.startsWith(k))) || (n.length >= 5 && editDistance(n, k) <= 2)))
     .sort((x, y) => editDistance(n, x.k) - editDistance(n, y.k));
   return close.length ? close[0].b : "";
 }

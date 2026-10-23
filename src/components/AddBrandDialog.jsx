@@ -4,7 +4,8 @@ import { cleanBrand, nearBrand, newBrandProblem } from "../products/newProductRu
 
 /*
  * E-127: "Add <brand> as a new brand" -- one confirm. onDone({ name }) to use it as a new Books brand, onDone({ use: existing }) for the
- * near match, onDone(null) to cancel. `brands` = Books' brands in use + the snapshot (the New Product form's list). `fromSupplier` = the
+ * near match, onDone({ notRight: name, near }) when the rep says the suggestion is wrong (Books 10-23: then David decides, not a dead
+ * end and not a free add), onDone(null) to cancel. `brands` = Books' brands in use + the snapshot (the New Product form's list). `fromSupplier` = the
  * name is the supplier's own spelling (SanMar / S&S lookup), not typed.
  */
 export default function AddBrandDialog({ name, brands, fromSupplier, onDone }) {
@@ -20,8 +21,21 @@ export default function AddBrandDialog({ name, brands, fromSupplier, onDone }) {
           {fromSupplier ? " (the supplier's spelling)" : ""}
         </Typography>
         {near && (
-          <Alert severity="warning" sx={{ mb: 1 }} action={<Button size="small" onClick={() => onDone({ use: near })}>Use {near}</Button>}>
-            Did you mean <b>{near}</b>? Books already has it.
+          <Alert
+            severity="warning"
+            sx={{ mb: 1 }}
+            action={
+              <>
+                <Button size="small" onClick={() => onDone({ use: near })}>
+                  Use {near}
+                </Button>
+                <Button size="small" onClick={() => onDone({ notRight: n, near })}>
+                  Not right
+                </Button>
+              </>
+            }
+          >
+            Did you mean <b>{near}</b>? Books already has it. If {n} is a different brand, choose Not right: David adds it.
           </Alert>
         )}
         {problem ? (
