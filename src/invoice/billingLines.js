@@ -417,18 +417,30 @@ export function buildBillingLines(data) {
   return { lines, handList, clientFee, flags: flagsOf(d), tiers, clientGarments: clientGarmentText(products) };
 }
 
-/* "4 Grey Quarter Zips; 2 Nike Hoodies" -- the client's garments that carry the PPFEE8 upcharge. */
-function clientGarmentText(products) {
-  const parts = [];
+/*
+ * The PPFEE8 line's description: the client's garments that carry the upcharge. "Client-provided garments: 4 Grey Quarter Zips;
+ * 2 Nike Hoodies" when Garment Type is filled; "4 client-provided garments" when it is not (Deluge pilot test B, 10-22: an empty
+ * Garment Type and quantity printed "Client-provided garments: 0"). The count falls back to the size lines.
+ */
+export function clientGarmentText(products) {
+  const named = [];
+  let unnamed = 0;
   (products || []).forEach((p) =>
     ((p && p.primaryBranches) || []).forEach((b) => {
-      if (b && isClientOwnedGarment(b) && upchargeOf(p, b).yes) {
-        const t = `${int(b.garmentQuantity)} ${firstLine(b.garmentType)}`.trim();
-        if (!parts.includes(t)) parts.push(t);
+      if (!(b && isClientOwnedGarment(b) && upchargeOf(p, b).yes)) return;
+      const n = int(b.garmentQuantity) || parseSizeText(b.countColorSize).rows.reduce((s, r) => s + (Number(r.count) || 0), 0);
+      const type = firstLine(b.garmentType);
+      if (!type) {
+        unnamed += n;
+        return;
       }
+      const t = n ? `${n} ${type}` : type;
+      if (!named.includes(t)) named.push(t);
     })
   );
-  return parts.join("; ");
+  const loose = unnamed ? plural(unnamed, "client-provided garment") : "";
+  if (named.length) return `Client-provided garments: ${[...named, loose].filter(Boolean).join("; ")}`;
+  return loose || "Client-provided garments (see the order)";
 }
 
 /*
@@ -467,7 +479,7 @@ export function priceLines(built, found) {
         quantity: 1,
         rate: fee,
         ...(f ? { item_id: str(f.item_id) } : {}),
-        description: `Client-provided garments: ${built.clientGarments || "see the order"}`,
+        description: built.clientGarments || "Client-provided garments (see the order)",
         group: "fee",
         clientQty: 0,
       });

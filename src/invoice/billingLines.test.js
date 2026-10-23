@@ -8,6 +8,7 @@ import {
   gangSheetLine,
   flagsOf,
   HTV_FULL,
+  clientGarmentText,
 } from "./billingLines";
 import GRID from "./billingGrid.json";
 
@@ -124,9 +125,20 @@ test("the onboarding form keeps the upcharge answer on the product (docs/06 E-10
   o.products[0].clientOwnedUpchargePercent = 10;
   const b = buildBillingLines(o);
   expect(b.clientFee).toEqual([{ sku: "PPEMB1", quantity: 4, percent: 10 }, { sku: "PPEMB21", quantity: 4, percent: 10 }]);
-  expect(b.clientGarments).toBe("4 Grey Quarter Zips (client's)");
+  expect(b.clientGarments).toBe("Client-provided garments: 4 Grey Quarter Zips (client's)");
   o.products[0].clientOwnedUpcharge = "No";
   expect(buildBillingLines(o).clientFee).toEqual([]);
+});
+
+test("PPFEE8 description (Deluge pilot test B): never '0'; the count from the sizes, the garment type when given", () => {
+  const client = (garmentType, garmentQuantity, countColorSize) =>
+    branch({ garmentType, garmentQuantity, countColorSize, garmentSkus: [{ sku: "PPCO", productSource: "clientOwned" }] });
+  const text = (...branches) => clientGarmentText([garment("Screen Printing", branches, { clientOwnedUpcharge: "Yes" })]);
+  expect(text(client("", "", "Black\n4- L"))).toBe("4 client-provided garments");
+  expect(text(client("", "1", ""))).toBe("1 client-provided garment");
+  expect(text(client("", "", ""))).toBe("Client-provided garments (see the order)");
+  expect(text(client("Nike Hoodies", "", ""))).toBe("Client-provided garments: Nike Hoodies");
+  expect(text(client("Nike Hoodies", "2", ""), client("", "", "Grey\n3- M"))).toBe("Client-provided garments: 2 Nike Hoodies; 3 client-provided garments");
 });
 
 test("client garments with the upcharge answered No: no PPFEE8 line", () => {
