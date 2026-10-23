@@ -151,10 +151,13 @@ export function buildOnboardingNote(data) {
           product?.numberOfGarmentTypes +
           newLine +
           newLine +
-          // E-101 / D-49: once per product, only when one of its garment types is client provided (PPCO).
-          ((product?.primaryBranches || []).some(isClientOwnedGarment) && product?.clientOwnedUpcharge
+          // E-101 / D-49: once per product, only when one of its garment types is client provided (PPCO). E-122 (David 10-23): the
+          // fee is always added, so the form no longer asks -- "Yes" unless the order still carries an older answer (kept as saved;
+          // an older per-garment answer prints under its garment instead).
+          ((product?.primaryBranches || []).some(isClientOwnedGarment) &&
+          (product?.clientOwnedUpcharge || !(product?.primaryBranches || []).some((b) => isClientOwnedGarment(b) && b?.clientOwnedUpcharge))
             ? `${product?.clientOwnedUpchargePercent || CLIENT_OWNED.upchargePercent}% Client-Owned Garment Upcharge Added?: ` +
-              product.clientOwnedUpcharge +
+              (product?.clientOwnedUpcharge || "Yes") +
               newLine +
               newLine
             : "");
@@ -358,7 +361,7 @@ export function buildOnboardingNote(data) {
               branch?.vendorsUsed +
               newLine +
               newLine +
-              // E-101 / D-49: only when this garment carries its own answer (asked per garment in the Amendment Form).
+              // E-101 / D-49: only when this garment carries its own answer (asked per garment in the Amendment Form until E-122).
               (isClientOwnedGarment(branch) && branch?.clientOwnedUpcharge
                 ? `${branch?.clientOwnedUpchargePercent || CLIENT_OWNED.upchargePercent}% Client-Owned Garment Upcharge Added?: ` +
                   (branch?.clientOwnedUpcharge || "") +

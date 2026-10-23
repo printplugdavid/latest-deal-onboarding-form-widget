@@ -60,3 +60,9 @@ test("mixed product: one client-provided garment type + one we order; asked once
   expect(c).toMatch(/SKU\(s\): PPCO/);
   expect(c).toMatch(/SKU\(s\): PC54/);
 });
+
+test("E-122: no answer stored (the form no longer asks) -> the line says Yes, once per product", () => {
+  const c = buildOnboardingNote(garmentDeal({ garmentSkus: [{ sku: "PPCO", productSource: "clientOwned" }] })).content;
+  expect(c).toMatch(/Number of Garment Types: 1\n\n10% Client-Owned Garment Upcharge Added\?: Yes\n\n/);
+  expect(c.match(/Client-Owned Garment Upcharge Added/g)).toHaveLength(1);
+});

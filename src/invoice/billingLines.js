@@ -3,10 +3,11 @@
  *
  * The plan is Books sku-audit/docs/39 (wins) + Deluge docs/41; the Zoho side is Deluge docs/43. The form decides every line (SKU,
  * quantity, description) and sends it; Zoho adds only rush (PPFEE1 +20 %), extended turnaround (PPETD -5 %) and the card fee from
- * three flags. We compute PPFEE8 (10 % of the decoration charged on client-provided garments) once Books' rates are known
- * (priceLines). Nothing is guessed: what the form cannot place goes to `handList`, which the rep sees before and after Submit.
+ * three flags. We compute PPFEE8 (10 % of the decoration charged on client-provided garments, always -- E-122) once Books' rates
+ * are known (priceLines). Nothing is guessed: what the form cannot place goes to `handList`, which the rep sees before and after Submit.
+ * E-123: each print's price tier counts the pieces that get THAT print (printsOf), not the whole order.
  *
- *   buildBillingLines(formData) -> { lines, handList, clientFee, flags, tiers }
+ *   buildBillingLines(formData) -> { lines, handList, clientFee, flags, prints, warnings, clientGarments }
  *     lines:     [{ sku, quantity, description, group, clientQty }]   group: garment | decoration | extra | gangSheet | product | fee | other
  *     handList:  [{ what, quantity, reason }]
  *     clientFee: [{ sku, quantity, percent }]  -- per decoration line, the client garments it covers (-> PPFEE8)
@@ -18,7 +19,7 @@ import { bandOf, nameStem, familyBase } from "../products/garmentFromBooks";
 import { isClientOwnedGarment, isClientOwnedSku, CLIENT_OWNED } from "../products/clientOwned";
 import { canonicalKind, locationText, parseInches } from "../placements";
 import RULES from "../products/newProductRules.json";
-import { screenPrintShortfall } from "./minimums";
+import CONFIG from "./billingConfig.json";
 
 const str = (v) => (v == null ? "" : String(v));
 const int = (v) => {
@@ -220,14 +221,10 @@ function garmentLines(products, handList) {
 }
 
 /*
- * The client-garment upcharge answer (E-101 / D-49, docs/06): the onboarding form keeps it on the PRODUCT
- * (products[].clientOwnedUpcharge + Percent); only the Amendment Form writes it per garment type. The garment's own answer wins.
+ * E-122 (David 10-23, Books DECISIONS A0f): PPFEE8 is ALWAYS added for client-provided garments (PPCO) -- no rep option. An older
+ * saved "No" (products[].clientOwnedUpcharge, E-101) no longer waives it. The percent is the rule's (newProductRules.json).
  */
-export function upchargeOf(product, branch) {
-  const own = branch && branch.clientOwnedUpcharge != null && str(branch.clientOwnedUpcharge) !== "";
-  const src = own ? branch : product || {};
-  return { yes: yes(src.clientOwnedUpcharge), percent: Number(src.clientOwnedUpchargePercent) || CLIENT_OWNED.upchargePercent };
-}
+export const clientFeePercent = () => CLIENT_OWNED.upchargePercent;
 
 /* ---------- decoration: first placement per garment = grid line, every further placement = extra ---------- */
 
@@ -239,17 +236,59 @@ function placementsOf(graphic) {
 }
 const locationOf = (p) => locationText(p && p.placementPick, p && p.placementOther) || str(p && p.placementLocation).trim() || "Unnamed";
 
-function decorationLines(products, handList, clientFee) {
-  const groups = new Map(); // key -> { method, row, kind: first|extra, qty, clientQty, places: Map, label, percent }
-  const decorated = {}; // method -> garments that get it (the tier count)
-  const add = (key, base, qty, clientQty, loc, percent) => {
-    let g = groups.get(key);
-    if (!g) groups.set(key, (g = { ...base, qty: 0, clientQty: 0, places: new Map(), percents: [] }));
-    g.qty += qty;
-    g.clientQty += clientQty;
-    g.places.set(loc, (g.places.get(loc) || 0) + qty);
-    if (clientQty) g.percents.push({ clientQty, percent });
+/*
+ * E-123 (David 10-23, Books docs/45 §7 #2): which graphics are the same DESIGN. Two graphics are one design when they share an
+ * attached art file (same file, E-95) or have the same description (case, spacing and punctuation ignored); two blank graphics
+ * (no art, no description) in the same position on different garment types are too. Different descriptions = different designs.
+ */
+const designWords = (v) => str(v).toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+function designIds(products) {
+  const parent = new Map();
+  const find = (x) => {
+    while (parent.get(x) !== x) x = parent.get(x);
+    return x;
   };
+  const owner = new Map(); // art file / description -> the first graphic that had it
+  const ids = new Map(); // graphic object -> its id
+  (products || []).forEach((p, pi) => {
+    if (!p || p.productType !== "garment") return;
+    (p.primaryBranches || []).forEach((b, bi) =>
+      ((b && b.secondaryBranches) || []).forEach((g, gi) => {
+        if (!g) return;
+        const id = `${pi}.${bi}.${gi}`;
+        parent.set(id, id);
+        ids.set(g, id);
+        const marks = (Array.isArray(g.artFiles) ? g.artFiles : []).map((a) => a && a.key && "art:" + a.key).filter(Boolean);
+        const words = designWords(g.graphicDescription);
+        if (words) marks.push("words:" + words);
+        // Picked default (10-23): a graphic with no art and no description is taken to be the same design as the blank graphic
+        // in the same position on the order's other garment types (reps enter one logo once per garment type, as Treasure
+        // Valley was invoiced). The print still has to match placement and size. Within one garment type they stay apart.
+        if (!marks.length) marks.push("blank#" + gi);
+        marks.forEach((m) => {
+          if (!owner.has(m)) owner.set(m, id);
+          else parent.set(find(id), find(owner.get(m)));
+        });
+      })
+    );
+  });
+  return (g) => (ids.has(g) ? find(ids.get(g)) : "?");
+}
+
+/*
+ * The same PRINT = the same design at the same placement and size (the same screen / stencil / hoop setup). Tees and hoodies with
+ * the same print count together (they share the screen); only the SKU differs.
+ */
+function printKey(method, design, loc, row) {
+  const setup = row ? { ...row } : null;
+  if (setup) delete setup.hoodie;
+  return JSON.stringify([method, design, loc.toLowerCase(), setup]);
+}
+
+function decorationLines(products, handList, clientFee) {
+  const designOf = designIds(products);
+  const entries = []; // in form order: { kind: first|extra, method, row, label, key, qty, clientQty, loc, percent }
+  const prints = new Map(); // printKey -> { method, location, design text, pieces }
   (products || []).forEach((product) => {
     if (!product || product.productType !== "garment") return;
     const method = METHODS[str(product.productName).trim()];
@@ -269,14 +308,12 @@ function decorationLines(products, handList, clientFee) {
         return;
       }
       const client = isClientOwnedGarment(b);
-      const up = upchargeOf(product, b);
-      const percent = client && up.yes ? up.percent : 0;
+      const percent = client ? clientFeePercent() : 0;
       const lumpedNo = str(b.everyGraphicOnEveryGarment) === "No";
       const covers = graphics.map((g) => (lumpedNo && int(g.garmentsWithThisGraphic) ? Math.min(qty, int(g.garmentsWithThisGraphic)) : qty));
       // Picked default (docs/63): graphics not on every garment go on different garments, so the garments decorated are
       // the smaller of the quantity and their sum.
       let left = lumpedNo ? Math.min(qty, covers.reduce((a, c) => a + c, 0)) : qty;
-      decorated[method] = (decorated[method] || 0) + left;
       graphics.forEach((g, i) => {
         if (!placementsOf(g).length) {
           handList.push({ what: `${METHOD_WORD[method]} graphic ${i + 1} on ${what}`, quantity: covers[i], reason: "no placements entered, so no print line" });
@@ -288,40 +325,110 @@ function decorationLines(products, handList, clientFee) {
           const extras = covers[i] - firsts;
           const r = placementRow(method, g, p, b.garmentKind);
           const loc = locationOf(p);
+          // The tier counts every piece that gets this print at its first placement (E-123), priced or not, so the
+          // under-12 warning (E-109) sees it too.
+          const key = j === 0 ? printKey(method, designOf(g), loc, r.row) : "";
+          if (key) {
+            const pr = prints.get(key) || { method, location: loc, design: firstLine(g.graphicDescription), pieces: 0 };
+            pr.pieces += covers[i];
+            prints.set(key, pr);
+          }
           if (r.why) {
             handList.push({ what: `${METHOD_WORD[method]}, ${loc} on ${what}`, quantity: covers[i], reason: r.why });
             return;
           }
           const cq = (n) => (client ? n : 0);
-          if (firsts) add(`first|${method}|${JSON.stringify(r.row)}`, { method, row: r.row, kind: "first", label: r.label }, firsts, cq(firsts), loc, percent);
-          if (extras) {
-            const sku = extraSku(method, r.row);
-            add(`extra|${sku}`, { method, row: r.row, kind: "extra", sku }, extras, cq(extras), loc, percent);
-          }
+          if (firsts) entries.push({ kind: "first", method, row: r.row, label: r.label, key, qty: firsts, clientQty: cq(firsts), loc, percent });
+          if (extras) entries.push({ kind: "extra", method, row: r.row, sku: extraSku(method, r.row), qty: extras, clientQty: cq(extras), loc, percent });
         });
       });
     });
   });
-  const lines = [];
-  groups.forEach((g) => {
-    const places = [...g.places].map(([loc, n]) => `${n} ${loc} Placement${n === 1 ? "" : "s"}`).join("\n");
-    let sku = g.sku;
-    if (g.kind === "first") {
-      sku = gridSku(g.method, g.row, decorated[g.method]);
+
+  // Each first placement is priced at its own print's tier; prints that land on the same SKU share one line (as reps write it).
+  const groups = new Map(); // kind|sku -> { method, kind, sku, qty, clientQty, places: Map, percents }
+  entries.forEach((e) => {
+    let sku = e.sku;
+    if (e.kind === "first") {
+      const pieces = prints.get(e.key).pieces;
+      sku = gridSku(e.method, e.row, pieces);
       if (!sku) {
-        handList.push({
-          what: `${METHOD_WORD[g.method]} (${g.label})`,
-          quantity: g.qty,
-          reason: `Books has no price for ${decorated[g.method]} pieces`,
-        });
+        handList.push({ what: `${METHOD_WORD[e.method]}, ${e.loc} (${e.label})`, quantity: e.qty, reason: `Books has no price for ${pieces} pieces` });
         return;
       }
     }
-    const estimate = g.method === "embroidery" && g.kind === "first" ? "\nStitch count estimated from the placement size - the digitizer confirms it" : "";
-    lines.push({ sku, quantity: g.qty, description: places + estimate, group: g.kind === "first" ? "decoration" : "extra", clientQty: g.clientQty });
-    g.percents.forEach((p) => p.percent && clientFee.push({ sku, quantity: p.clientQty, percent: p.percent }));
+    const gk = `${e.kind}|${sku}`;
+    let g = groups.get(gk);
+    if (!g) groups.set(gk, (g = { method: e.method, kind: e.kind, sku, qty: 0, clientQty: 0, places: new Map(), percents: [] }));
+    g.qty += e.qty;
+    g.clientQty += e.clientQty;
+    g.places.set(e.loc, (g.places.get(e.loc) || 0) + e.qty);
+    if (e.clientQty) g.percents.push({ clientQty: e.clientQty, percent: e.percent });
   });
-  return { lines, tiers: decorated };
+  const lines = [];
+  groups.forEach((g) => {
+    const places = [...g.places].map(([loc, n]) => `${n} ${loc} Placement${n === 1 ? "" : "s"}`).join("\n");
+    const estimate = g.method === "embroidery" && g.kind === "first" ? "\nStitch count estimated from the placement size - the digitizer confirms it" : "";
+    lines.push({ sku: g.sku, quantity: g.qty, description: places + estimate, group: g.kind === "first" ? "decoration" : "extra", clientQty: g.clientQty });
+    g.percents.forEach((p) => p.percent && clientFee.push({ sku: g.sku, quantity: p.clientQty, percent: p.percent }));
+  });
+  return { lines, prints: [...prints.values()] };
+}
+
+/* E-123: every print on the order with the pieces that get it: [{ method, location, design, pieces }]. */
+export const printsOf = (products) => decorationLines(products, [], []).prints;
+
+/* "Screen print, Left Chest (TVG logo): 48" -- one print and its tier count, for the preview (E-123). */
+export function printLabel(p) {
+  const d = p.design.length > 40 ? p.design.slice(0, 40).trim() + "..." : p.design;
+  return `${METHOD_WORD[p.method] || p.method}, ${p.location}${d ? ` (${d})` : ""}: ${p.pieces}`;
+}
+
+/*
+ * E-109 / D-53 (revised 10-23): screen print has a 12-piece minimum; under it is a rare exception -- priced at the Under-12 rate,
+ * FLAGGED to the rep, never blocked. E-123: counted PER PRINT (the pieces that get it, tees and hoodies together). An order whose
+ * screen print garments have no print yet (no graphic / placement) is counted as a whole, as before.
+ */
+export const SCREEN_PRINT_MINIMUM = Number(CONFIG.screenPrintMinimum) || 12;
+const piecesOf = (b) => int(b && b.garmentQuantity) || parseSizeText(b && b.countColorSize).rows.reduce((s, r) => s + (Number(r.count) || 0), 0);
+const AFTER = ". This is an exception, priced at the Under-12 rate. Confirm it with the customer before sending the invoice.";
+
+/* null when fine (no screen print, or every print on 12+); else { count, minimum, message } -- a warning, not a stop */
+export function screenPrintShortfall(data) {
+  const products = (data && data.products) || [];
+  const garments = products
+    .filter((p) => p && p.productType === "garment" && str(p.productName).trim() === "Screen Printing")
+    .flatMap((p) => (p.primaryBranches || []).filter(Boolean));
+  if (!garments.length) return null;
+  const min = SCREEN_PRINT_MINIMUM;
+  const prints = printsOf(products).filter((p) => p.method === "screen");
+  if (!prints.length) {
+    const total = garments.reduce((s, b) => s + piecesOf(b), 0);
+    if (total >= min) return null;
+    return {
+      count: total,
+      minimum: min,
+      message:
+        `Below the ${min}-piece screen print minimum: this order has ${plural(total, "garment")} under Screen Printing` +
+        (total ? "" : " (enter the quantity or sizes)") +
+        AFTER,
+    };
+  }
+  const small = prints.filter((p) => p.pieces < min);
+  if (!small.length) return null;
+  const name = (p) => {
+    const d = p.design.length > 40 ? p.design.slice(0, 40).trim() + "..." : p.design;
+    return `${p.location}${d ? ` (${d})` : ""}`;
+  };
+  const list =
+    small.length === 1
+      ? `the ${name(small[0])} print is on ${plural(small[0].pieces, "garment")}`
+      : `${small.length} prints are on fewer than ${min} garments (${small.map((p) => `${name(p)} on ${p.pieces}`).join("; ")})`;
+  return {
+    count: Math.min(...small.map((p) => p.pieces)),
+    minimum: min,
+    message: `Below the ${min}-piece screen print minimum: ${list}. Each print is priced by the garments that get it` + AFTER,
+  };
 }
 
 /* ---------- gang sheets, other products, fees from form answers ---------- */
@@ -401,7 +508,7 @@ export function buildBillingLines(data) {
   const clientFee = [];
   const products = d.products || [];
   const garments = garmentLines(products, handList);
-  const { lines: deco, tiers } = decorationLines(products, handList, clientFee);
+  const { lines: deco, prints } = decorationLines(products, handList, clientFee);
   const other = (d.otherCharges || [])
     .filter((c) => c && str(c.sku).trim() && Number(c.quantity) > 0)
     .map((c) => ({
@@ -418,11 +525,11 @@ export function buildBillingLines(data) {
   // E-109 (10-23): warnings the rep sees in the preview, on Submit and on the result -- they never stop the draft.
   const short = screenPrintShortfall(d);
   const warnings = short ? [short.message] : [];
-  return { lines, handList, clientFee, flags: flagsOf(d), tiers, warnings, clientGarments: clientGarmentText(products) };
+  return { lines, handList, clientFee, flags: flagsOf(d), prints, warnings, clientGarments: clientGarmentText(products) };
 }
 
 /*
- * The PPFEE8 line's description: the client's garments that carry the upcharge. "Client-provided garments: 4 Grey Quarter Zips;
+ * The PPFEE8 line's description: the client's garments (all of them, E-122). "Client-provided garments: 4 Grey Quarter Zips;
  * 2 Nike Hoodies" when Garment Type is filled; "4 client-provided garments" when it is not (Deluge pilot test B, 10-22: an empty
  * Garment Type and quantity printed "Client-provided garments: 0"). The count falls back to the size lines.
  */
@@ -431,7 +538,7 @@ export function clientGarmentText(products) {
   let unnamed = 0;
   (products || []).forEach((p) =>
     ((p && p.primaryBranches) || []).forEach((b) => {
-      if (!(b && isClientOwnedGarment(b) && upchargeOf(p, b).yes)) return;
+      if (!(b && isClientOwnedGarment(b))) return;
       const n = int(b.garmentQuantity) || parseSizeText(b.countColorSize).rows.reduce((s, r) => s + (Number(r.count) || 0), 0);
       const type = firstLine(b.garmentType);
       if (!type) {
