@@ -75,7 +75,9 @@ export function buildCardsFromData(data, deal) {
   // E-53: the PO number and the WorkDrive folder come from the Deal as it is now, like the due date.
   // E-55: the Deal's own folder when the Deal carries its link, otherwise the Mock Up folder, named as such.
   const folder = workDriveTarget(deal);
-  const dealInfo = { poNumber: deal.PO_Number, workDriveLink: folder.href, workDriveLabel: folder.label };
+  // E-117a (Angela, 10-23): where the garments were really ordered from is the Deal's Garments Ordered Notes, written after ordering;
+  // the cards here are rebuilt from the Deal as it is now, so they show it.
+  const dealInfo = { poNumber: deal.PO_Number, workDriveLink: folder.href, workDriveLabel: folder.label, garmentsOrderedNotes: deal.Garments_Ordered_Notes };
   for (const c of buildProductionCards(liveDue, counts, dealInfo)) built.set(c.name.toLowerCase(), c.html);
   return built;
 }

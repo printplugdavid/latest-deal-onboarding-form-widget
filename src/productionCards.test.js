@@ -161,3 +161,22 @@ describe("E-83 count per garment on the card", () => {
   });
 });
 
+
+test("E-117a: the Deal's Garments Ordered Notes show on the cards (viewer); nothing changes without them", () => {
+  const { buildCardsFromData } = require("./cardBuild");
+  const data = {
+    contactInfo: { Account_Name: "Seneca Foods", Deal_Name: "Deal 4" },
+    products: [
+      {
+        productName: "Embroidery",
+        productType: "garment",
+        primaryBranches: [{ garmentType: "Hoodies", garmentQuantity: "12", vendorsUsed: "SanMar, Richardson", countColorSize: "Black\n12- L", secondaryBranches: [] }],
+      },
+    ],
+  };
+  const withNotes = [...buildCardsFromData(data, { Garments_Ordered_Notes: "All from SanMar\nPO 4471" }).values()].join("");
+  expect(withNotes).toContain("Garments ordered (from the Deal):</b><br>All from SanMar<br>PO 4471");
+  expect(withNotes).toContain("SanMar, Richardson"); // Vendors Used stays as typed (label unchanged: the robot's cards are byte-for-byte)
+  const without = [...buildCardsFromData(data, {}).values()].join("");
+  expect(without).not.toContain("Garments ordered (from the Deal)");
+});
