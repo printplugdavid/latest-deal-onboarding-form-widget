@@ -2,5 +2,7 @@
   "_createDraft": "E-108 (docs/63): false = Submit makes no draft invoice / estimate (the preview still works). Undo switch for the draft call alone.",
   "createDraft": true,
   "_pilotDeals": "While this list has Deal ids, the Invoice section, its questions and the draft appear ONLY on these Deals. Empty = every onboarding: rolled out 2026-10-22 (David), after the pilot on Lil Jon Deal 1 (5249739000127793103).",
-  "pilotDeals": []
+  "pilotDeals": [],
+  "_screenPrintMinimum": "E-109 / D-53 (David, 10-22): screen print is a minimum of 12 pieces per order (all garments under Screen Printing). Below it, the onboarding form refuses Submit.",
+  "screenPrintMinimum": 12
 }

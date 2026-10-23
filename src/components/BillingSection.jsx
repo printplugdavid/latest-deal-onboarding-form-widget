@@ -5,6 +5,7 @@ import { applyGarmentSplits } from "../garmentSplit";
 import { buildBillingLines, itemName, snapshotRate } from "../invoice/billingLines";
 import { prepareDraft, sendDraft, draftsOn } from "../invoice/billingDraft";
 import { OTHER_CHARGES, chargeLabel, suggestCharges } from "../invoice/otherCharges";
+import { screenPrintShortfall } from "../invoice/minimums";
 
 /*
  * E-108 (docs/63): the onboarding form's billing section. "Invoice or Estimate?" and "Paying by card?" (both required), the
@@ -131,6 +132,7 @@ export default function BillingSection({ dealId, submittedBy }) {
 
   let built = null;
   let suggestions = [];
+  let shortfall = null;
   try {
     const data = applyGarmentSplits({
       products,
@@ -145,6 +147,7 @@ export default function BillingSection({ dealId, submittedBy }) {
       isRepeatOrder,
     });
     built = buildBillingLines(data);
+    shortfall = screenPrintShortfall(data);
     suggestions = suggestCharges(data);
   } catch (e) {
     console.log("Invoice preview failed:", e); // a preview must never take the form down
@@ -234,6 +237,11 @@ export default function BillingSection({ dealId, submittedBy }) {
         </Box>
       )}
 
+      {shortfall && (
+        <Alert severity="error" sx={{ mt: 2 }}>
+          {shortfall.message} The form cannot be submitted until then.
+        </Alert>
+      )}
       <Typography sx={{ fontWeight: "bold", mt: 2 }}>Draft preview</Typography>
       {!draftsOn() && (
         <Alert severity="info" sx={{ mb: 1 }}>
