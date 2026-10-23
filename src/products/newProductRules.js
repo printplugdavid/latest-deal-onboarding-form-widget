@@ -91,7 +91,12 @@ export function initialsSku(prefix, words) {
 }
 
 /* docs/25 §2c: the outsourced vendor's code from the registry; "" = no code yet (David picks one). */
-export const vendorCodeFor = (vendorName) => RULES.vendorCodes[cleanWords(vendorName)] || "";
+// Any letter case (Books renamed PRINTOGRAPH -> Printograph on 10-23, step 073, and the exact-case lookup lost its code).
+export const vendorCodeFor = (vendorName) => {
+  const want = cleanWords(vendorName).toLowerCase();
+  const key = Object.keys(RULES.vendorCodes).find((k) => k.toLowerCase() === want);
+  return key ? RULES.vendorCodes[key] : "";
+};
 
 /* The one Books spelling of a brand, or "" when Books has no such brand (-> David). */
 export function booksBrandFor(brand, booksBrands = RULES.booksBrands) {

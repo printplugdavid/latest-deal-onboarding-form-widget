@@ -61,7 +61,7 @@
   "inHouseBrand": "The Print Plug",
   "_vendorCodes": "docs/25 §2c registry: one vendor = one code. A vendor not here -> David picks a code.",
   "vendorCodes": {
-    "PRINTOGRAPH": "PRI", "Stahl's": "STA", "GS-JJ": "GSJ", "Banner Buzz": "BB", "Swag Brokers": "BP", "Brilliant Promos": "BP",
+    "Printograph": "PRI", "Stahl's": "STA", "GS-JJ": "GSJ", "Banner Buzz": "BB", "Swag Brokers": "BP", "Brilliant Promos": "BP",
     "Koozie Group": "KOO", "PrintRunner": "PRU", "Showdown Display": "SHO", "AnyPromo.com": "AP", "Sticker Mule": "STM",
     "UPrinting": "UP", "YETI": "YET", "Heat Transfer Warehouse": "HTW", "Discount Mugs": "DM", "Patches 4 Less": "P4L"
   },

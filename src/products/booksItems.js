@@ -67,6 +67,24 @@ export async function call(name, args) {
 
 const books = (action, payload) => call(RULES.functions.books, { action, payload: JSON.stringify(payload || {}) });
 
+/*
+ * E-126 B (Deluge 10-23): a new vendor, the same name in Books and on the Deal "Vendors" list. One call (never repeated once it
+ * answered). { done, result, message, name, vendorId, layouts } -- done = the vendor can be used now (added / already_there / partial);
+ * name = the spelling to write (Books' own when the vendor already existed).
+ */
+export async function addVendor(name) {
+  const a = await call("widget_add_vendor", { name: str(name).trim(), dry_run: "false" });
+  const result = str(a.result);
+  return {
+    done: a.status === "ok" && ["added", "already_there", "partial"].includes(result),
+    result: result || a.status,
+    message: a.status === "unavailable" ? "Adding vendors is not set up yet: ask David." : str(a.message),
+    name: str(a.name).trim() || str(name).trim(),
+    vendorId: str(a.books_vendor_id),
+    layouts: Array.isArray(a.layouts) ? a.layouts : [],
+  };
+}
+
 /* Live vendor and brand lists. { status, vendors: [{ id, name }], brands: [name] } */
 export async function booksLists() {
   const a = await books("lists");
