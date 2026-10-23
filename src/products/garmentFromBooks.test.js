@@ -102,8 +102,9 @@ describe("E-106: Books lookup by exact SKU (search action since 10-22; check tex
     delete window.ZOHO;
   });
   test("search answers the item with its id and rate; codes Books lacks are simply absent", async () => {
-    const calls = zoho((action) => (action === "search" ? { status: "ok", partial: false, results: [ST] } : { status: "error" }));
-    expect(await findSkusInBooks(["st290", "ST2904"])).toEqual([{ ...ST, active: true }]);
+    // E-113 (Deluge 10-23): each result carries the Books vendor -> `vendor`
+    const calls = zoho((action) => (action === "search" ? { status: "ok", partial: false, results: [{ ...ST, vendor_name: "San Mar" }] } : { status: "error" }));
+    expect(await findSkusInBooks(["st290", "ST2904"])).toEqual([{ ...ST, vendor: "San Mar", active: true }]);
     expect(calls).toEqual([{ name: "widget_books_items", action: "search", payload: { skus: ["ST290", "ST2904"] } }]);
   });
   test("search not answering: the check action's 'SKU already used by' text, word for word", async () => {
