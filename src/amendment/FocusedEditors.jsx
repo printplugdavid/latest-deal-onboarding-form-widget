@@ -15,6 +15,7 @@ import SizeRowsField from "../components/SizeRowsField";
 import { styleOptionsFor } from "../sizeRows";
 import GarmentSecondaryBranchForm from "../components/GarmentSecondaryBranchForm";
 import LumpedGuard from "../components/LumpedGuard";
+import VendorsUsedField from "../components/VendorsUsedField";
 import { checkGarmentQuantity } from "../quantityCheck";
 
 const base = (p, g) => `products.${p}.primaryBranches.${g}`;
@@ -94,7 +95,8 @@ export const GarmentSwapEditor = ({ p, g }) => {
     <Box>
       <Heading>Garment</Heading>
       {text("garmentType", "Garment Type (Brand / Style)", 2)}
-      {text("vendorsUsed", "Vendors Used (add the new vendor — the original is kept)", 2)}
+      {/* E-113: the same pick list as the onboarding form; the text still keeps the original underneath (D-23). */}
+      <VendorsUsedField base={base(p, g)} />
     </Box>
   );
 };
