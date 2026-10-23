@@ -270,3 +270,22 @@ export function toBooksItem(it) {
     product_url: str(it.productUrl),
   };
 }
+
+/*
+ * E-126 (David 10-23): a vendor with no code yet gets one by Books' own rule (docs/25 §2c): the first 3 letters of its name. The rep only
+ * says OK or "Not right" (then David picks); a code is never typed. Taken = another vendor's code in the registry, or an existing product
+ * code starting with it that belongs to ANOTHER vendor (a brand's style prefix, e.g. BB = Brooks Brothers). The vendor's own items never
+ * block it, so the same name gives the same code every time -- before and after Books adds it to the registry.
+ */
+export const suggestVendorCode = (vendorName) => normalizeSku(cleanWords(vendorName).replace(/[^a-z0-9]/gi, "")).slice(0, 3);
+
+export function vendorCodeTaken(code, vendorName, products = []) {
+  const c = normalizeSku(code);
+  const mine = cleanWords(vendorName).toLowerCase();
+  if (!c) return { taken: true, why: "no letters in the vendor name" };
+  const other = Object.keys(RULES.vendorCodes).find((k) => RULES.vendorCodes[k] === c && k.toLowerCase() !== mine);
+  if (other) return { taken: true, why: `${c} is already ${other}'s code` };
+  const clash = (products || []).find((p) => p && normalizeSku(p.sku).startsWith(c) && cleanWords(p.vendor).toLowerCase() !== mine);
+  if (clash) return { taken: true, why: `${c} already starts ${clash.sku}${clash.vendor ? ` (${clash.vendor})` : ""}` };
+  return { taken: false, why: "" };
+}
