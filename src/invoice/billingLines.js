@@ -217,6 +217,16 @@ function garmentLines(products, handList) {
   }));
 }
 
+/*
+ * The client-garment upcharge answer (E-101 / D-49, docs/06): the onboarding form keeps it on the PRODUCT
+ * (products[].clientOwnedUpcharge + Percent); only the Amendment Form writes it per garment type. The garment's own answer wins.
+ */
+export function upchargeOf(product, branch) {
+  const own = branch && branch.clientOwnedUpcharge != null && str(branch.clientOwnedUpcharge) !== "";
+  const src = own ? branch : product || {};
+  return { yes: yes(src.clientOwnedUpcharge), percent: Number(src.clientOwnedUpchargePercent) || CLIENT_OWNED.upchargePercent };
+}
+
 /* ---------- decoration: first placement per garment = grid line, every further placement = extra ---------- */
 
 function placementsOf(graphic) {
@@ -252,7 +262,8 @@ function decorationLines(products, handList, clientFee) {
         return;
       }
       const client = isClientOwnedGarment(b);
-      const percent = client && yes(b.clientOwnedUpcharge) ? Number(b.clientOwnedUpchargePercent) || CLIENT_OWNED.upchargePercent : 0;
+      const up = upchargeOf(product, b);
+      const percent = client && up.yes ? up.percent : 0;
       const lumpedNo = str(b.everyGraphicOnEveryGarment) === "No";
       const covers = graphics.map((g) => (lumpedNo && int(g.garmentsWithThisGraphic) ? Math.min(qty, int(g.garmentsWithThisGraphic)) : qty));
       // Picked default (docs/63): graphics not on every garment go on different garments, so the garments decorated are
@@ -401,7 +412,7 @@ function clientGarmentText(products) {
   const parts = [];
   (products || []).forEach((p) =>
     ((p && p.primaryBranches) || []).forEach((b) => {
-      if (b && isClientOwnedGarment(b) && yes(b.clientOwnedUpcharge)) {
+      if (b && isClientOwnedGarment(b) && upchargeOf(p, b).yes) {
         const t = `${int(b.garmentQuantity)} ${firstLine(b.garmentType)}`.trim();
         if (!parts.includes(t)) parts.push(t);
       }

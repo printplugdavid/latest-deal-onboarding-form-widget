@@ -115,6 +115,20 @@ test("American Muffler: client garments get no garment line; PPFEE8 = 10% of the
   expect(fee.description).toBe("Client-provided garments: 4 Grey Quarter Zips (client's)");
 });
 
+test("the onboarding form keeps the upcharge answer on the product (docs/06 E-101): read from there", () => {
+  const o = americanMuffler();
+  const b0 = o.products[0].primaryBranches[0];
+  delete b0.clientOwnedUpcharge;
+  delete b0.clientOwnedUpchargePercent;
+  o.products[0].clientOwnedUpcharge = "Yes";
+  o.products[0].clientOwnedUpchargePercent = 10;
+  const b = buildBillingLines(o);
+  expect(b.clientFee).toEqual([{ sku: "PPEMB1", quantity: 4, percent: 10 }, { sku: "PPEMB21", quantity: 4, percent: 10 }]);
+  expect(b.clientGarments).toBe("4 Grey Quarter Zips (client's)");
+  o.products[0].clientOwnedUpcharge = "No";
+  expect(buildBillingLines(o).clientFee).toEqual([]);
+});
+
 test("client garments with the upcharge answered No: no PPFEE8 line", () => {
   const b = buildBillingLines(americanMuffler("No"));
   expect(b.clientFee).toEqual([]);
