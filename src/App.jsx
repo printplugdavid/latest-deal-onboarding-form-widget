@@ -1,3 +1,4 @@
+import { loadDealVendors } from "./products/dealVendorsLive";
 import { mergeDealVendors } from "./products/vendors";
 import { productLabel } from "./productLabels";
 import {
@@ -110,6 +111,7 @@ function App() {
         // E-38: the Account's standing Customer Notes, shown read-only. Never blocks the form.
         loadAccountNotes(recordResp?.data?.[0]).then((a) => setAccountNotes(a?.notes || ""));
 
+        loadDealVendors(); // E-126: the Deal's vendor choices, live (not awaited; the built-in list until it answers)
         const variableResp = await ZOHO.CRM.API.getOrgVariable("products");
         let optionsList = variableResp?.Success?.Content?.split(",");
         setOptions(optionsList);

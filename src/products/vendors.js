@@ -17,6 +17,44 @@ export const DEAL_VENDORS = [
   "The Game Headwear", "Uniform Advantage", "UPrinting", "USCutter", "Wal Mart", "YETI",
 ];
 
+/*
+ * E-126: the choices as Zoho has them NOW. When the form opens it reads the Deal field's choices (dealVendorsLive.js); an option David
+ * or Books adds in Setup then shows up without a forms release. DEAL_VENDORS above is only the fallback when that read fails.
+ */
+let live = null;
+const listeners = new Set();
+export const currentDealVendors = () => live || DEAL_VENDORS;
+export function setDealVendors(list) {
+  const clean = [...new Set((list || []).map((v) => String(v).trim()).filter(Boolean))];
+  live = clean.length ? clean : null;
+  listeners.forEach((f) => f());
+}
+export const onDealVendorsChange = (f) => {
+  listeners.add(f);
+  return () => listeners.delete(f);
+};
+
+/*
+ * The Deal `Vendors` choices from a CRM field-metadata answer (META.getFields, or a layout): every option not marked "unused" (old
+ * spellings Books took off the layouts stay on the field as unused, step 073), "-None-" dropped. [] when the field is not there.
+ */
+export function vendorChoicesFrom(resp) {
+  const found = [];
+  const walk = (o) => {
+    if (Array.isArray(o)) return o.forEach(walk);
+    if (!o || typeof o !== "object") return;
+    if (o.api_name === "Vendors" && Array.isArray(o.pick_list_values)) found.push(o);
+    Object.values(o).forEach(walk);
+  };
+  walk(resp);
+  const names = found
+    .flatMap((f) => f.pick_list_values)
+    .filter((p) => p && p.type !== "unused")
+    .map((p) => String(p.display_value || "").trim())
+    .filter((n) => n && n !== "-None-");
+  return [...new Set(names)];
+}
+
 /* Books vendors that are not a place we order from (our own decoration / fee items). Stock from the shelf is "Inventory". */
 export const NOT_A_VENDOR = ["The Print Plug"];
 
@@ -24,7 +62,7 @@ export const NOT_A_VENDOR = ["The Print Plug"];
 const norm = (s) => String(s == null ? "" : s).toLowerCase().replace(/[^a-z0-9]+/g, "");
 
 /* The Deal choice with this name (any case, spacing or punctuation), or "". */
-export const dealVendor = (name) => DEAL_VENDORS.find((v) => norm(v) === norm(name)) || "";
+export const dealVendor = (name) => currentDealVendors().find((v) => norm(v) === norm(name)) || "";
 
 const SEPARATOR = /^---.*---$|^\(cleared in this amendment\)$/i; // amendSeparator (D-23)
 
@@ -66,7 +104,7 @@ export function dealVendorsFrom(products) {
     if (!p) return;
     [p, ...(Array.isArray(p.primaryBranches) ? p.primaryBranches : [])].forEach((h) => vendorsOf(h).forEach((v) => dealVendor(v) && want.add(dealVendor(v))));
   });
-  return DEAL_VENDORS.filter((v) => want.has(v));
+  return currentDealVendors().filter((v) => want.has(v));
 }
 
 /* What the Deal's `Vendors` becomes: { value, changed }. The form owns the field; it never blanks it when the order names no vendor. */

@@ -1,4 +1,4 @@
-import { DEAL_VENDORS, dealVendor, vendorsOf, withVendor, dealVendorsFrom, mergeDealVendors, notOnDealList, vendorsText } from "./vendors";
+import { currentDealVendors, setDealVendors, vendorChoicesFrom, DEAL_VENDORS, dealVendor, vendorsOf, withVendor, dealVendorsFrom, mergeDealVendors, notOnDealList, vendorsText } from "./vendors";
 
 test("the Deal list is Books' 38 spellings (docs/47); a name matches in any case", () => {
   expect(DEAL_VENDORS).toHaveLength(38);
@@ -41,4 +41,20 @@ test("Deal Vendors: every Deal choice on the order, in list order; the form owns
   expect(mergeDealVendors(["San Mar", "S&S Activewear", "Banner Buzz"], order).changed).toBe(false);
   expect(mergeDealVendors(["San Mar"], [{ productName: "Stickers", vendorsUsed: "In house" }])).toEqual({ value: ["San Mar"], changed: false });
   expect(mergeDealVendors(null, [])).toEqual({ value: [], changed: false });
+});
+
+test("E-126: the live list from CRM field metadata -- unused (old) spellings and -None- left out; it replaces the built-in list", () => {
+  const resp = { fields: [{ api_name: "Stage" }, { api_name: "Vendors", pick_list_values: [
+    { display_value: "-None-", type: "used" }, { display_value: "San Mar", type: "used" }, { display_value: "S & S", type: "unused" },
+    { display_value: "Brand New Supply", type: "used" },
+  ] }] };
+  expect(vendorChoicesFrom(resp)).toEqual(["San Mar", "Brand New Supply"]);
+  expect(vendorChoicesFrom({ fields: [] })).toEqual([]);
+  expect(currentDealVendors()).toBe(DEAL_VENDORS); // not read yet: the built-in 38
+  setDealVendors(vendorChoicesFrom(resp));
+  expect(currentDealVendors()).toEqual(["San Mar", "Brand New Supply"]);
+  expect(dealVendor("brand new supply")).toBe("Brand New Supply"); // added in Setup -> written to the Deal, no forms push
+  expect(dealVendor("Stahl's")).toBe(""); // gone from Zoho -> not written
+  setDealVendors([]); // an empty answer never wipes the list: back to the built-in one
+  expect(currentDealVendors()).toBe(DEAL_VENDORS);
 });

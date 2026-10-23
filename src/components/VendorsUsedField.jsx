@@ -1,7 +1,7 @@
-import React from "react";
+import React, { useSyncExternalStore } from "react";
 import { Autocomplete, Chip, TextField } from "@mui/material";
 import { Controller, useFormContext, useWatch } from "react-hook-form";
-import { DEAL_VENDORS, notOnDealList, vendorsOf, vendorsText } from "../products/vendors";
+import { currentDealVendors, notOnDealList, onDealVendorsChange, vendorsOf, vendorsText } from "../products/vendors";
 
 /*
  * E-113: "Vendors Used" for one garment type or product (`base` = its path). A pick list of the Deal's vendor choices; a vendor not on the
@@ -15,6 +15,7 @@ export const setVendors = (setValue, base, list) => {
 export default function VendorsUsedField({ base }) {
   const { control, setValue } = useFormContext();
   const list = useWatch({ control, name: `${base}.vendorsList` });
+  const choices = useSyncExternalStore(onDealVendorsChange, currentDealVendors); // E-126: the live Deal list once read
   return (
     <Controller
       control={control}
@@ -28,7 +29,7 @@ export default function VendorsUsedField({ base }) {
             multiple
             freeSolo
             size="small"
-            options={DEAL_VENDORS}
+            options={choices}
             value={value}
             onChange={(_, v) => setVendors(setValue, base, v.map((x) => String(x).trim()).filter(Boolean))}
             renderTags={(vals, getTagProps) => vals.map((opt, i) => <Chip size="small" label={opt} {...getTagProps({ index: i })} key={opt + i} />)}
