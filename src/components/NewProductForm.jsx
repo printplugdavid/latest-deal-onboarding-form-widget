@@ -532,6 +532,20 @@ export default function NewProductForm({ initialStyle = "", garmentKind = "", on
         )}
         sx={{ maxWidth: 420, mb: 1 }}
       />
+      {/* Books docs/25 (10-23 answer): an outsourced item with no maker brand takes the vendor's name (Printograph, Banner Buzz). */}
+      {kind === "outsourced" && !brand && vendorPicked && vendorPicked.name && (
+        <Button
+          size="small"
+          sx={{ mb: 1 }}
+          onClick={() => {
+            const hit = lists.brands.find((b) => b.toLowerCase().replace(/[^a-z0-9]/g, "") === vendorPicked.name.toLowerCase().replace(/[^a-z0-9]/g, ""));
+            if (hit) setBrand(hit);
+            else setAddingBrand({ name: cleanBrand(vendorPicked.name), fromSupplier: true });
+          }}
+        >
+          No maker brand: use the vendor's name ({vendorPicked.name})
+        </Button>
+      )}
       {addingBrand && (
         <AddBrandDialog
           name={addingBrand.name}
