@@ -43,7 +43,12 @@ const yesNo = (control, name, label, options, helper) => (
 );
 
 function LinesTable({ lines, priced }) {
-  if (!lines.length) return <Typography variant="body2">No lines yet.</Typography>;
+  if (!lines.length)
+    return (
+      <Typography variant="body2">
+        No lines yet. Add products at the top of the form (Select Product Types): their garments, sizes and graphics fill this list.
+      </Typography>
+    );
   const cell = { padding: "2px 8px", borderBottom: "1px solid #ddd", verticalAlign: "top", fontSize: "0.85rem" };
   let total = 0;
   return (

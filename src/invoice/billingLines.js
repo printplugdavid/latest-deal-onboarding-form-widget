@@ -86,7 +86,8 @@ export function placementRow(method, graphic, placement, kind) {
   const hoodie = canonicalKind(kind) === "Hoodie / Crew / Zip";
   const hat = ["Hat / Cap", "Beanie"].includes(canonicalKind(kind));
   if (method === "screen") {
-    const colors = Math.max(1, int(graphic && graphic.numberOfColorsUsed));
+    const colors = int(graphic && graphic.numberOfColorsUsed);
+    if (!colors) return { why: "number of colors not entered (it picks the screen print price)" };
     if (colors > 6) return { why: `${colors} colors: Books prices screen print up to 6 colors` };
     return { row: { hoodie, colors }, label: `${hoodie ? "hoodie, " : ""}${plural(colors, "color")}` };
   }
@@ -256,7 +257,12 @@ function decorationLines(products, handList, clientFee) {
       const what = firstLine(b.garmentType) || "garment type";
       const qty = int(b.garmentQuantity) || parseSizeText(b.countColorSize).rows.reduce((n, r) => n + (Number(r.count) || 0), 0);
       const graphics = (b.secondaryBranches || []).filter(Boolean);
-      if (!qty || !graphics.length) return;
+      if (!qty) return;
+      if (!graphics.length) {
+        // Not skipped quietly (Lil Jon test, 10-22): the rep must see that this garment type has no print line.
+        if (method) handList.push({ what: `${METHOD_WORD[method]} on ${what}`, quantity: qty, reason: "no graphic entered, so no print line" });
+        return;
+      }
       if (!method) {
         handList.push({ what: `${str(product.productName)} on ${what}`, quantity: qty, reason: "no Books price grid for this method" });
         return;
@@ -271,6 +277,10 @@ function decorationLines(products, handList, clientFee) {
       let left = lumpedNo ? Math.min(qty, covers.reduce((a, c) => a + c, 0)) : qty;
       decorated[method] = (decorated[method] || 0) + left;
       graphics.forEach((g, i) => {
+        if (!placementsOf(g).length) {
+          handList.push({ what: `${METHOD_WORD[method]} graphic ${i + 1} on ${what}`, quantity: covers[i], reason: "no placements entered, so no print line" });
+          return;
+        }
         placementsOf(g).forEach((p, j) => {
           const firsts = j === 0 ? Math.min(covers[i], left) : 0;
           if (j === 0) left -= firsts;
