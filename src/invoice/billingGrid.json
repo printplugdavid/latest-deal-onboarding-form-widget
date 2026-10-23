@@ -1,5 +1,5 @@
 {
- "_source": "built by tools/invoice/build-grid.py from pull-2026-10-20e.jsonl + added-since-pull.json (Books thread, read-only) -- never hand-edit",
+ "_source": "built by tools/invoice/build-grid.py from pull-2026-10-23a.jsonl + added-since-pull.json (Books thread, read-only) -- never hand-edit",
  "grids": {
   "screen": [
    {
