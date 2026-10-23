@@ -38,6 +38,7 @@ import BillingResult from "./components/BillingResult";
 import { buildBillingLines } from "./invoice/billingLines";
 import { billingOnFor, billingRecord, draftsOn, prepareDraft, sendDraft } from "./invoice/billingDraft";
 import { BillingOn } from "./invoice/billingContext";
+import { screenPrintShortfall } from "./invoice/minimums";
 import { MAX_UPLOAD_BYTES, artKey, collectArtFiles } from "./graphicArt";
 import {
   CUSTOMER_NOTES_QUESTION,
@@ -229,6 +230,12 @@ function App() {
     // E-58: in a split garment type, a graphic unticked for a garment is left out of that garment.
     // Done FIRST, so the count, the saved order, the cards and the note all read the same thing.
     const data = applyGarmentSplits(formData);
+    // E-109 / D-53: screen print has a 12-piece minimum. Refused before anything is written.
+    const shortfall = screenPrintShortfall(data);
+    if (shortfall) {
+      window.alert(shortfall.message);
+      return;
+    }
     // E-42: a garment type that looks like several (styles/colors + graphics) and was not answered
     // "Yes" gets one last question. Cancel returns to the form; OK submits exactly as entered.
     const lumped = lumpedConcerns(data?.products);
