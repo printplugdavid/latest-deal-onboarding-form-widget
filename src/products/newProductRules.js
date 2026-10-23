@@ -239,7 +239,7 @@ export function checkItems(items, { booksBrands = RULES.booksBrands } = {}) {
     if (!RULES.categories.includes(it.category)) p.push("pick a category");
     if (!RULES.units.includes(it.unit)) p.push("pick a unit");
     if (it.itemType !== "sales") {
-      if (!it.vendorId) p.push("no vendor (pick one from Books' list; a new vendor -> David)");
+      if (!it.vendorId) p.push("no vendor (pick one from Books' list, or type a new one and choose Add)");
       if (!(Number(it.cost) > 0)) p.push("cost is $0 or missing (ask before guessing)");
       if (!it.purchaseAccountId) p.push(`no cost account for "${it.category}" yet (Korie)`);
     }
