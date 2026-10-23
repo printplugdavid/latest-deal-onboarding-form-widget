@@ -104,12 +104,21 @@ test("E-127: a new brand -- cleaned, checked, near matches (aliases first) sent 
   expect(nearBrand("Comfort Colors", books)).toBe(""); // really new
 });
 
-test("E-127 (Books 10-23): no dead-end near matches -- short prefixes never match, look-alike but different brands stay apart", () => {
+test("E-127 (Books 10-23): look-alike but different brands stay apart when nothing is close", () => {
   const { nearBrand } = require("./newProductRules");
   const books = ["The North Face", "Port Authority", "Port & Company", "Gildan", "OGIO"];
   expect(nearBrand("The Game", books)).toBe("");
-  expect(nearBrand("Port", books)).toBe(""); // 4 letters: no prefix match
-  expect(nearBrand("Port Auth", books)).toBe("Port Authority"); // 8 letters, a real prefix
-  expect(nearBrand("OGO", books)).toBe(""); // too short for a typo match
+  expect(nearBrand("Port Auth", books)).toBe("Port Authority"); // a real prefix
   expect(nearBrand("Gildian", books)).toBe("Gildan");
+});
+
+test("E-127 (David 10-23): look-alikes offered generously -- short brands count, up to 3, best first", () => {
+  const { nearBrands } = require("./newProductRules");
+  const books = ["OTTO", "OGIO", "YETI", "Port Authority", "Port & Company", "The North Face", "Gildan"];
+  expect(nearBrands("Oto", books)).toEqual(["OTTO"]); // 3 letters, one typo
+  expect(nearBrands("Yeti", books)).toEqual(["YETI"]); // same letters
+  expect(nearBrands("Port", books)).toEqual(["Port & Company", "Port Authority"]); // a 4-letter prefix: both offered
+  expect(nearBrands("OGIA", books)).toEqual(["OGIO"]); // 1 typo on a short name (OTTO is 2 away: not offered)
+  expect(nearBrands("Ab", books)).toEqual([]); // under 3 letters: nothing
+  expect(nearBrands("Northwind Gear", books)).toEqual([]);
 });

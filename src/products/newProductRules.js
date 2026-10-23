@@ -314,19 +314,27 @@ const editDistance = (a, b) => {
   return d[a.length][b.length];
 };
 
-/* The Books brand this name probably is: an alias ("Port & Co" -> "Port & Company"), the same letters, ≤2 typos, or a prefix. "" = none. */
-export function nearBrand(name, brands = RULES.booksBrands) {
+/*
+ * The Books brands this name may be, best first (up to `max`): an alias ("Port & Co" -> "Port & Company"), the same letters, a typo
+ * (1 on names of 3-5 letters, 2 on longer ones: OTTO, YETI and OGIO count), or a prefix of 3+ letters. The rep can always dismiss them
+ * ("Not right" -> David), so look-alikes are offered generously (David 10-23).
+ */
+export function nearBrands(name, brands = RULES.booksBrands, max = 3) {
   const n = bsq(cleanBrand(name));
-  if (!n) return "";
+  if (n.length < 3) return [];
   const alias = Object.keys(RULES.brandAliases).find((k) => bsq(k) === n);
-  if (alias) return RULES.brandAliases[alias];
+  if (alias) return [RULES.brandAliases[alias]];
   const list = brands || [];
   const same = list.find((b) => bsq(b) === n);
-  if (same) return same;
-  const close = list
+  if (same) return [same];
+  const typos = n.length >= 6 ? 2 : 1;
+  return list
     .map((b) => ({ b, k: bsq(b) }))
-    // a prefix only counts when the shorter name has 6+ letters ("Port" or "The" alone never match); typos only on 5+ letters
-    .filter(({ k }) => k && ((Math.min(n.length, k.length) >= 6 && (k.startsWith(n) || n.startsWith(k))) || (n.length >= 5 && editDistance(n, k) <= 2)))
-    .sort((x, y) => editDistance(n, x.k) - editDistance(n, y.k));
-  return close.length ? close[0].b : "";
+    .filter(({ k }) => k && ((Math.min(n.length, k.length) >= 3 && (k.startsWith(n) || n.startsWith(k))) || editDistance(n, k) <= typos))
+    .map((x) => ({ ...x, d: editDistance(n, x.k) }))
+    .sort((x, y) => x.d - y.d || x.b.localeCompare(y.b))
+    .slice(0, max)
+    .map((x) => x.b);
 }
+/* The single best look-alike, or "". */
+export const nearBrand = (name, brands) => nearBrands(name, brands, 1)[0] || "";

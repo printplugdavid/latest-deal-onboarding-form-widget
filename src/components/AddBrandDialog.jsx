@@ -1,6 +1,6 @@
 import React from "react";
 import { Alert, Button, Dialog, DialogActions, DialogContent, DialogTitle, Typography } from "@mui/material";
-import { cleanBrand, nearBrand, newBrandProblem } from "../products/newProductRules";
+import { cleanBrand, nearBrands, newBrandProblem } from "../products/newProductRules";
 
 /*
  * E-127: "Add <brand> as a new brand" -- one confirm. onDone({ name }) to use it as a new Books brand, onDone({ use: existing }) for the
@@ -11,7 +11,8 @@ import { cleanBrand, nearBrand, newBrandProblem } from "../products/newProductRu
 export default function AddBrandDialog({ name, brands, fromSupplier, onDone }) {
   const n = cleanBrand(name);
   const problem = newBrandProblem(n);
-  const near = nearBrand(n, brands);
+  const looks = nearBrands(n, brands); // up to 3 look-alikes, best first
+  const near = looks[0] || "";
   return (
     <Dialog open={!!name} onClose={() => onDone(null)} maxWidth="sm" fullWidth>
       <DialogTitle>Add a new brand</DialogTitle>
@@ -21,21 +22,25 @@ export default function AddBrandDialog({ name, brands, fromSupplier, onDone }) {
           {fromSupplier ? " (the supplier's spelling)" : ""}
         </Typography>
         {near && (
-          <Alert
-            severity="warning"
-            sx={{ mb: 1 }}
-            action={
+          <Alert severity="warning" sx={{ mb: 1 }}>
+            {looks.length === 1 ? (
               <>
-                <Button size="small" onClick={() => onDone({ use: near })}>
-                  Use {near}
-                </Button>
-                <Button size="small" onClick={() => onDone({ notRight: n, near })}>
-                  Not right
-                </Button>
+                Did you mean <b>{near}</b>? Books already has it.
               </>
-            }
-          >
-            Did you mean <b>{near}</b>? Books already has it. If {n} is a different brand, choose Not right: David adds it.
+            ) : (
+              <>Books has brands that look like this one. Did you mean one of them?</>
+            )}
+            <div style={{ marginTop: 6, display: "flex", flexWrap: "wrap", gap: 6 }}>
+              {looks.map((b) => (
+                <Button key={b} size="small" variant="outlined" onClick={() => onDone({ use: b })}>
+                  Use {b}
+                </Button>
+              ))}
+              <Button size="small" onClick={() => onDone({ notRight: n, near })}>
+                Not right: {n} is a different brand
+              </Button>
+            </div>
+            <div style={{ marginTop: 4, fontSize: "0.8rem" }}>Not right sends it to David to add in Books.</div>
           </Alert>
         )}
         {problem ? (
