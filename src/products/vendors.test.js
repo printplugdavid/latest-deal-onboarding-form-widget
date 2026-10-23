@@ -78,3 +78,15 @@ test("vendor codes (docs/25 §2c) are found in any letter case: Books' Printogra
   expect(vendorCodeFor("stahl's")).toBe("STA");
   expect(vendorCodeFor("Acme Supply")).toBe(""); // a new vendor: no code yet
 });
+
+test("E-126: a new vendor's code = first 3 letters (docs/25 §2c); taken by another vendor or another vendor's products, never its own", () => {
+  const { suggestVendorCode, vendorCodeTaken } = require("./newProductRules");
+  expect(suggestVendorCode("Acme Supply")).toBe("ACM");
+  expect(suggestVendorCode("3M Company")).toBe("3MC");
+  expect(suggestVendorCode("Stahl's")).toBe("STA");
+  expect(vendorCodeTaken("STA", "Stahl's Inc", [])).toEqual({ taken: true, why: "STA is already Stahl's's code" });
+  expect(vendorCodeTaken("STA", "Stahl's", []).taken).toBe(false); // its own registry code
+  expect(vendorCodeTaken("BRO", "Brother Supply", [{ sku: "BRO180072", vendor: "San Mar" }])).toMatchObject({ taken: true });
+  expect(vendorCodeTaken("ACM", "Acme Supply", [{ sku: "ACMVB", vendor: "Acme Supply" }]).taken).toBe(false); // its own items
+  expect(vendorCodeTaken("ACM", "Acme Supply", [{ sku: "ACM100", vendor: "" }]).taken).toBe(true); // unknown owner: ask David
+});

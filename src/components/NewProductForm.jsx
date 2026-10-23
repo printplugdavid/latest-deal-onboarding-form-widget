@@ -40,9 +40,11 @@ import {
   toBooksItem,
   unitFor,
   vendorCodeFor,
+  suggestVendorCode,
+  vendorCodeTaken,
 } from "../products/newProductRules";
 import { booksLists, checkInBooks, createInBooks, supplierStyle } from "../products/booksItems";
-import { rememberCreated } from "../products/productSearch";
+import { rememberCreated, searchProducts } from "../products/productSearch";
 
 /*
  * E-85 / E-100: the New Product form. A rep answers plain questions; the SKU, name, category, unit, accounts and price
@@ -66,6 +68,9 @@ export default function NewProductForm({ initialStyle = "", garmentKind = "", on
   const [colorStyle, setColorStyle] = useState("");
   const [vendor, setVendor] = useState(null);
   const [addingVendor, setAddingVendor] = useState(""); // E-126 B
+  // E-126 (David 10-23): an outsourced product's SKU is the supplier's own (pasted) or generated (vendor code + initials).
+  const [pastedSku, setPastedSku] = useState("");
+  const [gen, setGen] = useState(null); // { code, status: checking | ok | approved | taken | rejected, known, why }
   const [brand, setBrand] = useState("");
   const [leadBrand, setLeadBrand] = useState(true);
   const [category, setCategory] = useState(garmentCategoryFor(garmentKind) || "");
@@ -130,11 +135,17 @@ export default function NewProductForm({ initialStyle = "", garmentKind = "", on
 
   const items = useMemo(() => {
     const productWords = words.trim();
+    const pasted = normalizeSku(pastedSku);
+    const useCode = gen && (gen.known || gen.status === "approved") ? gen.code : "";
     const codes =
       kind === "supplier"
         ? skusForBands(style, rows.length)
+        : kind === "outsourced" && pasted
+        ? skusForBands(pasted, rows.length) // the supplier's SKU, bands / tiers + 1, 2, 3 (docs/25 §2a)
+        : kind === "outsourced" && !useCode
+        ? rows.map(() => "")
         : rows.map((_, i) => {
-            const base = initialsSku(kind === "inHouse" ? "PP" : vendorCodeFor(vendorPicked && vendorPicked.name), productWords);
+            const base = initialsSku(kind === "inHouse" ? "PP" : useCode, productWords);
             return i === 0 ? base : `${base}${i}`;
           });
     return rows.map((r, i) => {
@@ -165,12 +176,32 @@ export default function NewProductForm({ initialStyle = "", garmentKind = "", on
         productUrl,
       };
     });
-  }, [kind, style, rows, words, vendorPicked, finalCategory, leadBrand, brand, colorStyle, unit, itemType, account, productUrl]);
+  }, [kind, style, rows, words, vendorPicked, finalCategory, leadBrand, brand, colorStyle, unit, itemType, account, productUrl, pastedSku, gen]);
+
+  // A different vendor or kind: the generated code no longer applies.
+  useEffect(() => setGen(null), [kind, vendorPicked && vendorPicked.name]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function generateSku() {
+    const name = (vendorPicked && vendorPicked.name) || "";
+    const known = vendorCodeFor(name);
+    if (known) return setGen({ code: known, status: "ok", known: true });
+    const code = suggestVendorCode(name);
+    setGen({ code, status: "checking", known: false });
+    const r = await searchProducts(code);
+    const t = r.status === "ok" ? vendorCodeTaken(code, name, r.products) : { taken: true, why: "the existing SKUs could not be checked" };
+    setGen({ code, status: t.taken ? "taken" : "ok", known: false, why: t.why });
+  }
 
   const problems = checkItems(items, { booksBrands: lists.brands });
   const extra = [];
-  if (kind === "outsourced" && vendorPicked && vendorPicked.name && !vendorCodeFor(vendorPicked.name))
-    extra.push(`${vendorPicked.name} has no vendor code yet (docs/25 §2c) -- ask David to pick one`);
+  if (kind === "outsourced" && !normalizeSku(pastedSku) && !(gen && (gen.known || gen.status === "approved")))
+    extra.push(
+      gen && gen.status === "taken"
+        ? `vendor code ${gen.code}: ${gen.why} -- ask David to pick a vendor code`
+        : gen && gen.status === "rejected"
+        ? `vendor code ${gen.code} marked not right -- ask David to pick a vendor code`
+        : "paste the supplier's SKU, or press Generate SKU"
+    );
   if (kind === "supplier" && !style) extra.push("type the supplier's style or item number");
   // David 10-20 (NE205): a flag, never a stop -- often only some colors are discontinued, and if the supplier still sells it we sell it.
   const discontinued = !!(lookup && (lookup.discontinued || /\bdiscontinued\b/i.test(lookup.title || "")));
@@ -201,6 +232,11 @@ export default function NewProductForm({ initialStyle = "", garmentKind = "", on
     return (
       <Box>
         <Typography sx={section}>Step 1 done: added to Books</Typography>
+        {kind === "outsourced" && gen && gen.status === "approved" && made.length > 0 && (
+          <Alert severity="info" sx={{ mb: 1 }}>
+            New vendor code <b>{gen.code}</b> for {vendorPicked && vendorPicked.name}. Tell David, so Books adds it to their vendor-code list.
+          </Alert>
+        )}
         {canOrder && made.length > 0 && (
           <Typography sx={{ fontSize: "0.85rem", mb: 1 }}>
             Step 2 (separate): tick the items this order uses, then add them to the order. Nothing goes on the order until you do.
@@ -468,6 +504,61 @@ export default function NewProductForm({ initialStyle = "", garmentKind = "", on
           <Typography sx={{ fontSize: "0.95rem", fontWeight: "bold" }}>{items[0].name}</Typography>
           {!brand && <Typography sx={{ fontSize: "0.8rem", color: "#9a2c00" }}>Pick the brand: the name must start with it.</Typography>}
         </Box>
+      )}
+
+      {/* E-126 (David 10-23): the supplier's own SKU pasted as is (cleaned to Books' rule), or Generate SKU = vendor code + initials. */}
+      {kind === "outsourced" && (
+        <>
+          <Typography sx={section}>SKU</Typography>
+          <TextField
+            size="small"
+            label="Supplier's SKU (paste it, if the supplier has one)"
+            value={pastedSku}
+            onChange={(e) => setPastedSku(e.target.value)}
+            helperText={
+              pastedSku.trim() && normalizeSku(pastedSku) !== pastedSku.trim()
+                ? `Saved as ${normalizeSku(pastedSku)} (Books SKUs are upper case, no spaces or dashes)`
+                : "Copied exactly from the supplier. Sizes / tiers after the first get 1, 2, 3."
+            }
+            sx={{ maxWidth: 420, mb: 1, display: "flex" }}
+          />
+          {!normalizeSku(pastedSku) && (
+            <Box sx={{ mb: 2 }}>
+              <Button
+                variant="outlined"
+                size="small"
+                onClick={generateSku}
+                disabled={!(vendorPicked && vendorPicked.name) || !words.trim() || (gen && gen.status === "checking")}
+              >
+                {gen && gen.status === "checking" ? <CircularProgress size={16} /> : "Generate SKU"}
+              </Button>
+              {gen && gen.status === "ok" && !gen.known && (
+                <Alert
+                  severity="info"
+                  sx={{ mt: 1 }}
+                  action={
+                    <>
+                      <Button size="small" onClick={() => setGen({ ...gen, status: "approved" })}>
+                        OK
+                      </Button>
+                      <Button size="small" onClick={() => setGen({ ...gen, status: "rejected" })}>
+                        Not right
+                      </Button>
+                    </>
+                  }
+                >
+                  New vendor code <b>{gen.code}</b>: the first 3 letters of {vendorPicked && vendorPicked.name} (Books' rule). The SKU will be{" "}
+                  <b>{initialsSku(gen.code, words)}</b>.
+                </Alert>
+              )}
+              {gen && (gen.known || gen.status === "approved") && (
+                <Typography variant="body2" sx={{ mt: 1 }}>
+                  SKU from vendor code {gen.code} + the product's initials: <b>{(items[0] && items[0].sku) || initialsSku(gen.code, words)}</b>
+                </Typography>
+              )}
+            </Box>
+          )}
+        </>
       )}
 
       <Typography sx={section}>4. Category and unit</Typography>
