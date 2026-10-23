@@ -5,7 +5,6 @@ import {
   Checkbox,
   FormControlLabel,
   FormGroup,
-  MenuItem,
   TextField,
   Typography,
 } from "@mui/material";
@@ -26,7 +25,7 @@ import { GARMENT_KINDS, canonicalKind } from "../placements";
 import { StrictEntry } from "./strictEntry";
 import ProductSkuField from "./ProductSkuField";
 import GarmentProductPick from "./GarmentProductPick";
-import { CLIENT_OWNED, isClientOwnedGarment, isClientOwnedSku, upchargeLabel } from "../products/clientOwned";
+import { CLIENT_OWNED, isClientOwnedGarment, isClientOwnedSku } from "../products/clientOwned";
 
 const GarmentPrimaryBranchForm = ({
   index,
@@ -36,7 +35,6 @@ const GarmentPrimaryBranchForm = ({
   split,
   onSplit,
   onUndoSplit,
-  askUpchargeHere = true, // E-101: the onboarding form asks once per product (GarmentForm); the Amendment Form asks here
 }) => {
   const { control, getValues, setValue } = useFormContext();
   const strict = useContext(StrictEntry); // E-74: the onboarding form requires the Garment kind
@@ -318,35 +316,6 @@ const GarmentPrimaryBranchForm = ({
           allowClientOwned
         />
       ))}
-
-      {/* E-101 / D-49: the Amendment Form has no product section, so a client-provided garment's upcharge is asked here. */}
-      {askUpchargeHere && isClientOwnedGarment({ garmentSkus: garmentSkuValues }) && (
-        <Controller
-          control={control}
-          name={`products.${index}.primaryBranches.${branchIndex}.clientOwnedUpcharge`}
-          defaultValue=""
-          rules={{ validate: (v) => !strict || !!v || "Say whether the upcharge was added" }}
-          render={({ field, fieldState }) => (
-            <TextField
-              select
-              size="small"
-              fullWidth
-              label={upchargeLabel() + (strict ? " *" : "")}
-              {...field}
-              onChange={(e) => {
-                field.onChange(e.target.value);
-                setValue(`products.${index}.primaryBranches.${branchIndex}.clientOwnedUpchargePercent`, CLIENT_OWNED.upchargePercent);
-              }}
-              error={!!fieldState.error}
-              helperText={fieldState.error ? fieldState.error.message : "No = waived for this order"}
-              sx={{ mb: "1rem", mt: "5px" }}
-            >
-              <MenuItem value="Yes">Yes</MenuItem>
-              <MenuItem value="No">No (waived)</MenuItem>
-            </TextField>
-          )}
-        />
-      )}
 
       <Typography
         variant="p"

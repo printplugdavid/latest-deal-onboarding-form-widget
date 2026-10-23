@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { Alert, Autocomplete, Box, Button, TextField, Typography } from "@mui/material";
 import { Controller, useFieldArray, useFormContext, useWatch } from "react-hook-form";
 import { applyGarmentSplits } from "../garmentSplit";
-import { buildBillingLines, itemName, snapshotRate } from "../invoice/billingLines";
+import { buildBillingLines, itemName, printLabel, snapshotRate } from "../invoice/billingLines";
 import { prepareDraft, sendDraft, draftsOn } from "../invoice/billingDraft";
 import { OTHER_CHARGES, chargeLabel, suggestCharges } from "../invoice/otherCharges";
 import { screenPrintShortfall } from "../invoice/minimums";
@@ -257,6 +257,11 @@ export default function BillingSection({ dealId, submittedBy }) {
             </Typography>
           )}
           <HandList items={check && check.prepared ? check.prepared.handList : built.handList} />
+          {built.prints && built.prints.length > 0 && (
+            <Typography variant="body2" sx={{ mt: 1 }}>
+              Pieces per print (each print is priced by the garments that get it): {built.prints.map(printLabel).join(" · ")}
+            </Typography>
+          )}
         </>
       ) : null}
       <Box sx={{ mt: 1, display: "flex", gap: 1, alignItems: "center" }}>

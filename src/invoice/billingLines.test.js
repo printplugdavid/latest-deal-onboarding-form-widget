@@ -65,7 +65,62 @@ test("Treasure Valley Granite rebuilds as invoiced: garment bands, PPSPH14 x48 l
   expect(b.lines[0].description).toBe("Black\n\n6 Medium\n6 Large\n10 Extra Large");
   expect(b.lines[5].description).toBe("48 Left Chest Placements");
   expect(b.lines[6].description).toBe("48 Full Back Placements");
-  expect(b.tiers).toEqual({ screen: 48 });
+  // E-123: three garment types, one blank graphic each, same placement + colors = one print on 48 (tees and hoodies would count together too)
+  expect(b.prints).toEqual([{ method: "screen", location: "Left Chest", design: "", pieces: 48 }]);
+});
+
+test("E-123: the tier counts the pieces that get the SAME print; different descriptions = different prints", () => {
+  const tv = (...words) => {
+    const o = treasureValley();
+    o.products[0].primaryBranches.forEach((b, i) => (b.secondaryBranches[0].graphicDescription = words[i]));
+    return buildBillingLines(o).lines.filter((l) => l.group === "decoration").map((l) => [l.sku, l.quantity]);
+  };
+  // the same logo typed three ways (case / punctuation ignored): still one print on 48
+  expect(tv("TVG logo", "tvg  Logo.", "TVG LOGO")).toEqual([["PPSPH14", 48]]);
+  // three different designs: 32 (25-49), 15 (12-24) and 1 (Under 12), each from its own count
+  expect(tv("Granite logo", "Crew name", "Stone mark")).toEqual([["PPSPH7", 32], ["PPSPH2", 15], ["PPSPH33", 1]]);
+  expect([gridSku("screen", { hoodie: true, colors: 2 }, 32), gridSku("screen", { hoodie: true, colors: 2 }, 15), gridSku("screen", { hoodie: true, colors: 2 }, 1)]).toEqual(["PPSPH7", "PPSPH2", "PPSPH33"]);
+  // the same art file attached to two garment types is the same design, whatever the description says
+  const o = treasureValley();
+  const art = [{ name: "logo.png", size: 10, key: "logo.png|10|1" }];
+  o.products[0].primaryBranches.forEach((b, i) => Object.assign(b.secondaryBranches[0], { graphicDescription: ["a", "b", "c"][i], artFiles: art }));
+  expect(buildBillingLines(o).lines.filter((l) => l.group === "decoration").map((l) => [l.sku, l.quantity])).toEqual([["PPSPH14", 48]]);
+});
+
+test("INV-004568 (Boise State Panhellenic, 10-23): each print on 8 -> both Under 12; client-owned -> PPFEE8 always", () => {
+  const client = [{ sku: "PPCO", productSource: "clientOwned" }];
+  const b = buildBillingLines(
+    order([
+      garment("Embroidery", [
+        branch({
+          garmentType: "Crewnecks (client's)",
+          garmentKind: "Hoodie / Crew / Zip",
+          garmentQuantity: "8",
+          garmentSkus: client,
+          countColorSize: "Grey\n8- L",
+          secondaryBranches: [{ graphicDescription: "Greek letters", numberOfPlacements: "2", tartiaryBranches: [place("Full Front", { placementSize: "Large" }), place("Lower Back", { placementSize: "Small" })] }],
+        }),
+        branch({
+          garmentType: "Sweatpants (client's)",
+          garmentKind: "Pants / Shorts",
+          garmentQuantity: "8",
+          garmentSkus: client,
+          countColorSize: "Grey\n8- L",
+          secondaryBranches: [{ graphicDescription: "Chapter name", numberOfPlacements: "2", tartiaryBranches: [place("Left Leg", { placementSize: "Small" }), place("Right Leg", { placementSize: "Small" })] }],
+        }),
+      ]),
+    ])
+  );
+  const deco = b.lines.filter((l) => l.group !== "garment").map((l) => [l.sku, l.quantity]);
+  expect(deco).toEqual([
+    [gridSku("embroidery", { band: "large" }, 8), 8],
+    ["PPEMB21", 16],
+    ["PPEMB1", 8], // Books: "the leg should be PPEMB1 $22"
+  ]);
+  expect(gridSku("embroidery", { band: "large" }, 8)).not.toBe(gridSku("embroidery", { band: "large" }, 16));
+  expect(b.prints.map((p) => p.pieces)).toEqual([8, 8]);
+  expect(b.clientFee.map((c) => [c.sku === "PPEMB21" ? "extra" : "first", c.quantity, c.percent])).toEqual([["first", 8, 10], ["extra", 8, 10], ["extra", 8, 10], ["first", 8, 10]]);
+  expect(b.clientGarments).toBe("Client-provided garments: 8 Crewnecks (client's); 8 Sweatpants (client's)");
 });
 
 test("LB Foster: 300 tees, 5 colors, two placements -> PPSP29 + PPSP37", () => {
@@ -116,18 +171,18 @@ test("American Muffler: client garments get no garment line; PPFEE8 = 10% of the
   expect(fee.description).toBe("Client-provided garments: 4 Grey Quarter Zips (client's)");
 });
 
-test("the onboarding form keeps the upcharge answer on the product (docs/06 E-101): read from there", () => {
+test("E-122: PPFEE8 is always added for client garments -- no answer needed, and an older saved No no longer waives it", () => {
   const o = americanMuffler();
   const b0 = o.products[0].primaryBranches[0];
   delete b0.clientOwnedUpcharge;
   delete b0.clientOwnedUpchargePercent;
-  o.products[0].clientOwnedUpcharge = "Yes";
-  o.products[0].clientOwnedUpchargePercent = 10;
+  const fee = [{ sku: "PPEMB1", quantity: 4, percent: 10 }, { sku: "PPEMB21", quantity: 4, percent: 10 }];
   const b = buildBillingLines(o);
-  expect(b.clientFee).toEqual([{ sku: "PPEMB1", quantity: 4, percent: 10 }, { sku: "PPEMB21", quantity: 4, percent: 10 }]);
+  expect(b.clientFee).toEqual(fee);
   expect(b.clientGarments).toBe("Client-provided garments: 4 Grey Quarter Zips (client's)");
   o.products[0].clientOwnedUpcharge = "No";
-  expect(buildBillingLines(o).clientFee).toEqual([]);
+  expect(buildBillingLines(o).clientFee).toEqual(fee);
+  expect(buildBillingLines(americanMuffler("No")).clientFee).toEqual(fee);
 });
 
 test("PPFEE8 description (Deluge pilot test B): never '0'; the count from the sizes, the garment type when given", () => {
@@ -141,13 +196,14 @@ test("PPFEE8 description (Deluge pilot test B): never '0'; the count from the si
   expect(text(client("Nike Hoodies", "2", ""), client("", "", "Grey\n3- M"))).toBe("Client-provided garments: 2 Nike Hoodies; 3 client-provided garments");
 });
 
-test("client garments with the upcharge answered No: no PPFEE8 line", () => {
+test("E-122: an older 'No' answer still gets the PPFEE8 line", () => {
   const b = buildBillingLines(americanMuffler("No"));
-  expect(b.clientFee).toEqual([]);
-  expect(priceLines(b, { PPEMB1: { item_id: "1", rate: 22 }, PPEMB21: { item_id: "2", rate: 7 } }).lines.map((l) => l.sku)).toEqual(["PPEMB1", "PPEMB21"]);
+  const p = priceLines(b, { PPEMB1: { item_id: "1", rate: 22 }, PPEMB21: { item_id: "2", rate: 7 }, PPFEE8: { item_id: "8", rate: 100 } });
+  expect(p.lines.map((l) => l.sku)).toEqual(["PPEMB1", "PPEMB21", "PPFEE8"]);
+  expect(p.clientFeeAmount).toBe(11.6);
 });
 
-test("Columbia: beanies (always Small) + 2 hoodies count as ONE embroidery tier of 19; DTF 10\"+ at 23", () => {
+test("Columbia (E-123): beanie fronts and hoodie chests are different prints -- beanies 12-24, the 2 hoodies Under 12; DTF 10\"+ at 23", () => {
   const b = buildBillingLines(
     order([
       garment("Embroidery", [
@@ -182,13 +238,14 @@ test("Columbia: beanies (always Small) + 2 hoodies count as ONE embroidery tier 
     ])
   );
   expect(b.lines.filter((l) => l.group === "decoration").map((l) => [l.sku, l.quantity, l.description.split("\n").slice(0, 2)])).toEqual([
-    ["PPEMB5", 19, ["17 Front Placements", "2 Right Chest Placements"]],
+    ["PPEMB5", 17, ["17 Front Placements", "Stitch count estimated from the placement size - the digitizer confirms it"]],
+    ["PPEMB1", 2, ["2 Right Chest Placements", "Stitch count estimated from the placement size - the digitizer confirms it"]],
     ["PPDTF12", 23, ["23 Full Back Placements"]],
   ]);
   expect(b.lines.filter((l) => l.group === "garment").map((l) => l.sku)).toEqual(["CP90", "PC78H"]);
-  expect(b.clientFee).toEqual([{ sku: "PPEMB5", quantity: 2, percent: 10 }]);
-  const p = priceLines(b, { CP90: { item_id: "a", rate: 2 }, PC78H: { item_id: "b", rate: 10 }, PPEMB5: { item_id: "c", rate: 13 }, PPDTF12: { item_id: "d", rate: 18 }, PPFEE8: { item_id: "e", rate: 100 } });
-  expect(p.lines.find((l) => l.sku === "PPFEE8").rate).toBe(2.6); // Books docs/36: "Columbia ≈ $2.60"
+  expect(b.clientFee).toEqual([{ sku: "PPEMB1", quantity: 2, percent: 10 }]);
+  const p = priceLines(b, { CP90: { item_id: "a", rate: 2 }, PC78H: { item_id: "b", rate: 10 }, PPEMB5: { item_id: "c", rate: 13 }, PPEMB1: { item_id: "f", rate: 22 }, PPDTF12: { item_id: "d", rate: 18 }, PPFEE8: { item_id: "e", rate: 100 } });
+  expect(p.lines.find((l) => l.sku === "PPFEE8").rate).toBe(4.4); // 10% of 2 x $22 (was $2.60 at the whole-order tier, Books docs/36)
 });
 
 test("Maria Rojas: one gang sheet 12 x 36 inches = 3 square feet of PPDTFGS", () => {
@@ -245,7 +302,7 @@ test("what the form cannot price goes to the hand list, never guessed", () => {
     ])
   );
   expect(b.lines.map((l) => [l.sku, l.quantity])).toEqual([["PC78H", 6], ["PPSPH32", 8]]);
-  expect(b.warnings).toEqual([expect.stringMatching(/^Below the 12-piece screen print minimum: this order has 8 garments/)]);
+  expect(b.warnings).toEqual([expect.stringMatching(/^Below the 12-piece screen print minimum: the Left Chest print is on 8 garments\. Each print is priced/)]);
 });
 
 test("Lil Jon test (10-22): a blank graphic, no graphic, or no colors is listed for the rep, never skipped or guessed", () => {
@@ -286,8 +343,8 @@ test("a graphic not on every garment (not split) covers only its garments; the r
     ])
   );
   expect(b.lines.filter((l) => l.group !== "garment").map((l) => [l.sku, l.quantity])).toEqual([
-    ["PPDTF2", 12], // under 5", tier 12-24 (20 decorated)
-    ["PPDTF12", 8], // 10"+
+    ["PPDTF2", 12], // under 5", 12 pieces get it: 12-24
+    ["PPDTF11", 8], // 10"+, 8 pieces get it: Under 12 (E-123; was 12-24 from all 20)
     ["PPDTF16", 8], // the back of those 8
   ]);
 });
