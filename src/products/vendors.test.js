@@ -70,3 +70,11 @@ test("E-126 B: new vendor name rules (Deluge) and the near-match warning", () =>
   expect(nearVendor("Acme Supply")).toBe("");
   expect(nearVendor("Acme", ["Acme Supply Co"])).toBe("Acme Supply Co"); // a list of Books vendors in the New Product form
 });
+
+test("vendor codes (docs/25 §2c) are found in any letter case: Books' Printograph rename (step 073) keeps PRI", () => {
+  const { vendorCodeFor } = require("./newProductRules");
+  expect(vendorCodeFor("Printograph")).toBe("PRI");
+  expect(vendorCodeFor("PRINTOGRAPH")).toBe("PRI");
+  expect(vendorCodeFor("stahl's")).toBe("STA");
+  expect(vendorCodeFor("Acme Supply")).toBe(""); // a new vendor: no code yet
+});
