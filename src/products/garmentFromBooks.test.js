@@ -32,7 +32,7 @@ test("what the garment type gets", () => {
   expect(f.garmentType).toBe("Port & Company - Core Cotton Tee (PC54)");
   expect(f.garmentKind).toBe("Tee / Long Sleeve / Tank / Button-up");
   expect(f.garmentSkus.map((r) => r.sku)).toEqual(["PC54", "PC541", "PC542"]);
-  expect(f.garmentSkus[0]).toEqual({ sku: "PC54", productId: "1", productName: "Port & Company - Core Cotton Tee - S-XL", productSource: "books" });
+  expect(f.garmentSkus[0]).toEqual({ sku: "PC54", productId: "1", productName: "Port & Company - Core Cotton Tee - S-XL", productSource: "books", vendor: "" }); // E-113: the row keeps its vendor
 });
 
 test("garment kind from the Books category, and from the name where the category does not say", () => {
