@@ -58,3 +58,15 @@ test("E-126: the live list from CRM field metadata -- unused (old) spellings and
   setDealVendors([]); // an empty answer never wipes the list: back to the built-in one
   expect(currentDealVendors()).toBe(DEAL_VENDORS);
 });
+
+test("E-126 B: new vendor name rules (Deluge) and the near-match warning", () => {
+  const { newVendorProblem, nearVendor } = require("./vendors");
+  expect(newVendorProblem("A")).toMatch(/2 to 100/);
+  expect(newVendorProblem("Acme, Inc")).toMatch(/comma/);
+  expect(newVendorProblem("Acme Supply")).toBe("");
+  expect(nearVendor("Sanmar")).toBe("San Mar"); // same letters
+  expect(nearVendor("Stahls Inc")).toBe("Stahl's"); // starts with an existing name
+  expect(nearVendor("Pacfic Headwear")).toBe("Pacific Headwear"); // one typo
+  expect(nearVendor("Acme Supply")).toBe("");
+  expect(nearVendor("Acme", ["Acme Supply Co"])).toBe("Acme Supply Co"); // a list of Books vendors in the New Product form
+});

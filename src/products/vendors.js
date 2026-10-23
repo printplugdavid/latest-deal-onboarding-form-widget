@@ -115,3 +115,43 @@ export function mergeDealVendors(current, products) {
   const same = want.length === now.length && want.every((v) => now.includes(v));
   return { value: want, changed: !same };
 }
+
+/* ---------- E-126 B: adding a new vendor from a form (Deluge WIDGET_Add_Vendor) ---------- */
+
+/* Deluge's name rules (their README): 2-100 characters, no comma or semicolon. "" when fine. */
+export function newVendorProblem(name) {
+  const n = String(name || "").trim();
+  if (n.length < 2 || n.length > 100) return "A vendor name is 2 to 100 characters.";
+  if (/[,;]/.test(n)) return "A vendor name cannot have a comma or a semicolon.";
+  return "";
+}
+
+const distance = (a, b) => {
+  const d = Array.from({ length: a.length + 1 }, (_, i) => [i, ...Array(b.length).fill(0)]);
+  for (let j = 1; j <= b.length; j++) d[0][j] = j;
+  for (let i = 1; i <= a.length; i++)
+    for (let j = 1; j <= b.length; j++) d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+  return d[a.length][b.length];
+};
+
+/*
+ * An existing vendor this name is probably meant to be ("did you mean San Mar?"), or "": the same letters, two typos or fewer, or one
+ * name starting with the other (both at least 4 letters).
+ */
+export function nearVendor(name, list = currentDealVendors()) {
+  const n = norm(name);
+  if (!n) return "";
+  const exact = (list || []).find((v) => norm(v) === n);
+  if (exact) return exact;
+  const close = (list || [])
+    .map((v) => ({ v, k: norm(v) }))
+    .filter(({ k }) => k && ((n.length >= 4 && k.length >= 4 && (k.startsWith(n) || n.startsWith(k))) || distance(n, k) <= 2))
+    .sort((a, b) => distance(n, a.k) - distance(n, b.k));
+  return close.length ? close[0].v : "";
+}
+
+/* Put a vendor the function just added on the live list, so it is offered and written at once. */
+export function rememberNewVendor(name) {
+  const n = String(name || "").trim();
+  if (n && !currentDealVendors().some((v) => norm(v) === norm(n))) setDealVendors([...currentDealVendors(), n]);
+}

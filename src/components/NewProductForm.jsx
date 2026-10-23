@@ -16,7 +16,9 @@ import {
   TableRow,
   TextField,
   Typography,
+  createFilterOptions,
 } from "@mui/material";
+import AddVendorDialog from "./AddVendorDialog";
 import React, { useEffect, useMemo, useState } from "react";
 import {
   PRODUCT_KINDS,
@@ -51,6 +53,9 @@ import { rememberCreated } from "../products/productSearch";
 const money = (n) => (Number.isFinite(Number(n)) && Number(n) > 0 ? Number(n).toFixed(2) : "");
 const section = { fontSize: "0.85rem", fontWeight: "bold", mt: 3, mb: 1, display: "block" };
 
+// E-126 B: the vendor list filters by name (its options are { id, name }).
+const vendorFilter = createFilterOptions({ stringify: (v) => (v && v.name) || "" });
+
 export default function NewProductForm({ initialStyle = "", garmentKind = "", onCreated, onCancel, submittedBy = "", orderTargets, onAddToOrder }) {
   const [kind, setKind] = useState("supplier");
   const [supplier, setSupplier] = useState("sanmar");
@@ -60,6 +65,7 @@ export default function NewProductForm({ initialStyle = "", garmentKind = "", on
   const [words, setWords] = useState("");
   const [colorStyle, setColorStyle] = useState("");
   const [vendor, setVendor] = useState(null);
+  const [addingVendor, setAddingVendor] = useState(""); // E-126 B
   const [brand, setBrand] = useState("");
   const [leadBrand, setLeadBrand] = useState(true);
   const [category, setCategory] = useState(garmentCategoryFor(garmentKind) || "");
@@ -381,15 +387,41 @@ export default function NewProductForm({ initialStyle = "", garmentKind = "", on
           {kind === "inHouse" ? (
             <Typography sx={{ fontSize: "0.9rem" }}>The Print Plug (in-house)</Typography>
           ) : (
-            <Autocomplete
-              options={lists.vendors}
-              getOptionLabel={(v) => v.name}
-              value={vendor}
-              onChange={(_, v) => setVendor(v)}
-              isOptionEqualToValue={(a, b) => a.id === b.id}
-              renderInput={(p) => <TextField {...p} size="small" label="Vendor (from Books)" helperText="A vendor that is not on the list: ask David" />}
-              sx={{ maxWidth: 420, mb: 2 }}
-            />
+            <>
+              <Autocomplete
+                options={lists.vendors}
+                getOptionLabel={(v) => (v && v.add ? `Add "${v.add}" as a new vendor` : (v && v.name) || "")}
+                value={vendor}
+                filterOptions={(opts, params) => {
+                  const shown = vendorFilter(opts, params);
+                  const typed = String(params.inputValue || "").trim();
+                  // E-126 B: a vendor Books does not have yet can be added from here (Books + the Deal vendor list)
+                  if (typed && !opts.some((o) => o.name.trim().toLowerCase() === typed.toLowerCase())) shown.push({ id: "", add: typed });
+                  return shown;
+                }}
+                onChange={(_, v) => (v && v.add ? setAddingVendor(v.add) : setVendor(v))}
+                isOptionEqualToValue={(a, b) => a.id === b.id && a.name === b.name}
+                renderInput={(p) => (
+                  <TextField {...p} size="small" label="Vendor (from Books)" helperText="A vendor that is not on the list: type its name and choose Add" />
+                )}
+                sx={{ maxWidth: 420, mb: 2 }}
+              />
+              {addingVendor && (
+                <AddVendorDialog
+                  name={addingVendor}
+                  known={lists.vendors.map((v) => v.name)}
+                  onDone={(a) => {
+                    setAddingVendor("");
+                    if (!a) return;
+                    const name = a.use || a.name;
+                    const hit = lists.vendors.find((v) => v.name.trim().toLowerCase() === name.trim().toLowerCase());
+                    const picked = hit || { id: a.vendorId, name };
+                    if (!hit) setLists((l) => ({ ...l, vendors: [...l.vendors, picked].sort((x, y) => x.name.localeCompare(y.name)) }));
+                    setVendor(picked);
+                  }}
+                />
+              )}
+            </>
           )}
           <TextField
             size="small"
