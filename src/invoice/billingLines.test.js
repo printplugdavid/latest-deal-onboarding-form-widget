@@ -202,7 +202,7 @@ test("the grids: DTG 1-5 / 6-10 / 11+, HTV plain vs full, hoodie grid has no row
   expect(gridSku("dtg", { size: "under5" }, 12)).toBe("PPDTG21");
   expect(gridSku("htv", { full: true, size: "5to10" }, 30)).toBe("PPHTV18");
   expect(gridSku("htv", { full: false, size: "5to10" }, 30)).toBe("PPHTV9");
-  expect(gridSku("screen", { hoodie: true, colors: 1 }, 8)).toBe("");
+  expect(gridSku("screen", { hoodie: true, colors: 1 }, 8)).toBe("PPSPH32"); // Books step 067 (10-23): hoodie Under 12 = tee + $5
   expect(gridSku("screen", { hoodie: false, colors: 1 }, 8)).toBe("PPSP2");
   expect(gridSku("embroidery", { band: "large" }, 100)).toBe("PPEMB19");
 });
@@ -242,10 +242,10 @@ test("what the form cannot price goes to the hand list, never guessed", () => {
       '16" wide: Books prices HTV up to 15"',
       "no Books price grid for this method",
       "several SKUs: the form does not say how many of each",
-      "Books has no price for 8 pieces on hoodies (the hoodie grid starts at 12)",
     ])
   );
-  expect(b.lines.map((l) => [l.sku, l.quantity])).toEqual([["PC78H", 6]]);
+  expect(b.lines.map((l) => [l.sku, l.quantity])).toEqual([["PC78H", 6], ["PPSPH32", 8]]);
+  expect(b.warnings).toEqual([expect.stringMatching(/^Below the 12-piece screen print minimum: this order has 8 garments/)]);
 });
 
 test("Lil Jon test (10-22): a blank graphic, no graphic, or no colors is listed for the rep, never skipped or guessed", () => {

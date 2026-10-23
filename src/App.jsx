@@ -230,12 +230,9 @@ function App() {
     // E-58: in a split garment type, a graphic unticked for a garment is left out of that garment.
     // Done FIRST, so the count, the saved order, the cards and the note all read the same thing.
     const data = applyGarmentSplits(formData);
-    // E-109 / D-53: screen print has a 12-piece minimum. Refused before anything is written.
+    // E-109 / D-53 (revised 10-23): under the 12-piece screen print minimum is a rare exception -- the rep confirms it, never blocked.
     const shortfall = screenPrintShortfall(data);
-    if (shortfall) {
-      window.alert(shortfall.message);
-      return;
-    }
+    if (shortfall && !window.confirm(shortfall.message + "\n\nOK = submit anyway (an exception).   Cancel = go back.")) return;
     // E-42: a garment type that looks like several (styles/colors + graphics) and was not answered
     // "Yes" gets one last question. Cancel returns to the form; OK submits exactly as entered.
     const lumped = lumpedConcerns(data?.products);

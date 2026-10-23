@@ -34,6 +34,13 @@ export default function BillingResult({ state, onClose }) {
       ) : (
         <Alert severity={a.result === "exists" ? "info" : "warning"}>{a.message || "No draft was made."}</Alert>
       )}
+      {prepared && (prepared.warnings || []).length > 0 && (
+        <Alert severity="warning" sx={{ mt: 1 }}>
+          {prepared.warnings.map((w, i) => (
+            <div key={i}>{w}</div>
+          ))}
+        </Alert>
+      )}
       {(a.not_added || []).length > 0 && (
         <Alert severity="warning" sx={{ mt: 1 }}>
           Books left these off the draft; please add them by hand:
