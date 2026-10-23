@@ -17,6 +17,7 @@ import ColorsUsedField from "./ColorsUsedField";
 import GraphicArt from "./GraphicArt";
 import ProductSkuRows from "./ProductSkuRows";
 import FontsField from "./FontsField";
+import VendorsUsedField from "./VendorsUsedField";
 
 const NonGarmentForm = ({ index }) => {
   const { control } = useFormContext();
@@ -309,22 +310,8 @@ const NonGarmentForm = ({ index }) => {
         />
       </Box>
 
-      <Controller
-        control={control}
-        name={`products.${index}.vendorsUsed`}
-        defaultValue=""
-        render={({ field }) => (
-          <TextField
-            id="vendorsUsed"
-            variant="outlined"
-            size="small"
-            fullWidth
-            label="Vendors Used"
-            {...field}
-            sx={{ mb: "1rem", mt: "5px" }}
-          />
-        )}
-      />
+      {/* E-113: a pick list of the Deal's vendors, filled from the product picked. */}
+      <VendorsUsedField base={`products.${index}`} />
 
       {/* E-100: which Books product(s) this line is, picked or added through the New Product form. */}
       <ProductSkuRows basePath={`products.${index}.productSkus`} />

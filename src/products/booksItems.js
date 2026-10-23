@@ -121,6 +121,7 @@ const item = (r) => ({
   name: str(r && r.name),
   rate: Number(r && r.rate),
   brand: str(r && r.brand),
+  vendor: str(r && r.vendor_name), // E-113: Deluge 10-23 (= the Deal choice, Books docs/47)
   unit: str(r && r.unit),
   category: str(r && r.category),
 });

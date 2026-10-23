@@ -32,7 +32,7 @@ test("what the garment type gets", () => {
   expect(f.garmentType).toBe("Port & Company - Core Cotton Tee (PC54)");
   expect(f.garmentKind).toBe("Tee / Long Sleeve / Tank / Button-up");
   expect(f.garmentSkus.map((r) => r.sku)).toEqual(["PC54", "PC541", "PC542"]);
-  expect(f.garmentSkus[0]).toEqual({ sku: "PC54", productId: "1", productName: "Port & Company - Core Cotton Tee - S-XL", productSource: "books" });
+  expect(f.garmentSkus[0]).toEqual({ sku: "PC54", productId: "1", productName: "Port & Company - Core Cotton Tee - S-XL", productSource: "books", vendor: "" }); // E-113: the row keeps its vendor
 });
 
 test("garment kind from the Books category, and from the name where the category does not say", () => {
@@ -102,8 +102,9 @@ describe("E-106: Books lookup by exact SKU (search action since 10-22; check tex
     delete window.ZOHO;
   });
   test("search answers the item with its id and rate; codes Books lacks are simply absent", async () => {
-    const calls = zoho((action) => (action === "search" ? { status: "ok", partial: false, results: [ST] } : { status: "error" }));
-    expect(await findSkusInBooks(["st290", "ST2904"])).toEqual([{ ...ST, active: true }]);
+    // E-113 (Deluge 10-23): each result carries the Books vendor -> `vendor`
+    const calls = zoho((action) => (action === "search" ? { status: "ok", partial: false, results: [{ ...ST, vendor_name: "San Mar" }] } : { status: "error" }));
+    expect(await findSkusInBooks(["st290", "ST2904"])).toEqual([{ ...ST, vendor: "San Mar", active: true }]);
     expect(calls).toEqual([{ name: "widget_books_items", action: "search", payload: { skus: ["ST290", "ST2904"] } }]);
   });
   test("search not answering: the check action's 'SKU already used by' text, word for word", async () => {

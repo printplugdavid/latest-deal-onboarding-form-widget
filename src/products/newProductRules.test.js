@@ -195,11 +195,12 @@ describe("product search and function answers", () => {
     expect(rankProducts(list, "pc54").map((p) => p.sku)).toEqual(["PC54", "PC541", "BC1"]);
   });
   test("a CRM product record", () => {
-    expect(toProduct({ id: "9", Product_Code: "PC54 ", Product_Name: "Port & Company - Core Cotton Tee - S-XL", Brand: "Port & Company", Item_Category: "Garment - Tops", Product_Active: true })).toEqual({
+    expect(toProduct({ id: "9", Product_Code: "PC54 ", Product_Name: "Port & Company - Core Cotton Tee - S-XL", Brand: "Port & Company", Vendor_Name: { name: "San Mar", id: "1" }, Item_Category: "Garment - Tops", Product_Active: true })).toEqual({
       id: "9",
       sku: "PC54",
       name: "Port & Company - Core Cotton Tee - S-XL",
       brand: "Port & Company",
+      vendor: "San Mar", // E-113: CRM Product Vendor (Books step 072)
       category: "Garment - Tops",
       active: true,
     });

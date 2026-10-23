@@ -31,6 +31,7 @@
  * revision-form branch, which stays a separate codebase (D-19). The view says so rather than showing
  * blanks as if they were answers.
  */
+import { mergeDealVendors } from "../products/vendors";
 import { productLabel } from "../productLabels";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -643,6 +644,17 @@ const AmendmentApp = () => {
       });
       if (!ok(r)) throw new Error("updateRecord: " + JSON.stringify(r?.data?.[0] || r));
     });
+
+    // E-113: the Deal's Vendors follow the amended order (same rule as the onboarding form).
+    {
+      const vend = mergeDealVendors(loaded.deal?.Vendors, saved?.products);
+      if (vend.changed) {
+        await step("deal vendors", async () => {
+          const r = await ZOHO.CRM.API.updateRecord({ Entity: entity, APIData: { id: recordId, Vendors: vend.value }, Trigger: [] });
+          if (!ok(r)) throw new Error("deal vendors: " + JSON.stringify(r?.data?.[0] || r));
+        });
+      }
+    }
 
     // E-56: an amendment can add a department. Ask the CRM to make sure this Deal's WorkDrive folders
     // exist (it only adds what is missing). After the Deal fields above, not awaited, cannot throw.
