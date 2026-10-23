@@ -12,7 +12,7 @@ import { OTHER_CHARGES, chargeLabel, suggestCharges } from "../invoice/otherChar
  * send, what Zoho adds, and what the rep must add by hand. "Check prices in Books" runs the draft function as a dry run
  * (Deluge docs/43: creates nothing).
  */
-const money = (n) => (Number.isFinite(Number(n)) ? `$${Number(n).toFixed(2)}` : "");
+const money = (n) => (n == null || n === "" || !Number.isFinite(Number(n)) ? "" : `$${Number(n).toFixed(2)}`);
 const firstLine = (s) => String(s || "").split("\n")[0];
 
 const yesNo = (control, name, label, options, helper) => (
@@ -75,7 +75,7 @@ function LinesTable({ lines, priced }) {
         })}
         <tr>
           <td style={cell} colSpan={5}>
-            <b>Lines before tax and the fees Zoho adds</b>
+            <b>{priced ? "Lines before tax and the fees added on the draft" : "Priced so far (garments get their Books price at Submit, or press Check prices in Books)"}</b>
           </td>
           <td style={cell}>
             <b>{money(total)}</b>

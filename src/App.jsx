@@ -198,12 +198,13 @@ function App() {
   const onInvalid = (formErrors) => {
     setLoading(false);
     const names = [];
-    const walk = (node) => {
+    // The error's own path when its input has no name (an Autocomplete's ref is not the input) -- E-108.
+    const walk = (node, path) => {
       if (!node || typeof node !== "object") return;
-      if (node.type && node.ref) { names.push(node.ref.name || ""); return; }
-      Object.values(node).forEach(walk);
+      if (typeof node.type === "string" && ("ref" in node || "message" in node)) { names.push((node.ref && node.ref.name) || path); return; }
+      Object.entries(node).forEach(([k, v]) => k !== "ref" && walk(v, path ? path + "." + k : k));
     };
-    walk(formErrors);
+    walk(formErrors, "");
     const label = (nm) =>
       nm.endsWith(".placementSize") ? "Placement Size (required on Embroidery placements)"
         : nm.endsWith(".garmentKind") ? "Garment Kind (on each garment type)"
