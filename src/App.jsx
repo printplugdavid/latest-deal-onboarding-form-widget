@@ -1,3 +1,4 @@
+import { productLabel } from "./productLabels";
 import {
   Autocomplete,
   Box,
@@ -471,7 +472,7 @@ function App() {
                   onClose={() => setAddingProduct(false)}
                   // E-103 step 2: the new items become a filled garment type under one of this onboarding's garment products.
                   orderTargets={(methods.getValues("products") || [])
-                    .map((p, i) => ({ key: String(i), label: `${p.productName} (new garment type)`, garment: p.productType === "garment" }))
+                    .map((p, i) => ({ key: String(i), label: `${productLabel(p.productName)} (new garment type)`, garment: p.productType === "garment" }))
                     .filter((t) => t.garment)}
                   onAddToOrder={(items, key) => {
                     const i = Number(key);
@@ -697,7 +698,7 @@ function App() {
                       if (indexToRemove !== -1) remove(indexToRemove);
                     });
                   }}
-                  getOptionLabel={(option) => option.split("#")[0]} // only show product name
+                  getOptionLabel={(option) => productLabel(option.split("#")[0])} // only show product name (E-121: HTV label)
                   renderInput={(params) => (
                     <TextField
                       {...params}
@@ -728,7 +729,7 @@ function App() {
                     }}
                   >
                     <Typography fontWeight="bold">
-                      {productName} ({productType})
+                      {productLabel(productName)} ({productType})
                     </Typography>
 
                     <Button
