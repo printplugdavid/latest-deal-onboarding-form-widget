@@ -30,6 +30,8 @@ import {
   parseSizeText,
   mergeSizeRows,
   OTHER_SIZE,
+  garmentStyles,
+  styleLabel,
 } from "./affected";
 import {
   makeT,
@@ -392,6 +394,13 @@ export default function App() {
 
   const categoryList = formType === "Revision" ? REVISION_CATEGORIES : CORRECTION_CATEGORIES;
 
+  // E-124: an affected garment type that holds more than one style must say which one.
+  const missingStyle = items.some((item) => {
+    const p = products[item.productIndex];
+    if (!p || item.garmentIndex === "" || isGangSheet(p) || isPieceItem(p)) return false;
+    return garmentStyles(p?.primaryBranches?.[item.garmentIndex]).length >= 2 && !(item.styleKeys || []).length;
+  });
+
   const canSubmit =
     !submitting &&
     !overCap &&
@@ -399,6 +408,7 @@ export default function App() {
     categories.length > 0 &&
     reason.trim().length > 0 &&
     totals.detail.length > 0 &&
+    !missingStyle &&
     (!updateClosing || (newClosingDate !== "" && closingConfirmed));
 
   // ---- actions ----------------------------------------------------------
@@ -541,10 +551,19 @@ export default function App() {
         return;
       }
 
-      if (b?.garmentType) L.push("  Garment: " + oneLine(b.garmentType));
+      // E-124: when the garment type holds more than one style, name only the one(s) picked (the reorder task reads this too).
+      const picked = garmentStyles(b).filter((st) => (item.styleKeys || []).includes(st.key));
+      if (picked.length) {
+        L.push("  Garment: " + picked.map((st) => st.garment || st.skus.join(", ")).join(" / "));
+        const pskus = picked.flatMap((st) => st.skus);
+        if (pskus.length) L.push("  SKU: " + pskus.join(", "));
+        L.push("  Garment type on the order: " + oneLine(b.garmentType));
+      } else {
+        if (b?.garmentType) L.push("  Garment: " + oneLine(b.garmentType));
 
-      const skus = (b?.garmentSkus || []).map((x) => String(x?.sku || "").trim()).filter(Boolean);
-      if (skus.length) L.push("  SKU: " + skus.join(", "));
+        const skus = (b?.garmentSkus || []).map((x) => String(x?.sku || "").trim()).filter(Boolean);
+        if (skus.length) L.push("  SKU: " + skus.join(", "));
+      }
 
       const sizes = formatSizes(item.sizes);
       L.push(
@@ -968,6 +987,7 @@ export default function App() {
           const perSheet = sheet ? gangPerSheet(prod) : 0;
           const branches = prod?.primaryBranches || [];
           const branch = branches[item.garmentIndex];
+          const styles = !gang && branch ? garmentStyles(branch) : [];
           const graphics = branch?.secondaryBranches || [];
           const allPlacements = branch ? placementsOf(branch) : [];
           const found = totals.detail.find((d) => d.item === item);
@@ -991,6 +1011,7 @@ export default function App() {
                     garmentIndex: "",
                     placementKeys: [],
                     graphicKeys: null,
+                    styleKeys: [],
                     sizes: [],
                   })
                 }
@@ -1014,6 +1035,7 @@ export default function App() {
                         garmentIndex: e.target.value === "" ? "" : Number(e.target.value),
                         placementKeys: [],
                         graphicKeys: null,
+                        styleKeys: [],
                       })
                     }
                     style={S.select}
@@ -1025,6 +1047,34 @@ export default function App() {
                       </option>
                     ))}
                   </select>
+                  {/* E-124: this garment type holds more than one style -- say which one, so the right garment is reordered. */}
+                  {styles.length >= 2 && (
+                    <>
+                      <Label>{t("g.whichStyle")}</Label>
+                      <div style={S.placeList}>
+                        {styles.map((st) => {
+                          const on = (item.styleKeys || []).includes(st.key);
+                          return (
+                            <label key={st.key} style={on ? S.placeRowOn : S.placeRow}>
+                              <input
+                                type="checkbox"
+                                checked={on}
+                                onChange={() =>
+                                  patchItem(i, {
+                                    styleKeys: on ? (item.styleKeys || []).filter((k) => k !== st.key) : (item.styleKeys || []).concat(st.key),
+                                  })
+                                }
+                              />
+                              <span>
+                                <b>{styleLabel(st)}</b>
+                              </span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                      <p style={(item.styleKeys || []).length ? S.hint : S.quickBad}>{t("g.whichStyleHint")}</p>
+                    </>
+                  )}
                 </>
               )}
 

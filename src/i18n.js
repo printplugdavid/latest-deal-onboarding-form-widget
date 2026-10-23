@@ -102,6 +102,14 @@ const STRINGS = {
     es: "Escriba un número debajo de cada talla, o todas de una vez en la casilla de arriba: un rango como L-2XL 2 pone 2 en cada talla. El total se suma solo. Use Otra talla para gorras u otras tallas.",
   },
   "g.details": { en: "Garment Details (optional)", es: "Detalles de la prenda (opcional)" },
+  "g.whichStyle": {
+    en: "Which garment is it? (this garment type has more than one)",
+    es: "¿Cuál prenda es? (este tipo de prenda tiene más de una)",
+  },
+  "g.whichStyleHint": {
+    en: "Tick the garment that needs it. Only that garment goes on the note and the reorder task.",
+    es: "Marque la prenda que lo necesita. Solo esa prenda va en la nota y en la tarea de nuevo pedido.",
+  },
   // E-68 (the team, 2026-10-14): a revised garment color, as its own answer rather than buried in the details.
   "g.newColor": { en: "Does the garment color change?", es: "¿Cambia el color de la prenda?" },
   "g.newColorNo": { en: "No — same color", es: "No — mismo color" },

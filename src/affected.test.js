@@ -638,3 +638,37 @@ describe("E-81 toddler sizes 2T / 3T / 4T", () => {
   });
 });
 
+
+/* E-124: which garment inside a garment type that holds more than one style. */
+import { garmentStyles, styleLabel } from "./affected";
+
+test("E-124 Gingerich: two Garment Type lines + two SKUs (no names) pair up in order", () => {
+  const s = garmentStyles({ garmentType: "C2 Sport Long Sleeve\nPort and Company Hoodie", garmentSkus: [{ sku: "5104" }, { sku: "PC78H" }] });
+  expect(s.map(styleLabel)).toEqual(["C2 Sport Long Sleeve (5104)", "Port and Company Hoodie (PC78H)"]);
+  expect(s.map((x) => x.key)).toEqual(["5104", "PC78H"]);
+});
+
+test("picker names win; size-band codes of one style stay one choice", () => {
+  const s = garmentStyles({
+    garmentType: "Tees and hoodies",
+    garmentSkus: [
+      { sku: "PC54", productName: "Port & Company - Core Cotton Tee - S-XL" },
+      { sku: "PC542", productName: "Port & Company - Core Cotton Tee - 2XL" },
+      { sku: "PC78H", productName: "Port & Company - Core Fleece Pullover Hooded Sweatshirt - S-XL" },
+    ],
+  });
+  expect(s.map(styleLabel)).toEqual(["Port & Company - Core Cotton Tee (PC54, PC542)", "Port & Company - Core Fleece Pullover Hooded Sweatshirt (PC78H)"]);
+});
+
+test("one style (bands only, or one SKU), or the client's own garment row: nothing to ask", () => {
+  expect(garmentStyles({ garmentType: "Gildan tee", garmentSkus: [{ sku: "5000" }] })).toEqual([]);
+  expect(garmentStyles({ garmentType: "Hoodie", garmentSkus: [{ sku: "PC78H" }, { sku: "PC78H2" }] })).toEqual([]);
+  expect(garmentStyles({ garmentType: "Client's hoodies", garmentSkus: [{ sku: "PPCO" }, { sku: "PC78H" }] })).toEqual([]);
+  expect(garmentStyles({ garmentType: "Gildan tee" })).toEqual([]);
+  expect(garmentStyles(undefined)).toEqual([]);
+});
+
+test("SKUs that do not match the lines: codes only; older orders without SKUs: the lines", () => {
+  expect(garmentStyles({ garmentType: "Tees", garmentSkus: [{ sku: "5104" }, { sku: "PC78H" }] }).map(styleLabel)).toEqual(["5104", "PC78H"]);
+  expect(garmentStyles({ garmentType: "Black tees\nGrey hoodies" }).map(styleLabel)).toEqual(["Black tees", "Grey hoodies"]);
+});
