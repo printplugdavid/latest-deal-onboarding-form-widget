@@ -177,9 +177,17 @@ export function itemTypeFor(category, kind) {
   return "sales_and_purchases";
 }
 
-/* docs/25 §6: what a quantity of 1 means. Pieces unless the price is for a whole set / tier. */
+/*
+ * Books docs/25 §6 / docs/39 §5 (David 10-20): what a quantity of 1 means. Quantity = print products, stickers and anything priced by
+ * quantity tier, decoration services included · Square Feet = signage sold by area · Hour(s) = labor billed by time · Pieces = the rest
+ * (garments, hats, promo products, patches, most physical items). A suggestion: the rep may pick another unit.
+ */
+const BY_QUANTITY = ["Product - Print", "Product - Stickers/Decals", "Service - DTF", "Service - DTG", "Service - Embroidery", "Service - HTV",
+  "Service - Screen Print", "Service - Laser Engraving"];
 export function unitFor(category) {
-  if (category === "Product - Print") return "Quantity";
+  if (BY_QUANTITY.includes(category)) return "Quantity";
+  if (category === "Product - Signage") return "Square Feet";
+  if (category === "Service - Graphic Design") return "Hour(s)";
   return "Pieces";
 }
 

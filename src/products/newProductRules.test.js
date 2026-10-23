@@ -114,6 +114,9 @@ describe("price, type and accounts (docs/25 §4, §7)", () => {
       "sales_and_purchases",
     ]);
     expect([unitFor("Garment - Tops"), unitFor("Product - Print")]).toEqual(["Pieces", "Quantity"]);
+    expect(["Service - Embroidery", "Product - Stickers/Decals", "Product - Signage", "Service - Graphic Design", "Product - Patches", "Fee"].map(unitFor)).toEqual([
+      "Quantity", "Quantity", "Square Feet", "Hour(s)", "Pieces", "Pieces",
+    ]);
   });
 });
 

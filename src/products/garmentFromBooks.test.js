@@ -80,30 +80,56 @@ describe("E-107: SKU rows follow the sizes", () => {
   });
 });
 
-describe("E-106: Books lookup by exact SKU (check action)", () => {
-  const { findSkusInBooks } = require("./booksItems");
-  afterEach(() => {
-    delete window.ZOHO;
-  });
-  test("reads 'SKU already used by' answers; free codes are not products", async () => {
+describe("E-106: Books lookup by exact SKU (search action since 10-22; check text as the fallback)", () => {
+  const { findSkusInBooks, searchBooks } = require("./booksItems");
+  const zoho = (answer) => {
+    const calls = [];
     window.ZOHO = {
       CRM: {
         FUNCTIONS: {
-          execute: async () => ({
-            details: {
-              output: JSON.stringify({
-                status: "ok",
-                results: [
-                  { sku: "ST290", result: "refused", clash: "SKU already used by: Sport-Tek - Repel Fleece Hooded Pullover - XS-XL (active)" },
-                  { sku: "ST2904", result: "free", clash: "" },
-                ],
-              }),
-            },
-          }),
+          execute: async (name, cfg) => {
+            const a = JSON.parse(cfg.arguments);
+            calls.push({ name, action: a.action, payload: JSON.parse(a.payload || "{}") });
+            return { details: { output: JSON.stringify(answer(a.action, JSON.parse(a.payload || "{}"))) } };
+          },
         },
       },
     };
+    return calls;
+  };
+  const ST = { item_id: "316", sku: "ST290", name: "Sport-Tek - Repel Fleece Hooded Pullover - XS-XL", rate: 30.5, brand: "Sport-Tek", unit: "Pieces", category: "Garment - Outerwear" };
+  afterEach(() => {
+    delete window.ZOHO;
+  });
+  test("search answers the item with its id and rate; codes Books lacks are simply absent", async () => {
+    const calls = zoho((action) => (action === "search" ? { status: "ok", partial: false, results: [ST] } : { status: "error" }));
+    expect(await findSkusInBooks(["st290", "ST2904"])).toEqual([{ ...ST, active: true }]);
+    expect(calls).toEqual([{ name: "widget_books_items", action: "search", payload: { skus: ["ST290", "ST2904"] } }]);
+  });
+  test("search not answering: the check action's 'SKU already used by' text, word for word", async () => {
+    zoho((action) =>
+      action === "search"
+        ? { status: "error", message: "unknown action" }
+        : {
+            status: "ok",
+            results: [
+              { sku: "ST290", result: "refused", clash: "SKU already used by: Sport-Tek - Repel Fleece Hooded Pullover - XS-XL (active)" },
+              { sku: "ST2904", result: "free", clash: "" },
+            ],
+          }
+    );
     expect(await findSkusInBooks(["ST290", "ST2904"])).toEqual([{ sku: "ST290", name: "Sport-Tek - Repel Fleece Hooded Pullover - XS-XL", active: true }]);
+  });
+  test("searchBooks: 5 codes per call, and a partial answer is asked again for what is missing", async () => {
+    const codes = ["A1", "A2", "A3", "A4", "A5", "A6", "A7"];
+    const calls = zoho((action, p) => {
+      const got = p.skus.filter((c) => c !== "A5" || p.skus.length === 1).map((c) => ({ item_id: "id" + c, sku: c, rate: 1 }));
+      return { status: "ok", partial: p.skus.includes("A5") && p.skus.length > 1, results: got };
+    });
+    const s = await searchBooks(codes);
+    expect(s.status).toBe("ok");
+    expect(Object.keys(s.items).sort()).toEqual(codes);
+    expect(calls.map((c) => c.payload.skus)).toEqual([["A1", "A2", "A3", "A4", "A5"], ["A6", "A7"], ["A5"]]);
   });
 });
 

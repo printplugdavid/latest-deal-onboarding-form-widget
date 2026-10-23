@@ -1,0 +1,6 @@
+{
+  "_createDraft": "E-108 (docs/63): false = Submit makes no draft invoice / estimate (the preview still works). Undo switch for the draft call alone.",
+  "createDraft": true,
+  "_pilotDeals": "While this list has Deal ids, the Invoice section, its questions and the draft appear ONLY on these Deals: every other onboarding is exactly as before. Empty list = every onboarding (the roll-out). 5249739000127793103 = Lil Jon Deal 1, the Deluge thread's test Deal (test customer).",
+  "pilotDeals": ["5249739000127793103"]
+}

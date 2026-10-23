@@ -33,6 +33,11 @@ import { applyGarmentSplits } from "./garmentSplit";
 import { requestDealFolders, shouldRequestFolders } from "./dealFolders";
 import { afterRequestLeaves, requestArtCopy, shouldCopyArt } from "./artCopy";
 import { ArtFilesContext } from "./components/GraphicArt";
+import BillingSection from "./components/BillingSection";
+import BillingResult from "./components/BillingResult";
+import { buildBillingLines } from "./invoice/billingLines";
+import { billingOnFor, billingRecord, draftsOn, prepareDraft, sendDraft } from "./invoice/billingDraft";
+import { BillingOn } from "./invoice/billingContext";
 import { MAX_UPLOAD_BYTES, artKey, collectArtFiles } from "./graphicArt";
 import {
   CUSTOMER_NOTES_QUESTION,
@@ -68,6 +73,8 @@ function App() {
   const artFilesRef = useRef(new Map());
 
   const [loading, setLoading] = useState(false);
+  const [billing, setBilling] = useState(null); // E-108: after Submit, the draft invoice's progress and Zoho's answer
+  const [currentUser, setCurrentUser] = useState(""); // E-108: the rep's name, logged by the draft function
 
   useEffect(() => {
     // initialize the app
@@ -77,6 +84,11 @@ function App() {
       setEntityId(data?.EntityId?.[0]);
 
       setInitialized(true);
+      // E-108: who submits (the draft function logs it). Never blocks the form.
+      Promise.resolve()
+        .then(() => ZOHO.CRM.CONFIG.getCurrentUser())
+        .then((r) => setCurrentUser((r && r.users && r.users[0] && r.users[0].full_name) || ""))
+        .catch(() => {});
     });
 
     ZOHO.embeddedApp.init();
@@ -187,12 +199,13 @@ function App() {
   const onInvalid = (formErrors) => {
     setLoading(false);
     const names = [];
-    const walk = (node) => {
+    // The error's own path when its input has no name (an Autocomplete's ref is not the input) -- E-108.
+    const walk = (node, path) => {
       if (!node || typeof node !== "object") return;
-      if (node.type && node.ref) { names.push(node.ref.name || ""); return; }
-      Object.values(node).forEach(walk);
+      if (typeof node.type === "string" && ("ref" in node || "message" in node)) { names.push((node.ref && node.ref.name) || path); return; }
+      Object.entries(node).forEach(([k, v]) => k !== "ref" && walk(v, path ? path + "." + k : k));
     };
-    walk(formErrors);
+    walk(formErrors, "");
     const label = (nm) =>
       nm.endsWith(".placementSize") ? "Placement Size (required on Embroidery placements)"
         : nm.endsWith(".garmentKind") ? "Garment Kind (on each garment type)"
@@ -200,6 +213,10 @@ function App() {
         : nm.endsWith(".placementOther") ? "Placement location — the Other line"
         : nm.endsWith(".widthIn") || nm.endsWith(".heightIn") ? "Placement size — a width or a height in inches (e.g. 3.5 or 3 1/2)"
         : nm.endsWith(".dateNeededBy") ? "Date Needed By"
+        : nm === "billingDocument" ? "Invoice or Estimate? (Invoice section)"
+        : nm === "payingByCard" ? "Paying by card? (Invoice section)"
+        : nm.endsWith(".htvColorMode") ? "Single color or full color? (on each Heat-Transfer graphic)"
+        : nm.endsWith(".garmentsWithThisGraphic") ? "How many of these garments get this graphic?"
         : nm;
     const list = [...new Set(names.filter(Boolean).map(label))];
     window.alert(
@@ -292,8 +309,17 @@ function App() {
     // machine-readable handoff for downstream production tooling). Own try/catch so a
     // failure here never blocks the note, the counts, or the form closing.
     // E-6 stamp, E-48 color matches: built in submission.js (see there); `data` is never retyped (D-5).
+    // E-108: the draft invoice's lines as worked out at submit (no Books prices yet) -- additive `_billing` (docs/06, docs/63).
+    let billingPlan = null;
+    let jsonText = onboardingJson;
     try {
-      const jsonBlob = new Blob([onboardingJson], { type: "application/json" });
+      if (billingOnFor(entityId)) billingPlan = buildBillingLines(data);
+      if (billingPlan) jsonText = JSON.stringify({ ...JSON.parse(onboardingJson), _billing: billingRecord(billingPlan, null) });
+    } catch (err) {
+      console.log("Invoice lines could not be worked out - the JSON is saved without them:", err);
+    }
+    try {
+      const jsonBlob = new Blob([jsonText], { type: "application/json" });
       await ZOHO.CRM.API.attachFile({
         Entity: entity,
         RecordID: entityId,
@@ -373,11 +399,29 @@ function App() {
         if (noteId && shouldCopyArt(recordData, filesOnNote)) {
           await afterRequestLeaves(requestArtCopy(entityId, noteId));
         }
+        // E-108: the draft invoice / estimate, after everything above is saved. It never stops the onboarding: whatever Zoho
+        // answers is shown on the result screen, and Close reloads the Deal as before.
+        if (draftsOn() && billingPlan && billingPlan.flags.document) {
+          setBilling({ busy: billingPlan.flags.document });
+          let prepared = null;
+          let answer;
+          try {
+            prepared = await prepareDraft(data);
+            answer = await sendDraft(entityId, prepared, { submittedBy: currentUser });
+          } catch (err) {
+            answer = { result: "not_sent", message: "The draft could not be made (" + String((err && err.message) || err) + "). Please make it in Books." };
+          }
+          setBilling({ prepared, answer });
+          setLoading(false);
+          return;
+        }
         ZOHO.CRM.UI.Popup.closeReload();
         setLoading(false);
       }
     }
   };
+
+  if (billing) return <BillingResult state={billing} onClose={() => ZOHO.CRM.UI.Popup.closeReload()} />;
 
   if (recordData && options) {
     return (
@@ -386,6 +430,7 @@ function App() {
           {/* E-74: Garment kind, placement location and a width or height are required here (not in the Amendment Form). */}
           <StrictEntry.Provider value={true}>
           <ArtFilesContext.Provider value={artFiles}>
+          <BillingOn.Provider value={billingOnFor(entityId)}>
           <Box
             sx={{
               width: "90%",
@@ -1263,6 +1308,9 @@ function App() {
               Submit
             </Button> */}
 
+            {/* E-108: Invoice or Estimate, card, Other charges and the draft preview (pilot Deals only while the list has any). */}
+            {billingOnFor(entityId) && <BillingSection dealId={entityId} submittedBy={currentUser} />}
+
             {/* What this submission will book -- same printMath.js onSubmit runs (E-17). */}
             <PrintCountPreview />
 
@@ -1296,6 +1344,7 @@ function App() {
               </Button>
             </Box>
           </Box>
+          </BillingOn.Provider>
           </ArtFilesContext.Provider>
           </StrictEntry.Provider>
         </FormProvider>
