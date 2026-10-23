@@ -5,7 +5,8 @@
   "_functions": "the REST API names a widget calls (lower case, measured by the Deluge thread 10-20, their docs/39 §7); code names WIDGET_Books_Items / WIDGET_Supplier_Style",
   "functions": {
     "books": "widget_books_items",
-    "supplier": "widget_supplier_style"
+    "supplier": "widget_supplier_style",
+    "billingDraft": "widget_create_billing_draft"
   },
   "categories": [
     "Garment - Accessories", "Garment - Bottoms", "Garment - Hats", "Garment - Hoodies & Sweatshirts", "Garment - Infant/Toddler",

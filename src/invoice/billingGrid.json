@@ -1,0 +1,1982 @@
+{
+ "_source": "built by tools/invoice/build-grid.py from pull-2026-10-20e.jsonl (Books thread, read-only) -- never hand-edit",
+ "grids": {
+  "screen": [
+   {
+    "sku": "PPSP1",
+    "colors": 1,
+    "tier": [
+     12,
+     23
+    ]
+   },
+   {
+    "sku": "PPSP10",
+    "colors": 2,
+    "tier": [
+     48,
+     95
+    ]
+   },
+   {
+    "sku": "PPSP11",
+    "colors": 2,
+    "tier": [
+     96,
+     479
+    ]
+   },
+   {
+    "sku": "PPSP12",
+    "colors": 2,
+    "tier": [
+     480,
+     null
+    ]
+   },
+   {
+    "sku": "PPSP13",
+    "colors": 3,
+    "tier": [
+     0,
+     11
+    ]
+   },
+   {
+    "sku": "PPSP14",
+    "colors": 3,
+    "tier": [
+     12,
+     23
+    ]
+   },
+   {
+    "sku": "PPSP15",
+    "colors": 3,
+    "tier": [
+     24,
+     47
+    ]
+   },
+   {
+    "sku": "PPSP16",
+    "colors": 3,
+    "tier": [
+     48,
+     95
+    ]
+   },
+   {
+    "sku": "PPSP17",
+    "colors": 3,
+    "tier": [
+     96,
+     479
+    ]
+   },
+   {
+    "sku": "PPSP18",
+    "colors": 3,
+    "tier": [
+     480,
+     null
+    ]
+   },
+   {
+    "sku": "PPSP19",
+    "colors": 4,
+    "tier": [
+     0,
+     11
+    ]
+   },
+   {
+    "sku": "PPSP2",
+    "colors": 1,
+    "tier": [
+     0,
+     11
+    ]
+   },
+   {
+    "sku": "PPSP20",
+    "colors": 4,
+    "tier": [
+     12,
+     23
+    ]
+   },
+   {
+    "sku": "PPSP21",
+    "colors": 4,
+    "tier": [
+     24,
+     47
+    ]
+   },
+   {
+    "sku": "PPSP22",
+    "colors": 4,
+    "tier": [
+     48,
+     95
+    ]
+   },
+   {
+    "sku": "PPSP23",
+    "colors": 4,
+    "tier": [
+     96,
+     479
+    ]
+   },
+   {
+    "sku": "PPSP24",
+    "colors": 4,
+    "tier": [
+     480,
+     null
+    ]
+   },
+   {
+    "sku": "PPSP25",
+    "colors": 5,
+    "tier": [
+     0,
+     11
+    ]
+   },
+   {
+    "sku": "PPSP26",
+    "colors": 5,
+    "tier": [
+     12,
+     23
+    ]
+   },
+   {
+    "sku": "PPSP27",
+    "colors": 5,
+    "tier": [
+     24,
+     47
+    ]
+   },
+   {
+    "sku": "PPSP28",
+    "colors": 5,
+    "tier": [
+     48,
+     95
+    ]
+   },
+   {
+    "sku": "PPSP29",
+    "colors": 5,
+    "tier": [
+     96,
+     479
+    ]
+   },
+   {
+    "sku": "PPSP3",
+    "colors": 1,
+    "tier": [
+     24,
+     47
+    ]
+   },
+   {
+    "sku": "PPSP30",
+    "colors": 5,
+    "tier": [
+     480,
+     null
+    ]
+   },
+   {
+    "sku": "PPSP31",
+    "colors": 6,
+    "tier": [
+     0,
+     11
+    ]
+   },
+   {
+    "sku": "PPSP32",
+    "colors": 6,
+    "tier": [
+     12,
+     23
+    ]
+   },
+   {
+    "sku": "PPSP33",
+    "colors": 6,
+    "tier": [
+     24,
+     47
+    ]
+   },
+   {
+    "sku": "PPSP34",
+    "colors": 6,
+    "tier": [
+     48,
+     95
+    ]
+   },
+   {
+    "sku": "PPSP35",
+    "colors": 6,
+    "tier": [
+     96,
+     479
+    ]
+   },
+   {
+    "sku": "PPSP36",
+    "colors": 6,
+    "tier": [
+     480,
+     null
+    ]
+   },
+   {
+    "sku": "PPSP4",
+    "colors": 1,
+    "tier": [
+     48,
+     95
+    ]
+   },
+   {
+    "sku": "PPSP5",
+    "colors": 1,
+    "tier": [
+     96,
+     479
+    ]
+   },
+   {
+    "sku": "PPSP6",
+    "colors": 1,
+    "tier": [
+     480,
+     null
+    ]
+   },
+   {
+    "sku": "PPSP7",
+    "colors": 2,
+    "tier": [
+     0,
+     11
+    ]
+   },
+   {
+    "sku": "PPSP8",
+    "colors": 2,
+    "tier": [
+     12,
+     23
+    ]
+   },
+   {
+    "sku": "PPSP9",
+    "colors": 2,
+    "tier": [
+     24,
+     47
+    ]
+   }
+  ],
+  "screenHoodie": [
+   {
+    "sku": "PPSPH1",
+    "colors": 1,
+    "tier": [
+     12,
+     23
+    ]
+   },
+   {
+    "sku": "PPSPH10",
+    "colors": 5,
+    "tier": [
+     24,
+     47
+    ]
+   },
+   {
+    "sku": "PPSPH11",
+    "colors": 6,
+    "tier": [
+     12,
+     23
+    ]
+   },
+   {
+    "sku": "PPSPH12",
+    "colors": 6,
+    "tier": [
+     24,
+     47
+    ]
+   },
+   {
+    "sku": "PPSPH13",
+    "colors": 1,
+    "tier": [
+     48,
+     95
+    ]
+   },
+   {
+    "sku": "PPSPH14",
+    "colors": 2,
+    "tier": [
+     48,
+     95
+    ]
+   },
+   {
+    "sku": "PPSPH15",
+    "colors": 3,
+    "tier": [
+     48,
+     95
+    ]
+   },
+   {
+    "sku": "PPSPH16",
+    "colors": 4,
+    "tier": [
+     48,
+     95
+    ]
+   },
+   {
+    "sku": "PPSPH17",
+    "colors": 5,
+    "tier": [
+     48,
+     95
+    ]
+   },
+   {
+    "sku": "PPSPH18",
+    "colors": 6,
+    "tier": [
+     48,
+     95
+    ]
+   },
+   {
+    "sku": "PPSPH19",
+    "colors": 1,
+    "tier": [
+     96,
+     479
+    ]
+   },
+   {
+    "sku": "PPSPH2",
+    "colors": 2,
+    "tier": [
+     12,
+     23
+    ]
+   },
+   {
+    "sku": "PPSPH20",
+    "colors": 2,
+    "tier": [
+     96,
+     479
+    ]
+   },
+   {
+    "sku": "PPSPH21",
+    "colors": 3,
+    "tier": [
+     96,
+     479
+    ]
+   },
+   {
+    "sku": "PPSPH22",
+    "colors": 4,
+    "tier": [
+     96,
+     479
+    ]
+   },
+   {
+    "sku": "PPSPH23",
+    "colors": 5,
+    "tier": [
+     96,
+     479
+    ]
+   },
+   {
+    "sku": "PPSPH24",
+    "colors": 6,
+    "tier": [
+     96,
+     479
+    ]
+   },
+   {
+    "sku": "PPSPH25",
+    "colors": 1,
+    "tier": [
+     480,
+     null
+    ]
+   },
+   {
+    "sku": "PPSPH26",
+    "colors": 2,
+    "tier": [
+     480,
+     null
+    ]
+   },
+   {
+    "sku": "PPSPH27",
+    "colors": 3,
+    "tier": [
+     480,
+     null
+    ]
+   },
+   {
+    "sku": "PPSPH28",
+    "colors": 4,
+    "tier": [
+     480,
+     null
+    ]
+   },
+   {
+    "sku": "PPSPH29",
+    "colors": 5,
+    "tier": [
+     480,
+     null
+    ]
+   },
+   {
+    "sku": "PPSPH3",
+    "colors": 3,
+    "tier": [
+     12,
+     23
+    ]
+   },
+   {
+    "sku": "PPSPH30",
+    "colors": 6,
+    "tier": [
+     480,
+     null
+    ]
+   },
+   {
+    "sku": "PPSPH4",
+    "colors": 4,
+    "tier": [
+     12,
+     23
+    ]
+   },
+   {
+    "sku": "PPSPH5",
+    "colors": 5,
+    "tier": [
+     12,
+     23
+    ]
+   },
+   {
+    "sku": "PPSPH6",
+    "colors": 1,
+    "tier": [
+     24,
+     47
+    ]
+   },
+   {
+    "sku": "PPSPH7",
+    "colors": 2,
+    "tier": [
+     24,
+     47
+    ]
+   },
+   {
+    "sku": "PPSPH8",
+    "colors": 3,
+    "tier": [
+     24,
+     47
+    ]
+   },
+   {
+    "sku": "PPSPH9",
+    "colors": 4,
+    "tier": [
+     24,
+     47
+    ]
+   }
+  ],
+  "embroidery": [
+   {
+    "sku": "PPEMB1",
+    "band": "small",
+    "tier": [
+     0,
+     11
+    ]
+   },
+   {
+    "sku": "PPEMB10",
+    "band": "medium",
+    "tier": [
+     25,
+     49
+    ]
+   },
+   {
+    "sku": "PPEMB11",
+    "band": "large",
+    "tier": [
+     25,
+     49
+    ]
+   },
+   {
+    "sku": "PPEMB12",
+    "band": "xlarge",
+    "tier": [
+     25,
+     49
+    ]
+   },
+   {
+    "sku": "PPEMB13",
+    "band": "small",
+    "tier": [
+     50,
+     99
+    ]
+   },
+   {
+    "sku": "PPEMB14",
+    "band": "medium",
+    "tier": [
+     50,
+     99
+    ]
+   },
+   {
+    "sku": "PPEMB15",
+    "band": "large",
+    "tier": [
+     50,
+     99
+    ]
+   },
+   {
+    "sku": "PPEMB16",
+    "band": "xlarge",
+    "tier": [
+     50,
+     99
+    ]
+   },
+   {
+    "sku": "PPEMB17",
+    "band": "small",
+    "tier": [
+     100,
+     null
+    ]
+   },
+   {
+    "sku": "PPEMB18",
+    "band": "medium",
+    "tier": [
+     100,
+     null
+    ]
+   },
+   {
+    "sku": "PPEMB19",
+    "band": "large",
+    "tier": [
+     100,
+     null
+    ]
+   },
+   {
+    "sku": "PPEMB2",
+    "band": "medium",
+    "tier": [
+     0,
+     11
+    ]
+   },
+   {
+    "sku": "PPEMB20",
+    "band": "xlarge",
+    "tier": [
+     100,
+     null
+    ]
+   },
+   {
+    "sku": "PPEMB3",
+    "band": "large",
+    "tier": [
+     0,
+     11
+    ]
+   },
+   {
+    "sku": "PPEMB4",
+    "band": "xlarge",
+    "tier": [
+     0,
+     11
+    ]
+   },
+   {
+    "sku": "PPEMB5",
+    "band": "small",
+    "tier": [
+     12,
+     24
+    ]
+   },
+   {
+    "sku": "PPEMB6",
+    "band": "medium",
+    "tier": [
+     12,
+     24
+    ]
+   },
+   {
+    "sku": "PPEMB7",
+    "band": "large",
+    "tier": [
+     12,
+     24
+    ]
+   },
+   {
+    "sku": "PPEMB8",
+    "band": "xlarge",
+    "tier": [
+     12,
+     24
+    ]
+   },
+   {
+    "sku": "PPEMB9",
+    "band": "small",
+    "tier": [
+     25,
+     49
+    ]
+   }
+  ],
+  "dtf": [
+   {
+    "sku": "PPDTF1",
+    "size": "under5",
+    "tier": [
+     0,
+     11
+    ]
+   },
+   {
+    "sku": "PPDTF10",
+    "size": "5to10",
+    "tier": [
+     100,
+     null
+    ]
+   },
+   {
+    "sku": "PPDTF11",
+    "size": "over10",
+    "tier": [
+     0,
+     11
+    ]
+   },
+   {
+    "sku": "PPDTF12",
+    "size": "over10",
+    "tier": [
+     12,
+     24
+    ]
+   },
+   {
+    "sku": "PPDTF13",
+    "size": "over10",
+    "tier": [
+     25,
+     49
+    ]
+   },
+   {
+    "sku": "PPDTF14",
+    "size": "over10",
+    "tier": [
+     50,
+     99
+    ]
+   },
+   {
+    "sku": "PPDTF15",
+    "size": "over10",
+    "tier": [
+     100,
+     null
+    ]
+   },
+   {
+    "sku": "PPDTF2",
+    "size": "under5",
+    "tier": [
+     12,
+     24
+    ]
+   },
+   {
+    "sku": "PPDTF3",
+    "size": "under5",
+    "tier": [
+     25,
+     49
+    ]
+   },
+   {
+    "sku": "PPDTF4",
+    "size": "under5",
+    "tier": [
+     50,
+     99
+    ]
+   },
+   {
+    "sku": "PPDTF5",
+    "size": "under5",
+    "tier": [
+     100,
+     null
+    ]
+   },
+   {
+    "sku": "PPDTF6",
+    "size": "5to10",
+    "tier": [
+     0,
+     11
+    ]
+   },
+   {
+    "sku": "PPDTF7",
+    "size": "5to10",
+    "tier": [
+     12,
+     24
+    ]
+   },
+   {
+    "sku": "PPDTF8",
+    "size": "5to10",
+    "tier": [
+     25,
+     49
+    ]
+   },
+   {
+    "sku": "PPDTF9",
+    "size": "5to10",
+    "tier": [
+     50,
+     99
+    ]
+   }
+  ],
+  "dtg": [
+   {
+    "sku": "PPDTG1",
+    "size": "over5",
+    "tier": [
+     1,
+     5
+    ]
+   },
+   {
+    "sku": "PPDTG10",
+    "size": "under5",
+    "tier": [
+     1,
+     5
+    ]
+   },
+   {
+    "sku": "PPDTG2",
+    "size": "over5",
+    "tier": [
+     11,
+     null
+    ]
+   },
+   {
+    "sku": "PPDTG21",
+    "size": "under5",
+    "tier": [
+     11,
+     null
+    ]
+   },
+   {
+    "sku": "PPDTG4",
+    "size": "over5",
+    "tier": [
+     6,
+     10
+    ]
+   },
+   {
+    "sku": "PPDTG9",
+    "size": "under5",
+    "tier": [
+     6,
+     10
+    ]
+   }
+  ],
+  "htv": [
+   {
+    "sku": "PPHTV1",
+    "full": false,
+    "size": "10to15",
+    "tier": [
+     0,
+     11
+    ]
+   },
+   {
+    "sku": "PPHTV10",
+    "full": false,
+    "size": "under5",
+    "tier": [
+     0,
+     11
+    ]
+   },
+   {
+    "sku": "PPHTV11",
+    "full": false,
+    "size": "under5",
+    "tier": [
+     12,
+     23
+    ]
+   },
+   {
+    "sku": "PPHTV12",
+    "full": false,
+    "size": "under5",
+    "tier": [
+     24,
+     null
+    ]
+   },
+   {
+    "sku": "PPHTV13",
+    "full": true,
+    "size": "10to15",
+    "tier": [
+     0,
+     11
+    ]
+   },
+   {
+    "sku": "PPHTV14",
+    "full": true,
+    "size": "10to15",
+    "tier": [
+     12,
+     23
+    ]
+   },
+   {
+    "sku": "PPHTV15",
+    "full": true,
+    "size": "10to15",
+    "tier": [
+     24,
+     null
+    ]
+   },
+   {
+    "sku": "PPHTV16",
+    "full": true,
+    "size": "5to10",
+    "tier": [
+     0,
+     11
+    ]
+   },
+   {
+    "sku": "PPHTV17",
+    "full": true,
+    "size": "5to10",
+    "tier": [
+     12,
+     23
+    ]
+   },
+   {
+    "sku": "PPHTV18",
+    "full": true,
+    "size": "5to10",
+    "tier": [
+     24,
+     null
+    ]
+   },
+   {
+    "sku": "PPHTV19",
+    "full": true,
+    "size": "under5",
+    "tier": [
+     0,
+     11
+    ]
+   },
+   {
+    "sku": "PPHTV20",
+    "full": true,
+    "size": "under5",
+    "tier": [
+     12,
+     23
+    ]
+   },
+   {
+    "sku": "PPHTV21",
+    "full": true,
+    "size": "under5",
+    "tier": [
+     24,
+     null
+    ]
+   },
+   {
+    "sku": "PPHTV4",
+    "full": false,
+    "size": "10to15",
+    "tier": [
+     12,
+     23
+    ]
+   },
+   {
+    "sku": "PPHTV5",
+    "full": false,
+    "size": "10to15",
+    "tier": [
+     24,
+     null
+    ]
+   },
+   {
+    "sku": "PPHTV7",
+    "full": false,
+    "size": "5to10",
+    "tier": [
+     0,
+     11
+    ]
+   },
+   {
+    "sku": "PPHTV8",
+    "full": false,
+    "size": "5to10",
+    "tier": [
+     12,
+     23
+    ]
+   },
+   {
+    "sku": "PPHTV9",
+    "full": false,
+    "size": "5to10",
+    "tier": [
+     24,
+     null
+    ]
+   }
+  ],
+  "gangSheet": [
+   {
+    "sku": "PPDTFGS",
+    "feet": [
+     2,
+     9
+    ]
+   },
+   {
+    "sku": "PPDTFGS1",
+    "feet": [
+     10,
+     14
+    ]
+   },
+   {
+    "sku": "PPDTFGS2",
+    "feet": [
+     15,
+     19
+    ]
+   },
+   {
+    "sku": "PPDTFGS3",
+    "feet": [
+     20,
+     29
+    ]
+   },
+   {
+    "sku": "PPDTFGS4",
+    "feet": [
+     30,
+     null
+    ]
+   }
+  ]
+ },
+ "extras": {
+  "screen": "PPSP37",
+  "screenHoodie": "PPSPH31",
+  "embroidery": "PPEMB21",
+  "dtf": "PPDTF16",
+  "dtgUnder5": "PPDTG17",
+  "dtgOver5": "PPDTG7",
+  "htvPlain": "PPHTV22",
+  "htvFull": "PPHTV2"
+ },
+ "fees": {
+  "clientGarment": "PPFEE8",
+  "roundUp": "PPFEE10",
+  "premiumIronPass": "PPSPIP",
+  "addedByZoho": [
+   "PPFEE1",
+   "PPETD",
+   "PPFEE6"
+  ],
+  "clientOwned": "PPCO"
+ },
+ "otherCharges": [
+  {
+   "sku": "PPFEE2",
+   "when": "screenNew",
+   "per": "per color"
+  },
+  {
+   "sku": "PPFEE7",
+   "when": "screen",
+   "per": "each"
+  },
+  {
+   "sku": "PPSP69",
+   "when": "screen",
+   "per": "per color"
+  },
+  {
+   "sku": "PPSP70",
+   "when": "screen",
+   "per": "each"
+  },
+  {
+   "sku": "PPFEE5",
+   "when": "screenDark",
+   "per": "per piece"
+  },
+  {
+   "sku": "PPSPTF",
+   "when": "screen",
+   "per": "per piece"
+  },
+  {
+   "sku": "PPEDF",
+   "when": "embroideryNew",
+   "per": "each"
+  },
+  {
+   "sku": "PPEDFP",
+   "when": "embroidery",
+   "per": "each"
+  },
+  {
+   "sku": "PPEMB24",
+   "when": "embroidery",
+   "per": "per piece"
+  },
+  {
+   "sku": "PPEMBTU",
+   "when": "embroidery",
+   "per": "per piece"
+  },
+  {
+   "sku": "PPEMB23",
+   "when": "embroidery",
+   "per": "per piece"
+  },
+  {
+   "sku": "PPGD1",
+   "when": "design",
+   "per": "per half hour"
+  },
+  {
+   "sku": "PPGD2",
+   "when": "design",
+   "per": "per hour"
+  },
+  {
+   "sku": "PPFEE4",
+   "when": "artNotReady",
+   "per": "per hour"
+  },
+  {
+   "sku": "PPFEE3",
+   "when": "artNotReady",
+   "per": "each"
+  },
+  {
+   "sku": "PPTLCF",
+   "when": "repeat",
+   "per": "each"
+  },
+  {
+   "sku": "PPHTV3",
+   "when": "htv",
+   "per": "per piece"
+  },
+  {
+   "sku": "PPHTV6",
+   "when": "htv",
+   "per": "per piece"
+  }
+ ],
+ "items": {
+  "PPDTF1": {
+   "name": "DTF - Under 5\" - Under 12 Garments",
+   "rate": 20,
+   "unit": "Pieces"
+  },
+  "PPDTF10": {
+   "name": "DTF - 5\" - 10\" - 100+ Garments",
+   "rate": 6,
+   "unit": "Pieces"
+  },
+  "PPDTF11": {
+   "name": "DTF - 10\"+ - Under 12 Garments",
+   "rate": 22,
+   "unit": "Pieces"
+  },
+  "PPDTF12": {
+   "name": "DTF - 10\"+ - 12-24 Garments",
+   "rate": 18,
+   "unit": "Quantity"
+  },
+  "PPDTF13": {
+   "name": "DTF - 10\"+ - 25-49 Garments",
+   "rate": 14,
+   "unit": "Quantity"
+  },
+  "PPDTF14": {
+   "name": "DTF - 10\"+ - 50-99 Garments",
+   "rate": 10,
+   "unit": "Quantity"
+  },
+  "PPDTF15": {
+   "name": "DTF - 10\"+ - 100+ Garments",
+   "rate": 6.5,
+   "unit": "Pieces"
+  },
+  "PPDTF16": {
+   "name": "DTF - Added Placement",
+   "rate": 5,
+   "unit": "Pieces"
+  },
+  "PPDTF2": {
+   "name": "DTF - Under 5\" - 12-24 Garments",
+   "rate": 16,
+   "unit": "Quantity"
+  },
+  "PPDTF3": {
+   "name": "DTF - Under 5\" - 25-49 Garments",
+   "rate": 12,
+   "unit": "Quantity"
+  },
+  "PPDTF4": {
+   "name": "DTF - Under 5\" - 50-99 Garments",
+   "rate": 8,
+   "unit": "Quantity"
+  },
+  "PPDTF5": {
+   "name": "DTF - Under 5\" - 100+ Garments",
+   "rate": 5,
+   "unit": "Pieces"
+  },
+  "PPDTF6": {
+   "name": "DTF - 5\" - 10\" - Under 12 Garments",
+   "rate": 21,
+   "unit": "Pieces"
+  },
+  "PPDTF7": {
+   "name": "DTF - 5\" - 10\" - 12-24 Garments",
+   "rate": 17,
+   "unit": "Quantity"
+  },
+  "PPDTF8": {
+   "name": "DTF - 5\" - 10\" - 25-49 Garments",
+   "rate": 13,
+   "unit": "Quantity"
+  },
+  "PPDTF9": {
+   "name": "DTF - 5\" - 10\" - 50-99 Garments",
+   "rate": 9,
+   "unit": "Quantity"
+  },
+  "PPDTFGS": {
+   "name": "DTF - Gang Sheet - 2 ft - 9 ft",
+   "rate": 10,
+   "unit": "Square Feet"
+  },
+  "PPDTFGS1": {
+   "name": "DTF - Gang Sheet - 10 ft - 14 ft",
+   "rate": 9,
+   "unit": "Square Feet"
+  },
+  "PPDTFGS2": {
+   "name": "DTF - Gang Sheet - 15 ft - 19 ft",
+   "rate": 7.33,
+   "unit": "Square Feet"
+  },
+  "PPDTFGS3": {
+   "name": "DTF - Gang Sheet - 20 ft - 29 ft",
+   "rate": 6.5,
+   "unit": "Square Feet"
+  },
+  "PPDTFGS4": {
+   "name": "DTF - Gang Sheet - 30 ft +",
+   "rate": 6,
+   "unit": "Square Feet"
+  },
+  "PPDTG1": {
+   "name": "DTG - Over 5\" - 1 Location - 1-5 Garments",
+   "rate": 25,
+   "unit": "Quantity"
+  },
+  "PPDTG10": {
+   "name": "DTG - Under 5\" - 1 Location - 1-5 Garments",
+   "rate": 22,
+   "unit": "Quantity"
+  },
+  "PPDTG17": {
+   "name": "DTG - Under 5\" - Added Location",
+   "rate": 9,
+   "unit": "Quantity"
+  },
+  "PPDTG2": {
+   "name": "DTG - Over 5\" - 1 Location - 11+ Garments",
+   "rate": 18.5,
+   "unit": "Quantity"
+  },
+  "PPDTG21": {
+   "name": "DTG - Under 5\" - 1 Location - 11+ Garments",
+   "rate": 16.5,
+   "unit": "Quantity"
+  },
+  "PPDTG4": {
+   "name": "DTG - Over 5\" - 1 Location - 6-10 Garments",
+   "rate": 23,
+   "unit": "Quantity"
+  },
+  "PPDTG7": {
+   "name": "DTG - Over 5\" - Added Location",
+   "rate": 11,
+   "unit": "Quantity"
+  },
+  "PPDTG9": {
+   "name": "DTG - Under 5\" - 1 Location - 6-10 Garments",
+   "rate": 20,
+   "unit": "Quantity"
+  },
+  "PPEDF": {
+   "name": "Embroidery - Digitizing Fee",
+   "rate": 30,
+   "unit": "Pieces"
+  },
+  "PPEDFP": {
+   "name": "Embroidery - Premium Digitizing Fee",
+   "rate": 50,
+   "unit": "Pieces"
+  },
+  "PPEMB1": {
+   "name": "Embroidery - 1-7499 Stitches - Under 12 Garments",
+   "rate": 22,
+   "unit": "Quantity"
+  },
+  "PPEMB10": {
+   "name": "Embroidery - 7500-14999 Stitches - 25-49 Garments",
+   "rate": 15,
+   "unit": "Quantity"
+  },
+  "PPEMB11": {
+   "name": "Embroidery - 15000-49999 Stitches - 25-49 Garments",
+   "rate": 16,
+   "unit": "Quantity"
+  },
+  "PPEMB12": {
+   "name": "Embroidery - 50000+ Stitches - 25-49 Garments",
+   "rate": 37,
+   "unit": "Quantity"
+  },
+  "PPEMB13": {
+   "name": "Embroidery - 1-7499 Stitches - 50-99 Garments",
+   "rate": 12,
+   "unit": "Quantity"
+  },
+  "PPEMB14": {
+   "name": "Embroidery - 7500-14999 Stitches - 50-99 Garments",
+   "rate": 13,
+   "unit": "Quantity"
+  },
+  "PPEMB15": {
+   "name": "Embroidery - 15000-49999 Stitches - 50-99 Garments",
+   "rate": 14,
+   "unit": "Quantity"
+  },
+  "PPEMB16": {
+   "name": "Embroidery - 50000+ Stitches - 50-99 Garments",
+   "rate": 32,
+   "unit": "Quantity"
+  },
+  "PPEMB17": {
+   "name": "Embroidery - 1-7499 Stitches - 100+ Garments",
+   "rate": 8,
+   "unit": "Quantity"
+  },
+  "PPEMB18": {
+   "name": "Embroidery - 7500-14999 Stitches - 100+ Garments",
+   "rate": 10,
+   "unit": "Quantity"
+  },
+  "PPEMB19": {
+   "name": "Embroidery - 15000-49999 Stitches - 100+ Garments",
+   "rate": 11,
+   "unit": "Quantity"
+  },
+  "PPEMB2": {
+   "name": "Embroidery - 7500-14999 Stitches - Under 12 Garments",
+   "rate": 25,
+   "unit": "Quantity"
+  },
+  "PPEMB20": {
+   "name": "Embroidery - 50000+ Stitches - 100+ Garments",
+   "rate": 26,
+   "unit": "Pieces"
+  },
+  "PPEMB21": {
+   "name": "Embroidery - Additional Placement",
+   "rate": 7,
+   "unit": "Pieces"
+  },
+  "PPEMB23": {
+   "name": "Embroidery - Center Seam Sew-Out",
+   "rate": 1,
+   "unit": "Pieces"
+  },
+  "PPEMB24": {
+   "name": "Embroidery - 3D Puff",
+   "rate": 6,
+   "unit": "Pieces"
+  },
+  "PPEMB3": {
+   "name": "Embroidery - 15000-49999 Stitches - Under 12 Garments",
+   "rate": 26,
+   "unit": "Quantity"
+  },
+  "PPEMB4": {
+   "name": "Embroidery - 50000+ Stitches - Under 12 Garments",
+   "rate": 52,
+   "unit": "Pieces"
+  },
+  "PPEMB5": {
+   "name": "Embroidery - 1-7499 Stitches - 12-24 Garments",
+   "rate": 19,
+   "unit": "Quantity"
+  },
+  "PPEMB6": {
+   "name": "Embroidery - 7500-14999 Stitches - 12-24 Garments",
+   "rate": 20,
+   "unit": "Quantity"
+  },
+  "PPEMB7": {
+   "name": "Embroidery - 15000-49999 Stitches - 12-24 Garments",
+   "rate": 21,
+   "unit": "Quantity"
+  },
+  "PPEMB8": {
+   "name": "Embroidery - 50000+ Stitches - 12-24 Garments",
+   "rate": 42,
+   "unit": "Quantity"
+  },
+  "PPEMB9": {
+   "name": "Embroidery - 1-7499 Stitches - 25-49 Garments",
+   "rate": 14,
+   "unit": "Quantity"
+  },
+  "PPEMBTU": {
+   "name": "Embroidery - Thread Upcharge",
+   "rate": 9,
+   "unit": "Pieces"
+  },
+  "PPFEE10": {
+   "name": "Faces Of Hope Round-Up Donation",
+   "rate": 0.75,
+   "unit": "Pieces"
+  },
+  "PPFEE2": {
+   "name": "Screen Print Setup Fee - per Color",
+   "rate": 25,
+   "unit": "Pieces"
+  },
+  "PPFEE3": {
+   "name": "Vector Fee",
+   "rate": 30,
+   "unit": "Pieces"
+  },
+  "PPFEE4": {
+   "name": "Art Fee",
+   "rate": 50,
+   "unit": "Hour(s)"
+  },
+  "PPFEE5": {
+   "name": "Extra White Ink Layer",
+   "rate": 2,
+   "unit": "Pieces"
+  },
+  "PPFEE7": {
+   "name": "Screen Fee",
+   "rate": 25,
+   "unit": "Pieces"
+  },
+  "PPFEE8": {
+   "name": "Garment Handling Fee",
+   "rate": 100,
+   "unit": "Pieces"
+  },
+  "PPGD1": {
+   "name": "Graphic Design - Half Hour",
+   "rate": 30,
+   "unit": "Hour(s)"
+  },
+  "PPGD2": {
+   "name": "Graphic Design - 1 Hour",
+   "rate": 50,
+   "unit": "Hour(s)"
+  },
+  "PPHTV1": {
+   "name": "HTV - Under 12 Garments - 10-15\" - 1 Location",
+   "rate": 27,
+   "unit": "Quantity"
+  },
+  "PPHTV10": {
+   "name": "HTV - Under 12 Garments - Under 5\" - 1 Location",
+   "rate": 24,
+   "unit": "Pieces"
+  },
+  "PPHTV11": {
+   "name": "HTV - 12-23 Garments - Under 5\" - 1 Location",
+   "rate": 22,
+   "unit": "Quantity"
+  },
+  "PPHTV12": {
+   "name": "HTV - 24+ Garments - Under 5\" - 1 Location",
+   "rate": 21,
+   "unit": "Pieces"
+  },
+  "PPHTV13": {
+   "name": "HTV - Full Color - Under 12 Garments - 10-15\" - 1 Location",
+   "rate": 32,
+   "unit": "Quantity"
+  },
+  "PPHTV14": {
+   "name": "HTV - Full Color - 12-23 Garments - 10-15\" - 1 Location",
+   "rate": 30,
+   "unit": "Quantity"
+  },
+  "PPHTV15": {
+   "name": "HTV - Full Color - 24+ Garments - 10-15\" - 1 Location",
+   "rate": 29,
+   "unit": "Quantity"
+  },
+  "PPHTV16": {
+   "name": "HTV - Full Color - Under 12 Garments - 5-10\" - 1 Location",
+   "rate": 30,
+   "unit": "Quantity"
+  },
+  "PPHTV17": {
+   "name": "HTV - Full Color - 12-23 Garments - 5-10\" - 1 Location",
+   "rate": 28,
+   "unit": "Quantity"
+  },
+  "PPHTV18": {
+   "name": "HTV - Full Color - 24+ Garments - 5-10\" - 1 Location",
+   "rate": 27,
+   "unit": "Quantity"
+  },
+  "PPHTV19": {
+   "name": "HTV - Full Color - Under 12 Garments - Under 5\" - 1 Location",
+   "rate": 29,
+   "unit": "Pieces"
+  },
+  "PPHTV2": {
+   "name": "HTV - Full Color - Added Location",
+   "rate": 13,
+   "unit": "Pieces"
+  },
+  "PPHTV20": {
+   "name": "HTV - Full Color - 12-23 Garments - Under 5\" - 1 Location",
+   "rate": 27,
+   "unit": "Quantity"
+  },
+  "PPHTV21": {
+   "name": "HTV - Full Color - 24+ Garments - Under 5\" - 1 Location",
+   "rate": 26,
+   "unit": "Pieces"
+  },
+  "PPHTV22": {
+   "name": "HTV - Added Location",
+   "rate": 13,
+   "unit": "Pieces"
+  },
+  "PPHTV3": {
+   "name": "Vinyl Under 12 Garments",
+   "rate": 15,
+   "unit": "Pieces"
+  },
+  "PPHTV4": {
+   "name": "HTV - 12-23 Garments - 10-15\" - 1 Location",
+   "rate": 25,
+   "unit": "Quantity"
+  },
+  "PPHTV5": {
+   "name": "HTV - 24+ Garments - 10-15\" - 1 Location",
+   "rate": 24,
+   "unit": "Quantity"
+  },
+  "PPHTV6": {
+   "name": "HTV - Outsourced - 25+ Garments - 1 Location",
+   "rate": 15,
+   "unit": "Pieces"
+  },
+  "PPHTV7": {
+   "name": "HTV - Under 12 Garments - 5-10\" - 1 Location",
+   "rate": 25,
+   "unit": "Quantity"
+  },
+  "PPHTV8": {
+   "name": "HTV - 12-23 Garments - 5-10\" - 1 Location",
+   "rate": 23,
+   "unit": "Quantity"
+  },
+  "PPHTV9": {
+   "name": "HTV - 24+ Garments - 5-10\" - 1 Location",
+   "rate": 22,
+   "unit": "Quantity"
+  },
+  "PPSP1": {
+   "name": "Screen Print - 1 Color - 12-23 Garments",
+   "rate": 17,
+   "unit": "Quantity"
+  },
+  "PPSP10": {
+   "name": "Screen Print - 2 Color - 48-95 Garments",
+   "rate": 9,
+   "unit": "Quantity"
+  },
+  "PPSP11": {
+   "name": "Screen Print - 2 Color - 96-479 Garments",
+   "rate": 8,
+   "unit": "Quantity"
+  },
+  "PPSP12": {
+   "name": "Screen Print - 2 Color - 480+ Garments",
+   "rate": 7,
+   "unit": "Pieces"
+  },
+  "PPSP13": {
+   "name": "Screen Print - 3 Color - Under 12 Garments",
+   "rate": 27,
+   "unit": "Pieces"
+  },
+  "PPSP14": {
+   "name": "Screen Print - 3 Color - 12-23 Garments",
+   "rate": 20,
+   "unit": "Quantity"
+  },
+  "PPSP15": {
+   "name": "Screen Print - 3 Color - 24-47 Garments",
+   "rate": 13,
+   "unit": "Quantity"
+  },
+  "PPSP16": {
+   "name": "Screen Print - 3 Color - 48-95 Garments",
+   "rate": 10,
+   "unit": "Quantity"
+  },
+  "PPSP17": {
+   "name": "Screen Print - 3 Color - 96-479 Garments",
+   "rate": 9,
+   "unit": "Quantity"
+  },
+  "PPSP18": {
+   "name": "Screen Print - 3 Color - 480+ Garments",
+   "rate": 8,
+   "unit": "Pieces"
+  },
+  "PPSP19": {
+   "name": "Screen Print - 4 Color - Under 12 Garments",
+   "rate": 28,
+   "unit": "Pieces"
+  },
+  "PPSP2": {
+   "name": "Screen Print - 1 Color - Under 12 Garments",
+   "rate": 25,
+   "unit": "Pieces"
+  },
+  "PPSP20": {
+   "name": "Screen Print - 4 Color - 12-23 Garments",
+   "rate": 21,
+   "unit": "Quantity"
+  },
+  "PPSP21": {
+   "name": "Screen Print - 4 Color - 24-47 Garments",
+   "rate": 14,
+   "unit": "Quantity"
+  },
+  "PPSP22": {
+   "name": "Screen Print - 4 Color - 48-95 Garments",
+   "rate": 11,
+   "unit": "Quantity"
+  },
+  "PPSP23": {
+   "name": "Screen Print - 4 Color - 96-479 Garments",
+   "rate": 10,
+   "unit": "Quantity"
+  },
+  "PPSP24": {
+   "name": "Screen Print - 4 Color - 480+ Garments",
+   "rate": 9,
+   "unit": "Pieces"
+  },
+  "PPSP25": {
+   "name": "Screen Print - 5 Color - Under 12 Garments",
+   "rate": 28,
+   "unit": "Pieces"
+  },
+  "PPSP26": {
+   "name": "Screen Print - 5 Color - 12-23 Garments",
+   "rate": 22,
+   "unit": "Quantity"
+  },
+  "PPSP27": {
+   "name": "Screen Print - 5 Color - 24-47 Garments",
+   "rate": 15,
+   "unit": "Quantity"
+  },
+  "PPSP28": {
+   "name": "Screen Print - 5 Color - 48-95 Garments",
+   "rate": 12,
+   "unit": "Quantity"
+  },
+  "PPSP29": {
+   "name": "Screen Print - 5 Color - 96-479 Garments",
+   "rate": 11,
+   "unit": "Quantity"
+  },
+  "PPSP3": {
+   "name": "Screen Print - 1 Color - 24-47 Garments",
+   "rate": 10,
+   "unit": "Quantity"
+  },
+  "PPSP30": {
+   "name": "Screen Print - 5 Color - 480+ Garments",
+   "rate": 10,
+   "unit": "Pieces"
+  },
+  "PPSP31": {
+   "name": "Screen Print - 6 Color - Under 12 Garments",
+   "rate": 29,
+   "unit": "Pieces"
+  },
+  "PPSP32": {
+   "name": "Screen Print - 6 Color - 12-23 Garments",
+   "rate": 23,
+   "unit": "Quantity"
+  },
+  "PPSP33": {
+   "name": "Screen Print - 6 Color - 24-47 Garments",
+   "rate": 16,
+   "unit": "Quantity"
+  },
+  "PPSP34": {
+   "name": "Screen Print - 6 Color - 48-95 Garments",
+   "rate": 13,
+   "unit": "Quantity"
+  },
+  "PPSP35": {
+   "name": "Screen Print - 6 Color - 96-479 Garments",
+   "rate": 11,
+   "unit": "Quantity"
+  },
+  "PPSP36": {
+   "name": "Screen Print - 6 Color - 480+ Garments",
+   "rate": 11,
+   "unit": "Pieces"
+  },
+  "PPSP37": {
+   "name": "Screen Print Extra Placement",
+   "rate": 3,
+   "unit": "Pieces"
+  },
+  "PPSP4": {
+   "name": "Screen Print - 1 Color - 48-95 Garments",
+   "rate": 8,
+   "unit": "Quantity"
+  },
+  "PPSP5": {
+   "name": "Screen Print - 1 Color - 96-479 Garments",
+   "rate": 7,
+   "unit": "Quantity"
+  },
+  "PPSP6": {
+   "name": "Screen Print - 1 Color - 480+ Garments",
+   "rate": 6,
+   "unit": "Pieces"
+  },
+  "PPSP69": {
+   "name": "Screen Print - Screen Washout Fee - per Color",
+   "rate": 25,
+   "unit": "Pieces"
+  },
+  "PPSP7": {
+   "name": "Screen Print - 2 Color - Under 12 Garments",
+   "rate": 26,
+   "unit": "Pieces"
+  },
+  "PPSP70": {
+   "name": "Screen Print Ink Change",
+   "rate": 5,
+   "unit": "Pieces"
+  },
+  "PPSP8": {
+   "name": "Screen Print - 2 Color - 12-23 Garments",
+   "rate": 19,
+   "unit": "Quantity"
+  },
+  "PPSP9": {
+   "name": "Screen Print - 2 Color - 24-47 Garments",
+   "rate": 12,
+   "unit": "Quantity"
+  },
+  "PPSPH1": {
+   "name": "Screen Print - Hoodie - 1 Color - 12-23 Pieces",
+   "rate": 22,
+   "unit": "Quantity"
+  },
+  "PPSPH10": {
+   "name": "Screen Print - Hoodie - 5 Color - 24-47 Pieces",
+   "rate": 20,
+   "unit": "Quantity"
+  },
+  "PPSPH11": {
+   "name": "Screen Print - Hoodie - 6 Color - 12-23 Pieces",
+   "rate": 28,
+   "unit": "Quantity"
+  },
+  "PPSPH12": {
+   "name": "Screen Print - Hoodie - 6 Color - 24-47 Pieces",
+   "rate": 21,
+   "unit": "Quantity"
+  },
+  "PPSPH13": {
+   "name": "Screen Print - Hoodie - 1 Color - 48-95 Pieces",
+   "rate": 13,
+   "unit": "Quantity"
+  },
+  "PPSPH14": {
+   "name": "Screen Print - Hoodie - 2 Color - 48-95 Pieces",
+   "rate": 14,
+   "unit": "Quantity"
+  },
+  "PPSPH15": {
+   "name": "Screen Print - Hoodie - 3 Color - 48-95 Pieces",
+   "rate": 15,
+   "unit": "Quantity"
+  },
+  "PPSPH16": {
+   "name": "Screen Print - Hoodie - 4 Color - 48-95 Pieces",
+   "rate": 16,
+   "unit": "Quantity"
+  },
+  "PPSPH17": {
+   "name": "Screen Print - Hoodie - 5 Color - 48-95 Pieces",
+   "rate": 17,
+   "unit": "Quantity"
+  },
+  "PPSPH18": {
+   "name": "Screen Print - Hoodie - 6 Color - 48-95 Pieces",
+   "rate": 18,
+   "unit": "Quantity"
+  },
+  "PPSPH19": {
+   "name": "Screen Print - Hoodie - 1 Color - 96-479 Pieces",
+   "rate": 11,
+   "unit": "Quantity"
+  },
+  "PPSPH2": {
+   "name": "Screen Print - Hoodie - 2 Color - 12-23 Pieces",
+   "rate": 24,
+   "unit": "Quantity"
+  },
+  "PPSPH20": {
+   "name": "Screen Print - Hoodie - 2 Color - 96-479 Pieces",
+   "rate": 13,
+   "unit": "Quantity"
+  },
+  "PPSPH21": {
+   "name": "Screen Print - Hoodie - 3 Color - 96-479 Pieces",
+   "rate": 14,
+   "unit": "Quantity"
+  },
+  "PPSPH22": {
+   "name": "Screen Print - Hoodie - 4 Color - 96-479 Pieces",
+   "rate": 14,
+   "unit": "Quantity"
+  },
+  "PPSPH23": {
+   "name": "Screen Print - Hoodie - 5 Color - 96-479 Pieces",
+   "rate": 16,
+   "unit": "Quantity"
+  },
+  "PPSPH24": {
+   "name": "Screen Print - Hoodie - 6 Color - 96-479 Pieces",
+   "rate": 17,
+   "unit": "Quantity"
+  },
+  "PPSPH25": {
+   "name": "Screen Print - Hoodie - 1 Color - 480+ Pieces",
+   "rate": 9,
+   "unit": "Pieces"
+  },
+  "PPSPH26": {
+   "name": "Screen Print - Hoodie - 2 Color - 480+ Pieces",
+   "rate": 10,
+   "unit": "Pieces"
+  },
+  "PPSPH27": {
+   "name": "Screen Print - Hoodie - 3 Color - 480+ Pieces",
+   "rate": 11,
+   "unit": "Pieces"
+  },
+  "PPSPH28": {
+   "name": "Screen Print - Hoodie - 4 Color - 480+ Pieces",
+   "rate": 12,
+   "unit": "Pieces"
+  },
+  "PPSPH29": {
+   "name": "Screen Print - Hoodie - 5 Color - 480+ Pieces",
+   "rate": 13,
+   "unit": "Pieces"
+  },
+  "PPSPH3": {
+   "name": "Screen Print - Hoodie - 3 Color - 12-23 Pieces",
+   "rate": 25,
+   "unit": "Quantity"
+  },
+  "PPSPH30": {
+   "name": "Screen Print - Hoodie - 6 Color - 480+ Pieces",
+   "rate": 14,
+   "unit": "Pieces"
+  },
+  "PPSPH31": {
+   "name": "Screen Print - Hoodie - Extra Placement",
+   "rate": 3,
+   "unit": "Pieces"
+  },
+  "PPSPH4": {
+   "name": "Screen Print - Hoodie - 4 Color - 12-23 Pieces",
+   "rate": 26,
+   "unit": "Quantity"
+  },
+  "PPSPH5": {
+   "name": "Screen Print - Hoodie - 5 Color - 12-23 Pieces",
+   "rate": 27,
+   "unit": "Quantity"
+  },
+  "PPSPH6": {
+   "name": "Screen Print - Hoodie - 1 Color - 24-47 Pieces",
+   "rate": 15,
+   "unit": "Quantity"
+  },
+  "PPSPH7": {
+   "name": "Screen Print - Hoodie - 2 Color - 24-47 Pieces",
+   "rate": 17,
+   "unit": "Quantity"
+  },
+  "PPSPH8": {
+   "name": "Screen Print - Hoodie - 3 Color - 24-47 Pieces",
+   "rate": 18,
+   "unit": "Quantity"
+  },
+  "PPSPH9": {
+   "name": "Screen Print - Hoodie - 4 Color - 24-47 Pieces",
+   "rate": 19,
+   "unit": "Quantity"
+  },
+  "PPSPIP": {
+   "name": "Screen Print - Premium Iron Pass",
+   "rate": 1,
+   "unit": "Pieces"
+  },
+  "PPSPTF": {
+   "name": "Screen Print - Tag Print Fee",
+   "rate": 4,
+   "unit": "Pieces"
+  },
+  "PPTLCF": {
+   "name": "Tag / Logo Change Fee",
+   "rate": 4,
+   "unit": "Each"
+  }
+ }
+}

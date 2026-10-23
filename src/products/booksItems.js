@@ -110,18 +110,71 @@ export async function supplierStyle(supplier, style, brand = "") {
 }
 
 /*
- * E-106: is this exact SKU an item in Books, even if CRM's copy has not synced yet (35 min - 2 h)? The live "check" action already
- * answers it -- "SKU already used by: <name> (active)" -- and writes nothing. Up to 5 codes per call (the function stops at 7 s).
- * Returns [{ sku, name, active }] for the codes Books has; [] when it cannot tell.
+ * Deluge docs/42 + 43: action "search" (read-only, live 10-22). { skus: [exact codes] } or { text }. Answers active items:
+ * [{ item_id, sku, name, rate, brand, unit, category }]; `partial: true` = the function stopped early, ask again for the rest.
+ * Codes go 5 per call (Deluge: ~0.4 s each, the function stops at 7 s); a code still missing after its own retry is not in Books.
+ * { status: "ok" | "error" | "unavailable", items: { SKU: item } }
+ */
+const item = (r) => ({
+  item_id: str(r && r.item_id),
+  sku: str(r && r.sku).trim().toUpperCase(),
+  name: str(r && r.name),
+  rate: Number(r && r.rate),
+  brand: str(r && r.brand),
+  unit: str(r && r.unit),
+  category: str(r && r.category),
+});
+export async function searchBooks(skus) {
+  const list = [...new Set((skus || []).map((s) => str(s).trim().toUpperCase()).filter(Boolean))];
+  const items = {};
+  const chunks = [];
+  for (let i = 0; i < list.length; i += 5) chunks.push(list.slice(i, i + 5));
+  const ask = async (codes) => {
+    const a = await books("search", { skus: codes });
+    if (a.status !== "ok") return a;
+    results(a).map(item).forEach((r) => r.sku && (items[r.sku] = r));
+    return a;
+  };
+  const answers = await Promise.all(chunks.map(ask));
+  const bad = answers.find((a) => a.status !== "ok");
+  if (bad) return { status: bad.status, message: bad.message, reason: bad.reason, items };
+  // partial answers: ask once more, one code at a time, for what is still missing from those chunks
+  const retry = chunks.filter((c, i) => answers[i].partial === true || answers[i].partial === "true").flat().filter((c) => !items[c]);
+  for (const c of retry) await ask([c]);
+  return { status: "ok", message: "", items };
+}
+
+/*
+ * E-106: is this exact SKU an item in Books, even if CRM's copy has not synced yet (35 min - 2 h)? Since 10-22 through "search"
+ * (Deluge docs/43 §2). If "search" is not answering, the older way: the "check" action's text -- "SKU already used by: <name>
+ * (active)" -- word for word (Deluge keeps it). Returns [{ sku, name, active, item_id, rate, brand, category }]; [] when it cannot tell.
  */
 const HELD = /^SKU already used by: (.*) \((active|inactive)\)$/;
 export async function findSkusInBooks(skus) {
   const list = [...new Set((skus || []).map((s) => str(s).trim().toUpperCase()).filter(Boolean))].slice(0, 5);
   if (!list.length) return [];
+  const s = await searchBooks(list);
+  if (s.status === "ok") return list.filter((c) => s.items[c]).map((c) => ({ ...s.items[c], active: true }));
   const a = await checkInBooks(list.map((sku) => ({ sku, name: `zz lookup ${sku} zz`, brand: "lookup" })));
   if (a.status !== "ok") return [];
   return a.results
     .map((r) => ({ r, m: HELD.exec(str(r && r.clash)) }))
     .filter((x) => x.m)
     .map((x) => ({ sku: str(x.r.sku).toUpperCase(), name: x.m[1], active: x.m[2] === "active" }));
+}
+
+/*
+ * E-108: widget_create_billing_draft (Deluge docs/43 §1). One call; never retried under another name once it answered, so a
+ * draft cannot be made twice. Answer: { status, result, message, number, id, link, not_added, notes, ... } (shown as is).
+ */
+export async function createBillingDraft(dealId, payload) {
+  const a = await call(RULES.functions.billingDraft, { deal_id: str(dealId), payload: JSON.stringify(payload) });
+  return {
+    ...a,
+    result: str(a.result),
+    number: str(a.number),
+    link: str(a.link),
+    not_added: Array.isArray(a.not_added) ? a.not_added : [],
+    notes: Array.isArray(a.notes) ? a.notes.map(str).filter(Boolean) : [],
+  };
 }

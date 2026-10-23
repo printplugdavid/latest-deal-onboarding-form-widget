@@ -84,14 +84,17 @@ const lookedUp = new Map(); // code -> product | null, for this sitting
 async function booksLookup(code) {
   if (lookedUp.has(code)) return lookedUp.get(code);
   const [hit] = (await findSkusInBooks([code])).filter((x) => x.active);
-  const p = hit ? { id: "", sku: hit.sku, name: hit.name, brand: "", category: "", active: true, fromBooks: true } : null;
+  const p = hit ? asPickerProduct(hit) : null;
   lookedUp.set(code, p);
   return p;
 }
 
-/* E-106: the rest of a Books-only item's size-band family (ST290 -> ST2901, ST2902 …), looked up in Books in one call. */
+/* E-106: the rest of a Books-only item's size-band family (ST290 -> ST2901, ST2902 …), looked up in Books in one call (search, 10-22). */
 export async function booksFamilyOf(base) {
   const b = str(base).trim().toUpperCase();
   const found = await findSkusInBooks([b, `${b}1`, `${b}2`, `${b}3`, `${b}4`]);
-  return found.filter((x) => x.active).map((x) => ({ id: "", sku: x.sku, name: x.name, brand: "", category: "", active: true, fromBooks: true }));
+  return found.filter((x) => x.active).map(asPickerProduct);
 }
+
+/* A Books answer as a picker product (id = the CRM Product id, which a Books-only item does not have yet). */
+const asPickerProduct = (x) => ({ id: "", sku: x.sku, name: x.name, brand: str(x.brand), category: str(x.category), active: true, fromBooks: true });

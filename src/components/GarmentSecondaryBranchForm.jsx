@@ -18,6 +18,7 @@ import {
 import GarmentTartiaryBranch from "./GarmentTartiaryBranch";
 import ColorsUsedField from "./ColorsUsedField";
 import GraphicArt from "./GraphicArt";
+import GraphicBillingFields from "./GraphicBillingFields";
 
 const GarmentSecondaryBranchForm = ({
   index,
@@ -341,6 +342,9 @@ const GarmentSecondaryBranchForm = ({
           />
         )}
       />
+
+      {/* E-108: what the draft invoice needs from this graphic (HTV color; garments when not every graphic goes on every garment). */}
+      <GraphicBillingFields index={index} branchIndex={branchIndex} secBranchIndex={secBranchIndex} productName={productName} />
 
       <Controller
         control={control}
