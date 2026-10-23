@@ -4,13 +4,17 @@ test("the Deal list is Books' 38 spellings (docs/47); a name matches in any case
   expect(DEAL_VENDORS).toHaveLength(38);
   expect(dealVendor("s&s activewear")).toBe("S&S Activewear");
   expect(dealVendor("Stahl's")).toBe("Stahl's");
-  expect(dealVendor("S & S")).toBe(""); // the old spelling is gone from the Deal list
+  expect(dealVendor("SanMar")).toBe("San Mar"); // hand-typed on older orders
+  expect(dealVendor("SSactivewear")).toBe("S&S Activewear");
+  expect(dealVendor("Stahls")).toBe("Stahl's");
+  expect(dealVendor("BannerBuzz")).toBe("Banner Buzz");
+  expect(dealVendor("Richardson")).toBe(""); // not the same name: left as typed
   expect(dealVendor("The Print Plug")).toBe("");
 });
 
 test("vendorsOf: the saved list wins; older text is read (separators of amended text dropped)", () => {
   expect(vendorsOf({ vendorsList: ["San Mar"], vendorsUsed: "anything" })).toEqual(["San Mar"]);
-  expect(vendorsOf({ vendorsUsed: "san mar, SSactivewear" })).toEqual(["San Mar", "SSactivewear"]);
+  expect(vendorsOf({ vendorsUsed: "san mar, SSactivewear" })).toEqual(["San Mar", "S&S Activewear"]);
   expect(vendorsOf({ vendorsUsed: "San Mar\n--- amended 2026-10-23 ---\nS&S Activewear" })).toEqual(["San Mar", "S&S Activewear"]);
   expect(vendorsOf({})).toEqual([]);
 });

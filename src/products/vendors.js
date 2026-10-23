@@ -20,9 +20,10 @@ export const DEAL_VENDORS = [
 /* Books vendors that are not a place we order from (our own decoration / fee items). Stock from the shelf is "Inventory". */
 export const NOT_A_VENDOR = ["The Print Plug"];
 
-const norm = (s) => String(s == null ? "" : s).trim().toLowerCase();
+// Spaces and punctuation ignored: older orders were typed by hand ("SanMar", "SSactivewear", "Stahls").
+const norm = (s) => String(s == null ? "" : s).toLowerCase().replace(/[^a-z0-9]+/g, "");
 
-/* The Deal choice with this name (any case), or "". */
+/* The Deal choice with this name (any case, spacing or punctuation), or "". */
 export const dealVendor = (name) => DEAL_VENDORS.find((v) => norm(v) === norm(name)) || "";
 
 const SEPARATOR = /^---.*---$|^\(cleared in this amendment\)$/i; // amendSeparator (D-23)
