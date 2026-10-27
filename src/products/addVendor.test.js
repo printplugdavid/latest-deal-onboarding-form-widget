@@ -82,7 +82,7 @@ test("E-128 (Deluge 10-27): 5 SKUs per check; 'not started' rows are sent again;
   };
   const r = await skusInBooks(["RI220", "RI2201", "RI2202", "RI2203", "RI2204", "RI2205"]);
   expect(calls[0]).toEqual(["RI220", "RI2201", "RI2202", "RI2203", "RI2204"]); // 5 per call
-  expect(calls.slice(2)).toEqual([["RI2204"], ["RI2205"]]); // unreached ones again, one at a time
+  expect(calls.slice(2)).toEqual([["RI2203"], ["RI2204"], ["RI2205"]]); // the 3 unreached ones again, one at a time
   expect(r.taken.get("RI2203")).toMatchObject({ name: "Other - Cap", active: true });
   expect(r.status).toBe("partial"); // RI2205 never answered: not "free"
   expect(r.message).toMatch(/RI2205/);
