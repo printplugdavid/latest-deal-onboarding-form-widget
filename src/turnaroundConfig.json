@@ -1,4 +1,4 @@
 {
-  "_note": "E-144 (Deluge docs/49): at onboarding Submit the form writes the Deal's Turnaround (Standard / Extended / Hard Due Date / Rush) and, for Extended / Hard Due Date / Rush, the Closing Date; it also shows the Extended calendar. OFF until the Deluge production master that keeps these dates is pasted -- switched on in the same window. Set writeOnSubmit to true to switch on.",
-  "writeOnSubmit": false
+  "_note": "E-144 (Deluge docs/49): at onboarding Submit the form writes the Deal's Turnaround (Standard / Extended / Hard Due Date / Rush) and, for Extended / Hard Due Date / Rush, the Closing Date; it also shows the Extended calendar. ON since the 10-27 paste window: Deluge production master ee5f7ac1 live 16:11:33, old rule 'Mock-Up Approved: Update Closing Date No Rush' inactive 16:29:35. Set writeOnSubmit to false to stop the writes and hide the calendar.",
+  "writeOnSubmit": true
 }
