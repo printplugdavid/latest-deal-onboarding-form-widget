@@ -33,6 +33,8 @@
  */
 import { loadDealVendors } from "../products/dealVendorsLive";
 import { mergeDealVendors } from "../products/vendors";
+import { ASKED_TYPES, categoryWriteOn, mergeCategories, outsourcingFields } from "../dealCategory";
+import SourcingField from "../components/SourcingField";
 import { productLabel } from "../productLabels";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -108,6 +110,7 @@ const WHAT_CHANGED = [
   { key: "graphic", label: "Graphic or placement" },
   { key: "added", label: "Product added" },
   { key: "removed", label: "Product removed" },
+  { key: "sourcing", label: "Outsourced or made in house" }, // E-115
   { key: "dates", label: "Dates" },
   { key: "contact", label: "Contact / shipping" },
   { key: "custnotes", label: "Customer notes (for the account)" },
@@ -660,6 +663,20 @@ const AmendmentApp = () => {
       }
     }
 
+    // E-16 + E-115: the Deal Category and the two outsourcing fields follow the amended products -- same rule and switch as the
+    // onboarding form (Deluge docs/48: replace, blank when nothing is ordered in; tasks already made are not added or removed).
+    if (categoryWriteOn()) {
+      const cat = mergeCategories(loaded.deal?.Lead_Category, saved?.products);
+      const out = outsourcingFields(loaded.deal, saved?.products);
+      if (cat.changed || out.changed) {
+        await step("deal category / outsourcing", async () => {
+          const APIData = { id: recordId, ...(cat.changed ? { Lead_Category: cat.value } : {}), ...(out.changed ? out.fields : {}) };
+          const r = await ZOHO.CRM.API.updateRecord({ Entity: entity, APIData, Trigger: [] });
+          if (!ok(r)) throw new Error("deal category / outsourcing: " + JSON.stringify(r?.data?.[0] || r));
+        });
+      }
+    }
+
     // E-56: an amendment can add a department. Ask the CRM to make sure this Deal's WorkDrive folders
     // exist (it only adds what is missing). After the Deal fields above, not awaited, cannot throw.
     // Not sent for a Deal whose folder was made by hand (David: no back-fill).
@@ -899,6 +916,14 @@ The panel at the bottom shows exactly what will be recorded. Saving posts a new 
                 </Button>
               )}
             </Box>
+
+            {/* E-115: the "Is this item outsourced?" answer -- shown for a new product, or when "Outsourced or made in house" is ticked */}
+            {!isRemoved(productIdx) &&
+              !product._unparsed &&
+              ASKED_TYPES.has(product.productType) &&
+              (has("sourcing") || productIdx >= originalCount) && (
+                <SourcingField key={`src-${productIdx}`} index={productIdx} productName={product.productName} saveDefault={false} />
+              )}
 
             {isRemoved(productIdx) ? (
               <Alert severity="error">

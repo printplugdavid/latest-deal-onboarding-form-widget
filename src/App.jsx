@@ -1,5 +1,7 @@
 import { loadDealVendors } from "./products/dealVendorsLive";
 import { mergeDealVendors } from "./products/vendors";
+import { ASKED_TYPES, categoryWriteOn, mergeCategories, outsourcingFields } from "./dealCategory";
+import SourcingField from "./components/SourcingField";
 import { productLabel } from "./productLabels";
 import {
   Autocomplete,
@@ -314,6 +316,20 @@ function App() {
       if (vend.changed) await ZOHO.CRM.API.updateRecord({ Entity: entity, APIData: { id: entityId, Vendors: vend.value }, Trigger: [] });
     } catch (err) {
       console.log("Deal Vendors not set - skipping:", err);
+    }
+
+    // E-16 + E-115 (D-55; Deluge docs/48): the Deal Category and the two outsourcing fields follow the products and their "Is this
+    // item outsourced?" answers -- one own call, no workflow trigger (nothing reacts to them; the masters read them at the stage move).
+    // Replaces only the tags the form owns. Live only when dealCategoryConfig.json says so (the one release with Deluge's masters).
+    if (categoryWriteOn()) {
+      try {
+        const cat = mergeCategories(recordData?.Lead_Category, data?.products);
+        const out = outsourcingFields(recordData, data?.products);
+        const APIData = { id: entityId, ...(cat.changed ? { Lead_Category: cat.value } : {}), ...(out.changed ? out.fields : {}) };
+        if (cat.changed || out.changed) await ZOHO.CRM.API.updateRecord({ Entity: entity, APIData, Trigger: [] });
+      } catch (err) {
+        console.log("Deal Category / outsourcing not set - skipping:", err);
+      }
     }
 
     // E-56: ask the CRM to create this Deal's WorkDrive folders. AFTER the print fields above (the
@@ -762,6 +778,9 @@ function App() {
                       Remove
                     </Button>
                   </Box>
+
+                  {/* E-115: "Is this item outsourced?" per product (not Graphic Design / the storefront) */}
+                  {ASKED_TYPES.has(productType) && <SourcingField index={index} productName={productName} />}
 
                   {productType === "garment" && (
                     <GarmentForm

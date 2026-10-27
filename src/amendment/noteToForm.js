@@ -66,6 +66,7 @@ const DIVIDER = /^[ \t]*-{3,}[ \t]*$/;
 // head their own lines ("Navy Garment:", or E-57's style headings "PC78 Port & Company …:") -- is part of the
 // value. It used to end it, which emptied Color Change details and cut sizes short on note-only Deals.
 export const NOTE_LABELS = [
+  "Made", // E-115: a product ordered in ("Made: Ordered in, ready to go")
   "Account Name",
   "Add 1 Week To Production Time?",
   "Are There Any Custom Fields or Notes You Would Like on Your Page?",

@@ -189,6 +189,7 @@ const FIELD_LABELS = {
   sku: "SKU",
   everyGraphicOnEveryGarment: "Every graphic goes on every garment",
   garmentKind: "Garment Kind",
+  sourcing: "Made", // E-115
 };
 
 // E-74: the placement picks are saved beside the text they write (placementLocation, sizeAndDimensions,
@@ -230,7 +231,9 @@ export function describePath(path, values) {
 // Plain-text lines for the What Changed block. Multi-line values get their own was/now lines.
 export function summariseDiff(changes, values) {
   const show = (v) => (v === "" ? "(empty)" : v);
-  return changes.filter(({ path }) => !PICK_LEAF.test(path)).map(({ path, before, after }) => {
+  return changes.filter(({ path }) => !PICK_LEAF.test(path)).map(({ path, before: was, after }) => {
+    // E-115: an order saved before the question had no answer -- it was made in house (or bought in, for the always-bought ones)
+    const before = was === "" && /\.sourcing$/.test(path) ? "(not asked)" : was;
     const label = describePath(path, values);
     if (before.includes("\n") || after.includes("\n")) {
       return `${label}:\n  was: ${show(before).replace(/\n/g, "\n       ")}\n  now: ${show(after).replace(/\n/g, "\n       ")}`;

@@ -1,0 +1,6 @@
+{
+  "_note": "E-16 + E-115: on Submit and Amendment save the form sets the Deal Category and the two outsourcing fields (Deluge docs/48). OFF until the one release: David has created the fields (API names below, read back by Deluge), Deluge's masters are pasted, and the E-16 test write has settled label vs stored value. Flip writeOnSubmit to true to go live.",
+  "writeOnSubmit": false,
+  "outsourcedItemsField": "Outsourced_Items",
+  "readyField": "Ordered_In_Ready_To_Go"
+}
