@@ -41,11 +41,13 @@ import {
   toBooksItem,
   unitFor,
   vendorCodeFor,
-  suggestVendorCode,
+  vendorCodeCandidates,
   cleanBrand,
   vendorCodeTaken,
+  clashPrefixes,
+  clashSkuFree,
 } from "../products/newProductRules";
-import { booksLists, checkInBooks, createInBooks, supplierStyle } from "../products/booksItems";
+import { booksLists, checkInBooks, createInBooks, searchBooks, skusInBooks, supplierStyle } from "../products/booksItems";
 import { rememberCreated, searchProducts } from "../products/productSearch";
 
 /*
@@ -74,7 +76,16 @@ export default function NewProductForm({ initialStyle = "", garmentKind = "", on
   const [addingVendor, setAddingVendor] = useState(""); // E-126 B
   // E-126 (David 10-23): an outsourced product's SKU is the supplier's own (pasted) or generated (vendor code + initials).
   const [pastedSku, setPastedSku] = useState("");
-  const [gen, setGen] = useState(null); // { code, status: checking | ok | approved | taken | rejected, known, why }
+  // E-128 / D-61: { code, status: checking | ok | approved | none | error, known, why, rejected: [codes the rep said Not right to] }
+  const [gen, setGen] = useState(null);
+  // E-128 (David 10-23): a SKU already in Books -> "Is this the product you need?". existing = that lookup for the current SKUs;
+  // notThis = SKUs the rep said belong to a different product; clashFix = the new SKU for a supplier's number that was taken (RI220);
+  // usedExisting = the Books product the rep said it IS (nothing is created).
+  const [existing, setExisting] = useState(null); // { key, status: checking | found | none | error, found, message }
+  const [notThis, setNotThis] = useState([]);
+  const [clashFix, setClashFix] = useState(null); // { number, status: checking | ok | none | error | needBrand | needCode, base, why }
+  const [usedExisting, setUsedExisting] = useState(null);
+  const [clashTry, setClashTry] = useState(0); // "Try again" after Books could not be read
   // E-127: a brand Books has never used -- added only through AddBrandDialog (never free text).
   const [addingBrand, setAddingBrand] = useState(null); // { name, fromSupplier }
   const [newBrand, setNewBrand] = useState(""); // the brand this product adds to Books (for the success note)
@@ -125,7 +136,7 @@ export default function NewProductForm({ initialStyle = "", garmentKind = "", on
   // A different style or supplier: the earlier lookup (and its brand question) no longer applies.
   useEffect(() => setLookup(null), [supplier, style]);
   // Anything the rep changes after the Books check makes that check stale.
-  useEffect(() => setBooksCheck(null), [kind, supplier, style, words, colorStyle, brand, leadBrand, finalCategory, unit, rows, vendor]);
+  useEffect(() => setBooksCheck(null), [kind, supplier, style, words, colorStyle, brand, leadBrand, finalCategory, unit, rows, vendor, pastedSku, gen, clashFix]);
 
   async function doLookup(pickedBrand = "") {
     setLooking(true);
@@ -142,15 +153,22 @@ export default function NewProductForm({ initialStyle = "", garmentKind = "", on
     if (bands.length) setRows(bands.map((x) => ({ size: x.label, quantity: "", cost: money(x.cost), price: "", costSource: "live" })));
   }
 
+  // E-128: the supplier's own number (style, or the outsourced SKU pasted); the vendor code in use (registry / Books, or OK'd by the rep).
+  const skuNumber = kind === "supplier" ? normalizeSku(style) : kind === "outsourced" ? normalizeSku(pastedSku) : "";
+  // A vendor with a code in Books (or our copy) needs no button press when the code only prefixes a supplier's number (PRI7102).
+  const knownCode = kind === "outsourced" && vendorPicked && vendorPicked.name ? vendorCodeFor(vendorPicked.name, lists.vendors) : "";
+  const useCode = gen && (gen.known || gen.status === "approved") ? gen.code : normalizeSku(pastedSku) && knownCode ? knownCode : "";
+  // The rep said the Books product holding the supplier's number is a different product -> the new SKU (RI220 / PRI220) replaces it.
+  const fixedBase = clashFix && clashFix.status === "ok" && clashFix.number === skuNumber ? clashFix.base : "";
+
   const items = useMemo(() => {
     const productWords = words.trim();
     const pasted = normalizeSku(pastedSku);
-    const useCode = gen && (gen.known || gen.status === "approved") ? gen.code : "";
     const codes =
       kind === "supplier"
-        ? skusForBands(style, rows.length)
+        ? skusForBands(fixedBase || style, rows.length)
         : kind === "outsourced" && pasted
-        ? skusForBands(pasted, rows.length) // the supplier's SKU, bands / tiers + 1, 2, 3 (docs/25 §2a)
+        ? skusForBands(fixedBase || pasted, rows.length) // the supplier's SKU, bands / tiers + 1, 2, 3 (docs/25 §2a)
         : kind === "outsourced" && !useCode
         ? rows.map(() => "")
         : rows.map((_, i) => {
@@ -183,35 +201,132 @@ export default function NewProductForm({ initialStyle = "", garmentKind = "", on
         itemType,
         purchaseAccountId: (account && account.id) || "",
         productUrl,
+        // E-128: the supplier's own number goes in Books' Part Number when its SKU had to change (Books docs/25 §2a).
+        partNumber: fixedBase ? skuNumber : "",
+        // D-61: a vendor code the form made (not Books' / the registry's) -- Deluge saves it on the vendor only when its code is blank.
+        vendorCode: kind === "outsourced" && gen && !gen.known && gen.status === "approved" ? gen.code : "",
       };
     });
-  }, [kind, style, rows, words, vendorPicked, finalCategory, leadBrand, brand, colorStyle, unit, itemType, account, productUrl, pastedSku, gen]);
+  }, [kind, style, rows, words, vendorPicked, finalCategory, leadBrand, brand, colorStyle, unit, itemType, account, productUrl, pastedSku, gen, useCode, fixedBase, skuNumber]);
+
+  /* ---------- E-128: is this SKU already in Books? (asked as soon as the SKU is known, not only at "Check in Books") ---------- */
+  const skuKey = items.map((it) => it.sku).join(",");
+  const existingNow = existing && existing.key === skuKey ? existing : null;
+  const found = existingNow && existingNow.status === "found" ? existingNow.found : null;
+  const foundOpen = !!found && !notThis.includes(found.sku);
+  // Where the SKU came from decides what "No" does: a supplier's number gets the RI220 rule; initials (Generate SKU / PP) need another word.
+  const fromNumber = kind === "supplier" || (kind === "outsourced" && !!normalizeSku(pastedSku));
+  const originalCodes = fromNumber && skuNumber ? skusForBands(skuNumber, rows.length) : [];
+  const saidNoToNumber = originalCodes.some((c) => notThis.includes(c));
+
+  useEffect(() => {
+    if (!items.length || items.some((it) => !it.sku) || lists.status !== "ok") {
+      setExisting(null);
+      return undefined;
+    }
+    let live = true;
+    setExisting({ key: skuKey, status: "checking" });
+    const t = setTimeout(async () => {
+      const r = await skusInBooks(items.map((it) => it.sku));
+      if (!live) return;
+      if (r.status !== "ok") return setExisting({ key: skuKey, status: "error", message: r.message });
+      const hit = items.map((it) => r.taken.get(normalizeSku(it.sku))).find(Boolean);
+      if (!hit) return setExisting({ key: skuKey, status: "none" });
+      let product = hit;
+      if (hit.active) {
+        const s = await searchBooks([hit.sku]);
+        if (!live) return;
+        if (s.status === "ok" && s.items[hit.sku]) product = { ...s.items[hit.sku], active: true };
+      }
+      setExisting({ key: skuKey, status: "found", found: product });
+    }, 700);
+    return () => {
+      live = false;
+      clearTimeout(t);
+    };
+  }, [skuKey, lists.status]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // "No, a different product" on a supplier's number: the brand's letters (supplier goods) or the vendor code (outsourced) + the number,
+  // 2 then 3 then 4 letters, every band checked in Books (active or inactive) and against other brands' codes (the DT8001 trap).
+  useEffect(() => {
+    if (!saidNoToNumber || !skuNumber) {
+      setClashFix(null);
+      return undefined;
+    }
+    let live = true;
+    (async () => {
+      const prefixes = clashPrefixes(kind, { brand, vendorCode: useCode });
+      if (!prefixes.length) return setClashFix({ number: skuNumber, status: kind === "outsourced" ? "needCode" : "needBrand" });
+      setClashFix({ number: skuNumber, status: "checking" });
+      for (const p of prefixes) {
+        const base = normalizeSku(p + skuNumber);
+        const bands = skusForBands(base, rows.length);
+        const t = await skusInBooks(bands);
+        if (!live) return;
+        if (t.status !== "ok") return setClashFix({ number: skuNumber, status: "error", why: t.message });
+        const crm = await searchProducts(base);
+        if (!live) return;
+        const f = clashSkuFree(base, bands, { taken: new Set(t.taken.keys()), products: crm.products || [], brand });
+        if (f.free) return setClashFix({ number: skuNumber, status: "ok", base, prefix: p });
+      }
+      setClashFix({ number: skuNumber, status: "none" });
+    })();
+    return () => {
+      live = false;
+    };
+  }, [saidNoToNumber, skuNumber, kind, brand, useCode, rows.length, clashTry]);
 
   // A different vendor or kind: the generated code no longer applies.
   useEffect(() => setGen(null), [kind, vendorPicked && vendorPicked.name]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  async function generateSku() {
+  /*
+   * E-128 / D-61: the vendor's code -- Books' (live) or the registry's, else the next FREE code from its name, offered for the rep's OK.
+   * `skip` = codes the rep said Not right to: the next one is offered, nothing ever goes to David.
+   */
+  async function generateSku(skip = []) {
     const name = (vendorPicked && vendorPicked.name) || "";
-    const known = vendorCodeFor(name);
-    if (known) return setGen({ code: known, status: "ok", known: true });
-    const code = suggestVendorCode(name);
-    setGen({ code, status: "checking", known: false });
-    const r = await searchProducts(code);
-    const t = r.status === "ok" ? vendorCodeTaken(code, name, r.products) : { taken: true, why: "the existing SKUs could not be checked" };
-    setGen({ code, status: t.taken ? "taken" : "ok", known: false, why: t.why });
+    const known = vendorCodeFor(name, lists.vendors);
+    if (known) return setGen({ code: known, status: "ok", known: true, rejected: [] });
+    const list = vendorCodeCandidates(name).filter((c) => !skip.includes(c));
+    setGen({ code: list[0] || "", status: "checking", known: false, rejected: skip });
+    for (const code of list) {
+      const r = await searchProducts(code);
+      if (r.status !== "ok") return setGen({ code, status: "error", known: false, rejected: skip, why: "the existing SKUs could not be checked" });
+      if (!vendorCodeTaken(code, name, r.products, lists.vendors).taken) return setGen({ code, status: "ok", known: false, rejected: skip });
+    }
+    setGen({ code: "", status: "none", known: false, rejected: skip });
   }
 
   const problems = checkItems(items, { booksBrands: lists.brands });
   const extra = [];
-  if (kind === "outsourced" && !normalizeSku(pastedSku) && !(gen && (gen.known || gen.status === "approved")))
+  const needCode = kind === "outsourced" && (!normalizeSku(pastedSku) || (saidNoToNumber && clashFix && clashFix.status === "needCode"));
+  if (needCode && !useCode)
     extra.push(
-      gen && gen.status === "taken"
-        ? `vendor code ${gen.code}: ${gen.why} -- ask David to pick a vendor code`
-        : gen && gen.status === "rejected"
-        ? `vendor code ${gen.code} marked not right -- ask David to pick a vendor code`
+      gen && gen.status === "none"
+        ? "no free vendor code can be made from this vendor's name: tell David"
+        : gen && gen.status === "error"
+        ? `the vendor code could not be checked (${gen.why}): press the button again`
+        : normalizeSku(pastedSku)
+        ? "press Get the vendor's code: the new SKU starts with it"
         : "paste the supplier's SKU, or press Generate SKU"
     );
   if (kind === "supplier" && !style) extra.push("type the supplier's style or item number");
+  // E-128: a SKU already in Books must be answered first; a "No" on initials needs another word; a "No" on a supplier's number waits
+  // for the new SKU (RI220).
+  if (existingNow && existingNow.status === "checking") extra.push("checking Books for this SKU...");
+  if (foundOpen) extra.push(`${found.sku} is already in Books: answer "Is this the product you need?"`);
+  if (found && !foundOpen && !fromNumber)
+    extra.push(`${found.sku} is already used by a different product: add a word to the product description so the SKU changes`);
+  if (saidNoToNumber && clashFix && clashFix.status !== "ok" && clashFix.status !== "needCode")
+    extra.push(
+      clashFix.status === "checking"
+        ? "finding a free SKU for this product..."
+        : clashFix.status === "needBrand"
+        ? "pick the brand first: the new SKU starts with its letters"
+        : clashFix.status === "error"
+        ? `Books could not be checked (${clashFix.why || "no answer"}): press Try again`
+        : "no free SKU could be made from the brand's letters: tell David"
+    );
   // David 10-20 (NE205): a flag, never a stop -- often only some colors are discontinued, and if the supplier still sells it we sell it.
   const discontinued = !!(lookup && (lookup.discontinued || /\bdiscontinued\b/i.test(lookup.title || "")));
   const ready = items.length > 0 && problems.every((p) => p.length === 0) && extra.length === 0;
@@ -236,8 +351,59 @@ export default function NewProductForm({ initialStyle = "", garmentKind = "", on
 
   const setRow = (i, patch) => setRows((rs) => rs.map((r, j) => (j === i ? { ...r, ...patch } : r)));
 
+  // E-128: the rep said the Books product IS the one -- nothing is created; it can go straight on the order.
+  if (usedExisting) {
+    const p = {
+      id: "",
+      sku: usedExisting.sku,
+      name: usedExisting.name,
+      brand: usedExisting.brand || brand,
+      category: usedExisting.category || finalCategory,
+    };
+    return (
+      <Box>
+        <Typography sx={section}>Already in Books</Typography>
+        <Alert severity="success" sx={{ mb: 2 }}>
+          <b>{p.sku}</b> -- {p.name}. Nothing new was made in Books.
+        </Alert>
+        <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
+          {onCreated && (
+            <Button variant="contained" onClick={() => onCreated([p])}>
+              Add it to the order
+            </Button>
+          )}
+          {!onCreated && Array.isArray(orderTargets) && orderTargets.length > 0 && (
+            <>
+              <TextField
+                select
+                size="small"
+                label="Add under"
+                value={target || orderTargets[0].key}
+                onChange={(e) => setTarget(e.target.value)}
+                sx={{ minWidth: 220 }}
+              >
+                {orderTargets.map((t) => (
+                  <MenuItem key={t.key} value={t.key}>
+                    {t.label}
+                  </MenuItem>
+                ))}
+              </TextField>
+              <Button variant="contained" onClick={() => onAddToOrder([p], target || orderTargets[0].key)}>
+                Add it to this onboarding (new garment type)
+              </Button>
+            </>
+          )}
+          <Button onClick={() => setUsedExisting(null)}>Back</Button>
+          {onCancel && <Button onClick={onCancel}>Close</Button>}
+        </Box>
+      </Box>
+    );
+  }
+
   if (created && created.status === "ok") {
     const made = created.results.filter((r) => r.result === "created");
+    // D-61: what Deluge did with a form-made vendor code (written only when the vendor's Vendor Code was blank).
+    const codeAnswer = created.results.find((r) => r && r.vendor_code_saved);
     return (
       <Box>
         <Typography sx={section}>Step 1 done: added to Books</Typography>
@@ -246,9 +412,19 @@ export default function NewProductForm({ initialStyle = "", garmentKind = "", on
             New brand <b>{newBrand}</b> is now in Books with this product. Tell David, so Books adds it to their brand list.
           </Alert>
         )}
-        {kind === "outsourced" && gen && gen.status === "approved" && made.length > 0 && (
+        {codeAnswer && codeAnswer.vendor_code_saved === "written" && (
           <Alert severity="info" sx={{ mb: 1 }}>
-            New vendor code <b>{gen.code}</b> for {vendorPicked && vendorPicked.name}. Tell David, so Books adds it to their vendor-code list.
+            Vendor code <b>{codeAnswer.vendor_code || gen.code}</b> is now saved on {vendorPicked && vendorPicked.name} in Books.
+          </Alert>
+        )}
+        {codeAnswer &&
+          (["not_kept", "failed"].includes(codeAnswer.vendor_code_saved) ||
+            (codeAnswer.vendor_code_saved === "already_set" && codeAnswer.vendor_code && gen && codeAnswer.vendor_code !== gen.code)) && (
+          <Alert severity="warning" sx={{ mb: 1 }}>
+            {codeAnswer.vendor_code_saved === "already_set"
+              ? `${vendorPicked && vendorPicked.name} already has the vendor code ${codeAnswer.vendor_code} in Books.`
+              : `Books did not save the vendor code ${gen && gen.code} on ${vendorPicked && vendorPicked.name}.`}{" "}
+            The product is created; tell David so the Books thread checks the code.
           </Alert>
         )}
         {canOrder && made.length > 0 && (
@@ -473,12 +649,14 @@ export default function NewProductForm({ initialStyle = "", garmentKind = "", on
                 <AddVendorDialog
                   name={addingVendor}
                   known={lists.vendors.map((v) => v.name)}
+                  // A0h: since v5 "lists" is every Books vendor, so the look-alikes need no second read here.
+                  booksVendors={lists.status === "ok" ? lists.vendors.map((v) => v.name) : undefined}
                   onDone={(a) => {
                     setAddingVendor("");
                     if (!a) return;
                     const name = a.use || a.name;
                     const hit = lists.vendors.find((v) => v.name.trim().toLowerCase() === name.trim().toLowerCase());
-                    const picked = hit || { id: a.vendorId, name };
+                    const picked = hit || { id: a.vendorId, name, code: a.vendorCode || "" };
                     if (!hit) setLists((l) => ({ ...l, vendors: [...l.vendors, picked].sort((x, y) => x.name.localeCompare(y.name)) }));
                     setVendor(picked);
                   }}
@@ -593,16 +771,20 @@ export default function NewProductForm({ initialStyle = "", garmentKind = "", on
             }
             sx={{ maxWidth: 420, mb: 1, display: "flex" }}
           />
-          {!normalizeSku(pastedSku) && (
+          {/* Generate SKU only when the supplier has no number (David 10-23). With a number, the vendor's code is needed only when Books
+              already uses that number for a different product (E-128: vendor code + the number). */}
+          {(!normalizeSku(pastedSku) || (saidNoToNumber && (!useCode || (gen && gen.status === "ok" && !gen.known)))) && (
             <Box sx={{ mb: 2 }}>
-              <Button
-                variant="outlined"
-                size="small"
-                onClick={generateSku}
-                disabled={!(vendorPicked && vendorPicked.name) || !words.trim() || (gen && gen.status === "checking")}
-              >
-                {gen && gen.status === "checking" ? <CircularProgress size={16} /> : "Generate SKU"}
-              </Button>
+              {!useCode && !(gen && gen.status === "ok") && (
+                <Button
+                  variant="outlined"
+                  size="small"
+                  onClick={() => generateSku()}
+                  disabled={!(vendorPicked && vendorPicked.name) || (!normalizeSku(pastedSku) && !words.trim()) || (gen && gen.status === "checking")}
+                >
+                  {gen && gen.status === "checking" ? <CircularProgress size={16} /> : normalizeSku(pastedSku) ? "Get the vendor's code" : "Generate SKU"}
+                </Button>
+              )}
               {gen && gen.status === "ok" && !gen.known && (
                 <Alert
                   severity="info"
@@ -612,17 +794,24 @@ export default function NewProductForm({ initialStyle = "", garmentKind = "", on
                       <Button size="small" onClick={() => setGen({ ...gen, status: "approved" })}>
                         OK
                       </Button>
-                      <Button size="small" onClick={() => setGen({ ...gen, status: "rejected" })}>
+                      <Button size="small" onClick={() => generateSku([...(gen.rejected || []), gen.code])}>
                         Not right
                       </Button>
                     </>
                   }
                 >
-                  New vendor code <b>{gen.code}</b>: the first 3 letters of {vendorPicked && vendorPicked.name} (Books' rule). The SKU will be{" "}
-                  <b>{initialsSku(gen.code, words)}</b>.
+                  New vendor code <b>{gen.code}</b> for {vendorPicked && vendorPicked.name} (the next free code from its name, Books' rule).
+                  {normalizeSku(pastedSku) ? (
+                    <> The SKU will start with it: {gen.code} + {normalizeSku(pastedSku)}.</>
+                  ) : (
+                    <>
+                      {" "}
+                      The SKU will be <b>{initialsSku(gen.code, words)}</b>.
+                    </>
+                  )}
                 </Alert>
               )}
-              {gen && (gen.known || gen.status === "approved") && (
+              {gen && (gen.known || gen.status === "approved") && !normalizeSku(pastedSku) && (
                 <Typography variant="body2" sx={{ mt: 1 }}>
                   SKU from vendor code {gen.code} + the product's initials: <b>{(items[0] && items[0].sku) || initialsSku(gen.code, words)}</b>
                 </Typography>
@@ -630,6 +819,42 @@ export default function NewProductForm({ initialStyle = "", garmentKind = "", on
             </Box>
           )}
         </>
+      )}
+
+      {/* E-128 (David 10-23): a SKU Books already has. The rep can always say No (a supplier's number can be another maker's product). */}
+      {foundOpen && (
+        <Alert severity="warning" sx={{ mt: 2, maxWidth: 720 }}>
+          <b>{found.sku}</b> is already in Books{found.active ? "" : " (inactive)"}: <b>{found.name}</b>. Is this the product you need?
+          <Box sx={{ mt: 1, display: "flex", gap: 1, flexWrap: "wrap", alignItems: "center" }}>
+            {found.active ? (
+              <Button size="small" variant="contained" onClick={() => setUsedExisting(found)}>
+                Yes, use this one
+              </Button>
+            ) : (
+              <Typography variant="body2">It is retired (inactive) in Books. If it is this product, ask David to turn it back on.</Typography>
+            )}
+            <Button size="small" variant="outlined" onClick={() => setNotThis((l) => [...l, found.sku])}>
+              No, it is a different product
+            </Button>
+          </Box>
+        </Alert>
+      )}
+      {saidNoToNumber && clashFix && clashFix.status === "ok" && (
+        <Alert severity="info" sx={{ mt: 2, maxWidth: 720 }}>
+          New SKU <b>{clashFix.base}</b>: {kind === "outsourced" ? `the vendor code ${clashFix.prefix}` : `the brand's letters ${clashFix.prefix}`} + the
+          supplier's number {skuNumber}, because Books already uses {skuNumber} for a different product. {skuNumber} is kept in the item's
+          Part Number.
+        </Alert>
+      )}
+      {saidNoToNumber && clashFix && clashFix.status === "error" && (
+        <Alert severity="warning" sx={{ mt: 2, maxWidth: 720 }} action={<Button size="small" onClick={() => setClashTry((n) => n + 1)}>Try again</Button>}>
+          Books could not be checked for a free SKU ({clashFix.why || "no answer"}).
+        </Alert>
+      )}
+      {existingNow && existingNow.status === "error" && (
+        <Typography variant="body2" sx={{ mt: 1, color: "#555" }}>
+          Books could not be asked about this SKU just now; "Check in Books" below checks it again.
+        </Typography>
       )}
 
       <Typography sx={section}>4. Category and unit</Typography>

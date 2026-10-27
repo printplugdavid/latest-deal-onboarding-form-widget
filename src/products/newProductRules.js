@@ -90,10 +90,15 @@ export function initialsSku(prefix, words) {
   return normalizeSku(str(prefix) + letters);
 }
 
-/* docs/25 §2c: the outsourced vendor's code from the registry; "" = no code yet (David picks one). */
-// Any letter case (Books renamed PRINTOGRAPH -> Printograph on 10-23, step 073, and the exact-case lookup lost its code).
-export const vendorCodeFor = (vendorName) => {
+/*
+ * docs/25 §2c: the outsourced vendor's code; "" = no code yet (the form offers the next free one, E-128). Since 10-24 Books is the master
+ * (Vendor Code field, step 075): `live` = Books' vendors from "lists" ([{ name, code }]); our registry copy is the fallback.
+ * Any letter case (Books renamed PRINTOGRAPH -> Printograph on 10-23, step 073, and the exact-case lookup lost its code).
+ */
+export const vendorCodeFor = (vendorName, live = []) => {
   const want = cleanWords(vendorName).toLowerCase();
+  const hit = (live || []).find((v) => v && cleanWords(v.name).toLowerCase() === want && str(v.code).trim());
+  if (hit) return normalizeSku(hit.code);
   const key = Object.keys(RULES.vendorCodes).find((k) => k.toLowerCase() === want);
   return key ? RULES.vendorCodes[key] : "";
 };
@@ -268,26 +273,74 @@ export function toBooksItem(it) {
     purchase_account_id: it.itemType === "sales" ? "" : it.purchaseAccountId,
     is_taxable: true,
     product_url: str(it.productUrl),
+    // E-128 (Books docs/25 §2a): the supplier's own number when the SKU had to change because Books already used it.
+    ...(str(it.partNumber).trim() ? { part_number: str(it.partNumber).trim() } : {}),
+    // E-128 / D-61: a vendor code the form made; Deluge saves it on the vendor only when its Vendor Code is blank.
+    ...(str(it.vendorCode).trim() ? { vendor_code: normalizeSku(it.vendorCode) } : {}),
   };
 }
 
 /*
- * E-126 (David 10-23): a vendor with no code yet gets one by Books' own rule (docs/25 §2c): the first 3 letters of its name. The rep only
- * says OK or "Not right" (then David picks); a code is never typed. Taken = another vendor's code in the registry, or an existing product
- * code starting with it that belongs to ANOTHER vendor (a brand's style prefix, e.g. BB = Brooks Brothers). The vendor's own items never
- * block it, so the same name gives the same code every time -- before and after Books adds it to the registry.
+ * E-126 / E-128 (David 10-23, D-61; Books docs/25 §2c): a vendor with no code yet gets the next FREE code, never one typed and never a
+ * wait on David. In order: the first 3 letters of its name; then the first 2 letters + each later letter of the name in turn; then the
+ * first 4 letters. Letters only, upper case (Deluge refuses anything else). The rep says OK, or "Not right" for the next one.
  */
-export const suggestVendorCode = (vendorName) => normalizeSku(cleanWords(vendorName).replace(/[^a-z0-9]/gi, "")).slice(0, 3);
+const nameLetters = (vendorName) => cleanWords(vendorName).replace(/[^a-z]/gi, "").toUpperCase();
+export const suggestVendorCode = (vendorName) => nameLetters(vendorName).slice(0, 3);
+export function vendorCodeCandidates(vendorName) {
+  const L = nameLetters(vendorName);
+  if (L.length < 2) return [];
+  const out = [L.slice(0, 3)];
+  for (let j = 2; j < L.length; j++) out.push(L[0] + L[1] + L[j]);
+  if (L.length >= 4) out.push(L.slice(0, 4));
+  return [...new Set(out)];
+}
 
-export function vendorCodeTaken(code, vendorName, products = []) {
+/*
+ * Is this code free for this vendor? Taken (Books docs/25 §2c) = another vendor's code (Books' live codes, or our fallback copy), or an
+ * existing product code starts with it and belongs to ANOTHER vendor (a brand's style prefix, e.g. BB = Brooks Brothers). Not "starts
+ * with a 2-letter code": AP, UP, DM, BB, BP are grandfathered and would block every vendor starting with those letters. The vendor's own
+ * items never block it, so the same name gives the same code every time.
+ */
+export function vendorCodeTaken(code, vendorName, products = [], live = []) {
   const c = normalizeSku(code);
   const mine = cleanWords(vendorName).toLowerCase();
   if (!c) return { taken: true, why: "no letters in the vendor name" };
-  const other = Object.keys(RULES.vendorCodes).find((k) => RULES.vendorCodes[k] === c && k.toLowerCase() !== mine);
-  if (other) return { taken: true, why: `${c} is already ${other}'s code` };
+  const codes = [
+    ...(live || []).filter((v) => v && str(v.code).trim()).map((v) => [cleanWords(v.name), normalizeSku(v.code)]),
+    ...Object.entries(RULES.vendorCodes),
+  ];
+  const other = codes.find(([k, v]) => k.toLowerCase() !== mine && v === c);
+  if (other) return { taken: true, why: `${c} is already ${other[0]}'s code` };
   const clash = (products || []).find((p) => p && normalizeSku(p.sku).startsWith(c) && cleanWords(p.vendor).toLowerCase() !== mine);
   if (clash) return { taken: true, why: `${c} already starts ${clash.sku}${clash.vendor ? ` (${clash.vendor})` : ""}` };
   return { taken: false, why: "" };
+}
+
+/*
+ * E-128 (David 10-23, Books docs/25 §2a, their A0i): the supplier's own number is already a SKU on a DIFFERENT product (the rep said
+ * "No, not this product"). The new product changes; the existing one keeps its SKU. Supplier goods: the BRAND's first 2 letters + the
+ * number (Richardson 220 -> RI220), then 3, then 4 letters when taken. Outsourced: the vendor code + the number. Bands +1, 2, 3 as usual.
+ * The supplier's own number is kept in Books' Part Number. Returns the prefixes to try, best first.
+ */
+export function clashPrefixes(kind, { brand = "", vendorCode = "" } = {}) {
+  if (kind === "outsourced") return vendorCode ? [normalizeSku(vendorCode)] : [];
+  const L = cleanWords(brand).replace(/[^a-z]/gi, "").toUpperCase();
+  return [...new Set([L.slice(0, 2), L.slice(0, 3), L.slice(0, 4)].filter((p) => p.length >= 2))];
+}
+
+/*
+ * Is "prefix + number" free? `taken` = the SKUs Books already has (active or inactive; from the "check" action); `products` = CRM
+ * products whose code starts with it (the DT8001 trap: letters + number must not start another brand's existing SKU). A product of
+ * this same brand never blocks it.
+ */
+export function clashSkuFree(base, bandSkus, { taken = new Set(), products = [], brand = "" } = {}) {
+  const b = normalizeSku(base);
+  const hit = (bandSkus || []).map(normalizeSku).find((s) => taken.has(s));
+  if (hit) return { free: false, why: `${hit} is already in Books` };
+  const other = (products || []).find((p) => p && normalizeSku(p.sku).startsWith(b) && squash(p.brand) !== squash(brand));
+  if (other) return { free: false, why: `${b} would look like ${other.sku}${other.brand ? ` (${other.brand})` : ""}` };
+  return { free: true, why: "" };
 }
 
 /*

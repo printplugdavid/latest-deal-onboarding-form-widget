@@ -82,13 +82,13 @@ test("vendor codes (docs/25 §2c) are found in any letter case: Books' Printogra
 test("E-126: a new vendor's code = first 3 letters (docs/25 §2c); taken by another vendor or another vendor's products, never its own", () => {
   const { suggestVendorCode, vendorCodeTaken } = require("./newProductRules");
   expect(suggestVendorCode("Acme Supply")).toBe("ACM");
-  expect(suggestVendorCode("3M Company")).toBe("3MC");
+  expect(suggestVendorCode("3M Company")).toBe("MCO"); // letters only: Deluge v2 refuses digits (E-128)
   expect(suggestVendorCode("Stahl's")).toBe("STA");
   expect(vendorCodeTaken("STA", "Stahl's Inc", [])).toEqual({ taken: true, why: "STA is already Stahl's's code" });
   expect(vendorCodeTaken("STA", "Stahl's", []).taken).toBe(false); // its own registry code
   expect(vendorCodeTaken("BRO", "Brother Supply", [{ sku: "BRO180072", vendor: "San Mar" }])).toMatchObject({ taken: true });
   expect(vendorCodeTaken("ACM", "Acme Supply", [{ sku: "ACMVB", vendor: "Acme Supply" }]).taken).toBe(false); // its own items
-  expect(vendorCodeTaken("ACM", "Acme Supply", [{ sku: "ACM100", vendor: "" }]).taken).toBe(true); // unknown owner: ask David
+  expect(vendorCodeTaken("ACM", "Acme Supply", [{ sku: "ACM100", vendor: "" }]).taken).toBe(true); // unknown owner: taken (the next free code is offered, E-128)
 });
 
 test("E-127: a new brand -- cleaned, checked, near matches (aliases first) sent to the Books spelling", () => {
@@ -121,4 +121,79 @@ test("E-127 (David 10-23): look-alikes offered generously -- short brands count,
   expect(nearBrands("OGIA", books)).toEqual(["OGIO"]); // 1 typo on a short name (OTTO is 2 away: not offered)
   expect(nearBrands("Ab", books)).toEqual([]); // under 3 letters: nothing
   expect(nearBrands("Northwind Gear", books)).toEqual([]);
+});
+
+describe("E-128 / D-61: vendor codes -- Books' live code first, then the next free code (never David)", () => {
+  const { vendorCodeFor, vendorCodeCandidates, vendorCodeTaken } = require("./newProductRules");
+  const live = [{ name: "Printograph", code: "PRI" }, { name: "Acme Corporation", code: "ACM" }, { name: "New Co", code: "" }];
+
+  test("Books' Vendor Code wins; the registry copy is the fallback (any case; Patches4Less = Books' spelling)", () => {
+    expect(vendorCodeFor("Acme Corporation", live)).toBe("ACM");
+    expect(vendorCodeFor("printograph", live)).toBe("PRI");
+    expect(vendorCodeFor("New Co", live)).toBe(""); // blank in Books -> no code yet
+    expect(vendorCodeFor("Stahl's", [])).toBe("STA"); // lists not answering: our copy
+    expect(vendorCodeFor("Patches4Less")).toBe("P4L");
+  });
+
+  test("candidates: first 3 letters, then the first 2 + each later letter, then 4 letters", () => {
+    expect(vendorCodeCandidates("Acme Supply")).toEqual(["ACM", "ACE", "ACS", "ACU", "ACP", "ACL", "ACY", "ACME"]);
+    expect(vendorCodeCandidates("Stahl's")).toEqual(["STA", "STH", "STL", "STS", "STAH"]);
+    expect(vendorCodeCandidates("UP")).toEqual(["UP"]);
+    expect(vendorCodeCandidates("4")).toEqual([]);
+  });
+
+  test("taken by another vendor's live code; its own code and its own items never block it", () => {
+    expect(vendorCodeTaken("ACM", "Acme Supply", [], live)).toEqual({ taken: true, why: "ACM is already Acme Corporation's code" });
+    expect(vendorCodeTaken("ACM", "Acme Corporation", [], live).taken).toBe(false);
+    expect(vendorCodeTaken("ACE", "Acme Supply", [{ sku: "ACEVB", vendor: "Acme Supply" }], live).taken).toBe(false);
+  });
+
+  test("a 2-letter grandfathered code (AP, UP, BB) does not block every vendor starting with those letters", () => {
+    expect(vendorCodeTaken("APE", "Apex Signs", [], []).taken).toBe(false);
+    expect(vendorCodeTaken("UPS", "UPS Store", [], []).taken).toBe(false);
+  });
+});
+
+describe("E-128 (Books docs/25 §2a, A0i): a supplier's number Books already uses for a different product", () => {
+  const { clashPrefixes, clashSkuFree, skusForBands, toBooksItem } = require("./newProductRules");
+
+  test("supplier goods: the BRAND's letters, 2 then 3 then 4; outsourced: the vendor code", () => {
+    expect(clashPrefixes("supplier", { brand: "Richardson" })).toEqual(["RI", "RIC", "RICH"]);
+    expect(clashPrefixes("supplier", { brand: "BELLA+CANVAS" })).toEqual(["BE", "BEL", "BELL"]);
+    expect(clashPrefixes("supplier", { brand: "Port & Company" })).toEqual(["PO", "POR", "PORT"]);
+    expect(clashPrefixes("supplier", { brand: "" })).toEqual([]);
+    expect(clashPrefixes("outsourced", { vendorCode: "PRI" })).toEqual(["PRI"]);
+    expect(clashPrefixes("outsourced", {})).toEqual([]);
+  });
+
+  test("free only when every band is free (active or inactive) and it starts no other brand's SKU", () => {
+    const bands = skusForBands("RI220", 3);
+    expect(bands).toEqual(["RI220", "RI2201", "RI2202"]);
+    expect(clashSkuFree("RI220", bands, { taken: new Set(), products: [], brand: "Richardson" })).toEqual({ free: true, why: "" });
+    expect(clashSkuFree("RI220", bands, { taken: new Set(["RI2202"]) }).free).toBe(false);
+    expect(clashSkuFree("RI220", bands, { products: [{ sku: "RI2205X", brand: "Rival" }], brand: "Richardson" })).toEqual({
+      free: false,
+      why: "RI220 would look like RI2205X (Rival)",
+    });
+    expect(clashSkuFree("RI220", bands, { products: [{ sku: "RI2205X", brand: "Richardson" }], brand: "Richardson" }).free).toBe(true);
+  });
+
+  test("Books gets the supplier's own number as part_number, and a form-made vendor code; neither key when empty", () => {
+    const base = { sku: "RI220", name: "Richardson - Cap - OSFA", brand: "Richardson", itemType: "sales_and_purchases" };
+    expect(toBooksItem({ ...base, partNumber: "220" })).toMatchObject({ sku: "RI220", part_number: "220" });
+    expect(toBooksItem({ ...base, vendorCode: "ace" })).toMatchObject({ vendor_code: "ACE" });
+    const plain = toBooksItem(base);
+    expect("part_number" in plain || "vendor_code" in plain).toBe(false);
+  });
+});
+
+describe("A0h point 2: vendor look-alikes from ALL Books vendors, up to 3", () => {
+  const { nearVendors } = require("./vendors");
+  test("the same letters wins alone; otherwise up to 3, closest first", () => {
+    expect(nearVendors("D & B Supply", ["D&B Supply", "DB Supply"])).toEqual(["D&B Supply"]);
+    expect(nearVendors("DTG Pros", ["DTG PRO", "DTGPro", "Amazon"])).toEqual(["DTG PRO", "DTGPro"]);
+    expect(nearVendors("Zzzz Signs", ["Amazon", "San Mar"])).toEqual([]);
+    expect(nearVendors("Acme Supplies", ["Acme Supply", "Acme Corporation"])).toEqual(["Acme Supply"]); // long shared start
+    expect(nearVendors("Printing Plus", ["Printograph"])).toEqual([]); // "printi" vs "printo": 5 shared letters, not a twin
+  });
 });

@@ -139,15 +139,38 @@ const distance = (a, b) => {
  * name starting with the other (both at least 4 letters).
  */
 export function nearVendor(name, list = currentDealVendors()) {
+  return nearVendors(name, list, 1)[0] || "";
+}
+
+/*
+ * A0h point 2 (David 10-23/24): up to `max` look-alikes, best first, from ALL Books vendors (expense vendors too: Books already has pairs
+ * like "D & B Supply" / "D&B Supply", "DTG PRO" / "DTGPro"). The same letters wins alone. The rep may still add past them.
+ */
+export function nearVendors(name, list = currentDealVendors(), max = 3) {
   const n = norm(name);
-  if (!n) return "";
-  const exact = (list || []).find((v) => norm(v) === n);
-  if (exact) return exact;
-  const close = (list || [])
+  if (!n) return [];
+  const uniq = [...new Set((list || []).map((v) => String(v || "").trim()).filter(Boolean))];
+  const exact = uniq.find((v) => norm(v) === n);
+  if (exact) return [exact];
+  // A long shared start that differs only near the end is a twin too ("Acme Supplies" / "Acme Supply": 3 letters apart).
+  const sharedStart = (a, b) => {
+    let i = 0;
+    while (i < a.length && i < b.length && a[i] === b[i]) i++;
+    return i;
+  };
+  return uniq
     .map((v) => ({ v, k: norm(v) }))
-    .filter(({ k }) => k && ((n.length >= 4 && k.length >= 4 && (k.startsWith(n) || n.startsWith(k))) || distance(n, k) <= 2))
-    .sort((a, b) => distance(n, a.k) - distance(n, b.k));
-  return close.length ? close[0].v : "";
+    .filter(
+      ({ k }) =>
+        k &&
+        ((n.length >= 4 && k.length >= 4 && (k.startsWith(n) || n.startsWith(k))) ||
+          distance(n, k) <= 2 ||
+          (sharedStart(n, k) >= 6 && sharedStart(n, k) >= Math.min(n.length, k.length) - 2))
+    )
+    .map((x) => ({ ...x, d: distance(n, x.k) }))
+    .sort((a, b) => a.d - b.d || a.v.localeCompare(b.v))
+    .slice(0, max)
+    .map((x) => x.v);
 }
 
 /* Put a vendor the function just added on the live list, so it is offered and written at once. */
