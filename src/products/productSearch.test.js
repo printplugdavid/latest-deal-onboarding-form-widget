@@ -15,6 +15,12 @@ describe("E-139 product search: a broad word still finds the right item", () => 
     expect(rankProducts(list, "3x3").map((p) => p.sku)).toEqual(["BB33", "PPCDCS3"]); // no type: code order, as before
   });
 
+  test("one broad word on a Stickers row reaches the die-cut sizes (Midstar Arsenal Deal 4)", () => {
+    const other = Array.from({ length: 45 }, (_, i) => P(`PPCCS${i}`, `Custom Circle Stickers - ${i}`, STK));
+    const r = rankProducts([...other, P("PPCDCS3", "Custom Die-Cut Stickers - 3x3\"", STK)], "sticker", [STK]).slice(0, 100);
+    expect(r.map((p) => p.sku)).toContain("PPCDCS3");
+  });
+
   test("a code typed exactly still wins over the product type", () => {
     const list = [P("PPCSS3", "Custom Square Stickers", STK), P("BB3", "Banner", "Product - Signage")];
     expect(rankProducts(list, "bb3", [STK])[0].sku).toBe("BB3");
@@ -35,7 +41,7 @@ describe("E-139 searchProducts asks Zoho for the full page of word matches", () 
     window.ZOHO = realZoho;
   });
 
-  test("word search per_page 200, then ranked and cut to 30, own type first", async () => {
+  test("word search per_page 200, then ranked and cut to 100, own type first", async () => {
     const calls = [];
     // 40 newer square stickers + the die-cut one: Zoho returns newest first, so the die-cut item is last.
     const square = Array.from({ length: 40 }, (_, i) => ({ id: String(900 - i), Product_Code: `PPCSS${i + 10}`, Product_Name: `Custom Square Stickers - ${i + 10}x${i + 10}"`, Item_Category: STK, Product_Active: true }));
@@ -55,7 +61,7 @@ describe("E-139 searchProducts asks Zoho for the full page of word matches", () 
     const word = calls.find((c) => c.Type === "word");
     expect(word.per_page).toBe(200);
     expect(r.status).toBe("ok");
-    expect(r.products.length).toBeLessThanOrEqual(30);
+    expect(r.products.length).toBeLessThanOrEqual(100);
     expect(r.products[0].sku).toBe("PPCDCS3");
   });
 });

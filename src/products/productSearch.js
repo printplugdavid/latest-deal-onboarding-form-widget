@@ -91,7 +91,8 @@ async function search(zoho, config) {
 }
 
 /*
- * { status: "ok" | "unavailable", products } -- never throws. Two or more characters; the best 30 shown.
+ * { status: "ok" | "unavailable", products } -- never throws. Two or more characters; the best 100 shown (E-139: was 30;
+ * "sticker" alone puts PPCDCS3 at 31 of 63 -- the list scrolls).
  * opts.preferCategories (E-139): Books categories to list first (the SKU row's product type).
  */
 export async function searchProducts(term, opts = {}) {
@@ -113,7 +114,7 @@ export async function searchProducts(term, opts = {}) {
       per_page: 200,
     }),
     // E-139: Zoho answers a word search with its NEWEST matches first; 30 of them hid every die-cut sticker behind newer
-    // sticker items ("sticker" matches 63, "patch" 439). Fetch the page of 200, rank, then cut.
+    // sticker items ("sticker" matches 63, "patch" 439). Fetch the page of 200, rank, then cut to 100.
     t.length >= 3 ? search(zoho, { Entity: "Products", Type: "word", Query: t, per_page: 200 }) : Promise.resolve([]),
   ]);
   let ranked = rankProducts([...local, ...byCode, ...byWord], t, prefer);
@@ -122,7 +123,7 @@ export async function searchProducts(term, opts = {}) {
     const fromBooks = await booksLookup(code);
     if (fromBooks) ranked = [fromBooks, ...ranked];
   }
-  return { status: "ok", products: ranked.slice(0, 30) };
+  return { status: "ok", products: ranked.slice(0, 100) };
 }
 
 const lookedUp = new Map(); // code -> product | null, for this sitting
