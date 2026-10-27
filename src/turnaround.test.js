@@ -51,7 +51,7 @@ describe("E-133 in the note and back (Amendment Form)", () => {
     const { content } = buildOnboardingNote(order({ hardDueDate: "No", discountsForExtendedTurnaround: "Yes" }));
     expect(content).toContain(EXTRA_WEEK_QUESTION + ": Yes");
     expect(content).not.toMatch(/Discounts for Extended Turnaround Time\?|Add 1 Week To Production Time\?|10-14 Business Day Turnaround\?/);
-    expect(parseNoteToForm(content).discountsForExtendedTurnaround).toBe("Yes");
+    expect(parseNoteToForm(content).values.discountsForExtendedTurnaround).toBe("Yes");
   });
 
   test("a hard due date prints no discount line", () => {
@@ -64,8 +64,8 @@ describe("E-133 in the note and back (Amendment Form)", () => {
     const oldYes = base.replace(EXTRA_WEEK_QUESTION + ": No", "Discounts for Extended Turnaround Time?: Yes\n\nAdd 1 Week To Production Time?: Yes");
     const oldNo = base.replace(EXTRA_WEEK_QUESTION + ": No", "Discounts for Extended Turnaround Time?: No\n\n10-14 Business Day Turnaround?: Yes");
     expect(oldYes).not.toContain(EXTRA_WEEK_QUESTION);
-    expect(parseNoteToForm(oldYes).discountsForExtendedTurnaround).toBe("Yes");
-    expect(parseNoteToForm(oldNo).discountsForExtendedTurnaround).toBe("No");
-    expect(flagsOf(parseNoteToForm(oldNo)).extendedTurnaround).toBe(false);
+    expect(parseNoteToForm(oldYes).values.discountsForExtendedTurnaround).toBe("Yes");
+    expect(parseNoteToForm(oldNo).values.discountsForExtendedTurnaround).toBe("No");
+    expect(flagsOf(parseNoteToForm(oldNo).values).extendedTurnaround).toBe(false);
   });
 });
