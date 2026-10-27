@@ -1,0 +1,4 @@
+{
+  "_note": "E-144 (Deluge docs/49): at onboarding Submit the form writes the Deal's Turnaround (Standard / Extended / Hard Due Date / Rush) and, for Extended / Hard Due Date / Rush, the Closing Date; it also shows the Extended calendar. OFF until the Deluge production master that keeps these dates is pasted -- switched on in the same window. Set writeOnSubmit to true to switch on.",
+  "writeOnSubmit": false
+}
