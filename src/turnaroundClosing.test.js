@@ -55,8 +55,8 @@ describe("E-144 Turnaround from the answers", () => {
     expect(p.message).toMatch(/Hard Due Date.*2026-10-29.*production manager/);
   });
 
-  test("switched off until the Deluge master is pasted", () => {
-    expect(turnaroundWriteOn()).toBe(false);
+  test("switched on in the 10-27 paste window (Deluge master ee5f7ac1)", () => {
+    expect(turnaroundWriteOn()).toBe(true);
   });
 });
 
