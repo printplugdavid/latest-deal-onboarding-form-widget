@@ -31,14 +31,54 @@ export function rememberCreated(products) {
   });
 }
 
-/* Exact code first, then codes that start with the term, then name matches; inactive and code-less rows dropped. */
-export function rankProducts(list, term) {
+/*
+ * E-139: which Books report categories a non-garment product's items live in (measured on the 10-27 Books pull: e.g. 61 of 63
+ * "sticker" items are "Product - Stickers/Decals"). Used only to ORDER results -- nothing is hidden -- so a row for Stickers
+ * shows sticker items before a "3x3" banner. Form product name -> categories.
+ */
+const STICKERS = "Product - Stickers/Decals";
+const PRINT = "Product - Print";
+const PROMO = "Product - Promotional";
+export const PRODUCT_TYPE_CATEGORIES = {
+  Stickers: [STICKERS],
+  Decals: [STICKERS],
+  Magnets: ["Product - Magnets"],
+  "Fridge Magnets": ["Product - Magnets"],
+  Patches: ["Product - Patches"],
+  "Pressed Patches": ["Product - Patches"],
+  Banners: ["Product - Signage"],
+  Posters: [PRINT, PROMO],
+  "Business Cards": [PRINT],
+  Flyers: [PRINT],
+  "Pocket Schedules": [PRINT],
+  "Marketing Materials": [PRINT],
+  Keychains: [PROMO],
+  Tumblers: [PROMO],
+  "Name Tag": [PROMO],
+  "Stationery + Promotion": [PROMO],
+};
+export const categoriesForProductType = (name) => PRODUCT_TYPE_CATEGORIES[str(name).trim()] || [];
+
+/*
+ * Exact code first, then codes that start with the term, then names holding every typed word, then the other name matches;
+ * inside each step the row's own product type first (E-139), then code order. Inactive and code-less rows dropped.
+ */
+export function rankProducts(list, term, preferCategories) {
   const t = str(term).trim().toUpperCase();
+  const words = str(term).toLowerCase().split(/\s+/).filter(Boolean);
+  const prefer = new Set((preferCategories || []).map((c) => str(c).toLowerCase()));
   const seen = new Set();
-  const score = (p) => (p.sku.toUpperCase() === t ? 0 : p.sku.toUpperCase().startsWith(t) ? 1 : 2);
+  const score = (p) => {
+    const code = p.sku.toUpperCase();
+    if (code === t) return 0;
+    if (code.startsWith(t)) return 1;
+    const name = str(p.name).toLowerCase();
+    return words.length && words.every((w) => name.includes(w)) ? 2 : 3;
+  };
+  const own = (p) => (prefer.size && prefer.has(str(p.category).toLowerCase()) ? 0 : 1);
   return (list || [])
     .filter((p) => p && p.sku && p.active && !seen.has(p.sku) && seen.add(p.sku))
-    .sort((a, b) => score(a) - score(b) || a.sku.localeCompare(b.sku, "en", { numeric: true }));
+    .sort((a, b) => score(a) - score(b) || own(a) - own(b) || a.sku.localeCompare(b.sku, "en", { numeric: true }));
 }
 
 async function search(zoho, config) {
@@ -52,14 +92,16 @@ async function search(zoho, config) {
 
 /*
  * { status: "ok" | "unavailable", products } -- never throws. Two or more characters; the best 30 shown.
+ * opts.preferCategories (E-139): Books categories to list first (the SKU row's product type).
  */
-export async function searchProducts(term) {
+export async function searchProducts(term, opts = {}) {
+  const prefer = opts.preferCategories || [];
   const t = str(term).trim();
   const zoho = typeof window !== "undefined" ? window.ZOHO : null;
   const local = created.filter((p) => p.sku.toUpperCase().startsWith(t.toUpperCase()) || p.name.toLowerCase().includes(t.toLowerCase()));
   if (t.length < 2) return { status: "ok", products: [] };
   if (!(zoho && zoho.CRM && zoho.CRM.API && typeof zoho.CRM.API.searchRecord === "function")) {
-    return { status: local.length ? "ok" : "unavailable", products: rankProducts(local, t) };
+    return { status: local.length ? "ok" : "unavailable", products: rankProducts(local, t, prefer) };
   }
   const code = t.replace(/\s+/g, "").toUpperCase();
   const [byCode, byWord] = await Promise.all([
@@ -70,9 +112,11 @@ export async function searchProducts(term) {
       // a style's bands and variants (PC54, PC541 ... PC54LS, PC54Y ...) can pass 30: fetch the page, rank, then cut
       per_page: 200,
     }),
-    t.length >= 3 ? search(zoho, { Entity: "Products", Type: "word", Query: t, per_page: 30 }) : Promise.resolve([]),
+    // E-139: Zoho answers a word search with its NEWEST matches first; 30 of them hid every die-cut sticker behind newer
+    // sticker items ("sticker" matches 63, "patch" 439). Fetch the page of 200, rank, then cut.
+    t.length >= 3 ? search(zoho, { Entity: "Products", Type: "word", Query: t, per_page: 200 }) : Promise.resolve([]),
   ]);
-  let ranked = rankProducts([...local, ...byCode, ...byWord], t);
+  let ranked = rankProducts([...local, ...byCode, ...byWord], t, prefer);
   // E-106: a code CRM does not know yet may already be in Books (added in another sitting, not synced): ask Books for that code.
   if (/^[A-Z0-9]{3,}$/.test(code) && /\d/.test(code) && !ranked.some((p) => p.sku.toUpperCase() === code)) {
     const fromBooks = await booksLookup(code);

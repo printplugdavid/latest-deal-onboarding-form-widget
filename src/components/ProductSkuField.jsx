@@ -21,7 +21,7 @@ const ADD = { kind: "add" };
 // E-101: the client brings the garment in -- one Books item, pinned at the top of garment SKU rows.
 const CLIENT = { kind: "client", sku: CLIENT_OWNED.sku, name: CLIENT_OWNED.name, id: "" };
 
-export default function ProductSkuField({ rowPath, label, garmentKind, allowClientOwned = false }) {
+export default function ProductSkuField({ rowPath, label, garmentKind, allowClientOwned = false, preferCategories, hint }) {
   const { control, setValue, getValues } = useFormContext();
   const productName = useWatch({ control, name: `${rowPath}.productName` });
   const productSource = useWatch({ control, name: `${rowPath}.productSource` });
@@ -32,6 +32,7 @@ export default function ProductSkuField({ rowPath, label, garmentKind, allowClie
   const [unavailable, setUnavailable] = useState(false);
   const [adding, setAdding] = useState(false);
   const seq = useRef(0);
+  const preferKey = (preferCategories || []).join("|"); // E-139: a stable dependency for the search below
   const addingRef = useRef(false); // the blur that opening the dialog causes must not save the typed text
 
   useEffect(() => {
@@ -43,14 +44,14 @@ export default function ProductSkuField({ rowPath, label, garmentKind, allowClie
     const my = ++seq.current;
     setLoading(true);
     const t = setTimeout(async () => {
-      const r = await searchProducts(term);
+      const r = await searchProducts(term, { preferCategories: preferKey ? preferKey.split("|") : [] });
       if (my !== seq.current) return;
       setUnavailable(r.status !== "ok");
       setOptions(r.products);
       setLoading(false);
     }, 250);
     return () => clearTimeout(t);
-  }, [input]);
+  }, [input, preferKey]);
 
   const pick = (field, p, source) => {
     field.onChange(p.sku);
@@ -97,7 +98,7 @@ export default function ProductSkuField({ rowPath, label, garmentKind, allowClie
             ? "Books products could not be searched right now -- type the code"
             : allowClientOwned
             ? "Type the style code or words of the name; the client's own garment is at the top of the list"
-            : "Type the style code or words of the name";
+            : hint || "Type the style code or words of the name";
         return (
           <Box sx={{ mb: "1rem", mt: "5px" }}>
             <Autocomplete
