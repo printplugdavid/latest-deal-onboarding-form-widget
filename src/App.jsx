@@ -45,7 +45,8 @@ import { billingOnFor, billingRecord, draftsOn, prepareDraft, sendDraft } from "
 import { BillingOn } from "./invoice/billingContext";
 import { screenPrintShortfall } from "./invoice/minimums";
 import { MAX_UPLOAD_BYTES, artKey, collectArtFiles } from "./graphicArt";
-import { EXTRA_WEEK_QUESTION } from "./turnaround";
+import { CLOSING_FIELD, EXTENDED_DATE_LABEL, EXTRA_WEEK_QUESTION, dueDateProblem, extendedRange, turnaroundPlan, turnaroundWriteOn } from "./turnaround";
+import ExtendedClosingDate from "./components/ExtendedClosingDate";
 import { RUSH_FIELD, RUSH_REMINDER, rushBoxPlan } from "./rushOrder";
 import {
   CUSTOMER_NOTES_QUESTION,
@@ -225,6 +226,8 @@ function App() {
         : nm === "billingDocument" ? "Invoice or Estimate? (Invoice section)"
         : nm === "payingByCard" ? "Paying by card? (Invoice section)"
         : nm === "hardDueDate" ? "Does Customer Have A Hard Due Date? (Turnaround Time)"
+        : nm === "dueDate" ? "Due Date (Turnaround Time) -- required, not in the past"
+        : nm === "extendedClosingDate" ? EXTENDED_DATE_LABEL + " (Turnaround Time)"
         : nm === "discountsForExtendedTurnaround" ? EXTRA_WEEK_QUESTION + " (Turnaround Time)"
         : nm.endsWith(".htvColorMode") ? "Single color or full color? (on each Heat-Transfer graphic)"
         : nm.endsWith(".garmentsWithThisGraphic") ? "How many of these garments get this graphic?"
@@ -339,13 +342,26 @@ function App() {
     // E-142 (David 10-27): the rush answer sets the Deal's "Rush Order?" box, both ways -- one own call, no workflow trigger
     // (the box only picks the In Production rule at that stage move, which comes later). Only before production (rushOrder.js);
     // past that point nothing is written and the rep is told.
+    const turnaroundNotices = [];
     try {
       const rushPlan = rushBoxPlan(recordData, data);
       if (rushPlan.change) await ZOHO.CRM.API.updateRecord({ Entity: entity, APIData: { id: entityId, [RUSH_FIELD]: rushPlan.value }, Trigger: [] });
-      if (rushPlan.blocked) window.alert(rushPlan.message);
+      if (rushPlan.blocked) turnaroundNotices.push(rushPlan.message);
     } catch (err) {
       console.log("Rush Order box not set - skipping:", err);
     }
+    // E-144 (Deluge docs/49): Turnaround and, for Extended / Hard Due Date / Rush, the Closing Date -- one own call, Trigger [],
+    // same early stages; the production master re-saves the Closing Date with workflow at In Production. Behind turnaroundConfig.json.
+    if (turnaroundWriteOn()) {
+      try {
+        const tPlan = turnaroundPlan(recordData, data);
+        if (Object.keys(tPlan.fields).length) await ZOHO.CRM.API.updateRecord({ Entity: entity, APIData: { id: entityId, ...tPlan.fields }, Trigger: [] });
+        if (tPlan.blocked) turnaroundNotices.push(tPlan.message);
+      } catch (err) {
+        console.log("Turnaround / " + CLOSING_FIELD + " not set - skipping:", err);
+      }
+    }
+    if (turnaroundNotices.length) window.alert(turnaroundNotices.join("\n\n"));
 
     // E-56: ask the CRM to create this Deal's WorkDrive folders. AFTER the print fields above (the
     // function reads the onboarded departments from them) and NOT awaited -- a real run takes about
@@ -1227,16 +1243,19 @@ function App() {
                   >
                     Due Date
                   </FormLabel>
+                  {/* E-144: required when there is a hard due date, and not in the past (it becomes the Closing Date). */}
                   <Controller
                     name={`dueDate`}
                     control={control}
-                    render={({ field }) => (
+                    rules={{ validate: (v) => methods.getValues("hardDueDate") !== "Yes" || dueDateProblem(v) || true }}
+                    render={({ field, fieldState }) => (
                       <LocalizationProvider dateAdapter={AdapterDayjs}>
                         <DatePicker
                           onChange={(newValue) =>
                             field.onChange(dayjs(newValue).format("YYYY/MM/DD"))
                           }
                           {...field}
+                          slotProps={{ textField: { error: !!fieldState.error, helperText: fieldState.error ? fieldState.error.message || "Required" : undefined } }}
                           renderInput={(params) => (
                             <TextField
                               id="dueDate"
@@ -1299,6 +1318,8 @@ function App() {
                         helperText={
                           fieldState.error
                             ? "Required"
+                            : discountsForExtendedTurnaround === "Yes" && turnaroundWriteOn()
+                            ? `The draft invoice gets 5% off. Pick the Closing Date below (standard would be ${extendedRange().standard}).`
                             : discountsForExtendedTurnaround === "Yes"
                             ? "Turnaround is 10-14 business days plus one week; the draft invoice gets 5% off."
                             : discountsForExtendedTurnaround === "No"
@@ -1311,6 +1332,11 @@ function App() {
                   />
                 )}
               />
+            )}
+
+            {/* E-144: the Extended calendar -- standard date + 1 to + 7 days, default + 7. Behind turnaroundConfig.json. */}
+            {turnaroundWriteOn() && hardDueDate === "No" && discountsForExtendedTurnaround === "Yes" && (
+              <ExtendedClosingDate control={control} setValue={methods.setValue} getValues={methods.getValues} />
             )}
 
             <Controller

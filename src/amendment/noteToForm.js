@@ -71,6 +71,7 @@ export const NOTE_LABELS = [
   "Account Name",
   "Add 1 Week To Production Time?",
   "Add one week to turnaround time for an additional 5% off the invoice?", // E-133
+  "Extended Closing Date", // E-144
   "Are There Any Custom Fields or Notes You Would Like on Your Page?",
   "Are Your Graphics Print-Ready?",
   "Areas They Would Like to Design",

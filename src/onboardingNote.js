@@ -19,7 +19,7 @@ import { gangSheetPrints } from "./gangSheet";
 import { checkGarmentQuantity } from "./quantityCheck";
 import { LUMPED_FIELD, LUMPED_NOTE_LINE, lumpedSignals } from "./lumpedOrder";
 import { isOrderedIn, sourcingOf } from "./dealCategory";
-import { EXTRA_WEEK_QUESTION } from "./turnaround";
+import { EXTENDED_DATE_LABEL, EXTRA_WEEK_QUESTION, toYmd } from "./turnaround";
 
 /* eslint-disable no-unused-vars */
   // E-78: a bare "YYYY-MM-DD" is read by new Date() as UTC midnight -- the day BEFORE west of UTC. Pin it to
@@ -928,6 +928,10 @@ export function buildOnboardingNote(data) {
         (data?.discountsForExtendedTurnaround || "") +
         newLine +
         newLine;
+      // E-144: the Closing Date picked on the Extended calendar (only when the calendar is on and a date was picked).
+      if (data?.discountsForExtendedTurnaround === "Yes" && toYmd(data?.extendedClosingDate)) {
+        content = content + EXTENDED_DATE_LABEL + ": " + toYmd(data.extendedClosingDate) + newLine + newLine;
+      }
     }
 
     content =
