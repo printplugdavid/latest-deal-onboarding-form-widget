@@ -12,14 +12,14 @@
  *   App.jsx "CONTACT INFO"     -> contactInfo.*
  *   App.jsx shipping block     -> doProductsNeedShipped, shippingContactAddress, otherShippingDetails
  *   App.jsx "Turnaround Time"  -> hardDueDate, dueDate, upchargedForRushTurnaround,
- *                                 discountsForExtendedTurnaround, addOneWeekToProductionTime,
- *                                 tenFourteenBusinessDayTurnaround
+ *                                 discountsForExtendedTurnaround (E-133: one question)
  */
 import React from "react";
 import { Autocomplete, Box, Checkbox, FormControlLabel, FormLabel, TextField } from "@mui/material";
 import { Controller, useFormContext, useWatch } from "react-hook-form";
 import { DatePicker, LocalizationProvider } from "@mui/x-date-pickers";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
+import { EXTRA_WEEK_QUESTION } from "../turnaround";
 
 const YesNo = ({ name, label }) => {
   const { control } = useFormContext();
@@ -82,7 +82,6 @@ const Text = ({ name, label, multiline }) => {
 export const AmendDates = () => {
   const { control } = useFormContext();
   const hardDueDate = useWatch({ control, name: "hardDueDate" });
-  const discounts = useWatch({ control, name: "discountsForExtendedTurnaround" });
   return (
     <Box>
       <YesNo name="hardDueDate" label="Hard Due Date?" />
@@ -104,13 +103,8 @@ export const AmendDates = () => {
           <Tick name="upchargedForRushTurnaround" label="Upcharged For Rush Turnaround Time?" />
         </>
       )}
-      {hardDueDate === "No" && (
-        <>
-          <YesNo name="discountsForExtendedTurnaround" label="Discounts for Extended Turnaround Time?" />
-          {discounts === "Yes" && <Tick name="addOneWeekToProductionTime" label="Add 1 Week To Production Time" />}
-          {discounts === "No" && <Tick name="tenFourteenBusinessDayTurnaround" label="10-14 Business Day Turnaround" />}
-        </>
-      )}
+      {/* E-133: the same one question as the onboarding form. */}
+      {hardDueDate === "No" && <YesNo name="discountsForExtendedTurnaround" label={EXTRA_WEEK_QUESTION} />}
     </Box>
   );
 };

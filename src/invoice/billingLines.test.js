@@ -391,7 +391,9 @@ test("flags: rush needs a hard due date; either extended option; card; document"
   });
   expect(flagsOf({ hardDueDate: "No", upchargedForRushTurnaround: true, tenFourteenBusinessDayTurnaround: true }).rush).toBe(false);
   expect(flagsOf({ hardDueDate: "No", discountsForExtendedTurnaround: "Yes", addOneWeekToProductionTime: true }).extendedTurnaround).toBe(true);
-  expect(flagsOf({ hardDueDate: "No", tenFourteenBusinessDayTurnaround: true }).extendedTurnaround).toBe(true);
+  // E-133 (David 10-27): the normal 10-14 business days is not a discount.
+  expect(flagsOf({ hardDueDate: "No", discountsForExtendedTurnaround: "No", tenFourteenBusinessDayTurnaround: true }).extendedTurnaround).toBe(false);
+  expect(flagsOf({ hardDueDate: "No", discountsForExtendedTurnaround: "Yes" }).extendedTurnaround).toBe(true);
   expect(flagsOf({}).document).toBe("");
 });
 

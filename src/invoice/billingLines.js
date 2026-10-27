@@ -20,6 +20,7 @@ import { isClientOwnedGarment, isClientOwnedSku, CLIENT_OWNED } from "../product
 import { canonicalKind, locationText, parseInches } from "../placements";
 import RULES from "../products/newProductRules.json";
 import CONFIG from "./billingConfig.json";
+import { takesExtraWeekDiscount } from "../turnaround";
 
 const str = (v) => (v == null ? "" : String(v));
 const int = (v) => {
@@ -483,8 +484,8 @@ export function flagsOf(data) {
   return {
     document: doc === "invoice" || doc === "estimate" ? doc : "",
     rush: d.hardDueDate === "Yes" && yes(d.upchargedForRushTurnaround),
-    // David 10-20 (Books docs/39 §2 row 2): either option -> PPETD.
-    extendedTurnaround: d.hardDueDate === "No" && (yes(d.addOneWeekToProductionTime) || yes(d.tenFourteenBusinessDayTurnaround)),
+    // E-133 (David 10-27): only "add one week for 5% off" -> PPETD. (10-20 to 10-27 a ticked "10-14 business days" counted too.)
+    extendedTurnaround: takesExtraWeekDiscount(d),
     payingByCard: d.payingByCard === "Yes",
   };
 }

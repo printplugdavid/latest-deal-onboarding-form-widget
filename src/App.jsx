@@ -45,6 +45,7 @@ import { billingOnFor, billingRecord, draftsOn, prepareDraft, sendDraft } from "
 import { BillingOn } from "./invoice/billingContext";
 import { screenPrintShortfall } from "./invoice/minimums";
 import { MAX_UPLOAD_BYTES, artKey, collectArtFiles } from "./graphicArt";
+import { EXTRA_WEEK_QUESTION } from "./turnaround";
 import {
   CUSTOMER_NOTES_QUESTION,
   CUSTOMER_NOTES_TOOLTIP,
@@ -222,6 +223,8 @@ function App() {
         : nm.endsWith(".dateNeededBy") ? "Date Needed By"
         : nm === "billingDocument" ? "Invoice or Estimate? (Invoice section)"
         : nm === "payingByCard" ? "Paying by card? (Invoice section)"
+        : nm === "hardDueDate" ? "Does Customer Have A Hard Due Date? (Turnaround Time)"
+        : nm === "discountsForExtendedTurnaround" ? EXTRA_WEEK_QUESTION + " (Turnaround Time)"
         : nm.endsWith(".htvColorMode") ? "Single color or full color? (on each Heat-Transfer graphic)"
         : nm.endsWith(".garmentsWithThisGraphic") ? "How many of these garments get this graphic?"
         : nm;
@@ -1175,23 +1178,28 @@ function App() {
               Turnaround Time
             </Typography>
 
+            {/* E-133: required -- left blank on 46% of October onboardings, which hid the turnaround questions below. */}
             <Controller
               control={control}
               name="hardDueDate"
               defaultValue={""}
-              render={({ field }) => (
+              rules={{ validate: (v) => !!v || "required" }}
+              render={({ field, fieldState }) => (
                 <Autocomplete
                   {...field}
                   id="hardDueDate"
                   size="small"
                   options={["Yes", "No"]}
+                  value={field.value || null}
                   getOptionLabel={(option) => option}
-                  onChange={(_, data) => field.onChange(data)}
+                  onChange={(_, data) => field.onChange(data || "")}
                   renderInput={(params) => (
                     <TextField
                       {...params}
                       sx={{ mb: "0.8rem", mt: "5px" }}
                       label="Does Customer Have A Hard Due Date?"
+                      error={!!fieldState.error}
+                      helperText={fieldState.error ? "Required" : undefined}
                     />
                   )}
                 />
@@ -1251,64 +1259,42 @@ function App() {
               </>
             )}
 
+            {/* E-133: one question replaces "Discounts for Extended Turnaround Time?" and its two tick boxes. Yes = 5% off (PPETD). */}
             {hardDueDate === "No" && (
-              <>
-                <Controller
-                  control={control}
-                  name="discountsForExtendedTurnaround"
-                  defaultValue={""}
-                  render={({ field }) => (
-                    <Autocomplete
-                      {...field}
-                      options={["Yes", "No"]}
-                      value={field.value || ""}
-                      onChange={(_, newValue) => field.onChange(newValue)}
-                      renderInput={(params) => (
-                        <TextField
-                          {...params}
-                          label="Discounts for Extended Turnaround Time?"
-                          variant="outlined"
-                          size="small"
-                          fullWidth
-                          sx={{ mb: "1rem", mt: "5px" }}
-                        />
-                      )}
-                    />
-                  )}
-                />
-
-                {discountsForExtendedTurnaround === "Yes" && (
-                  <Controller
-                    control={control}
-                    name="addOneWeekToProductionTime"
-                    defaultValue={false}
-                    render={({ field }) => (
-                      <FormGroup>
-                        <FormControlLabel
-                          control={<Checkbox {...field} checked={!!field.value} />}
-                          label="Add 1 Week To Production Time"
-                        />
-                      </FormGroup>
+              <Controller
+                control={control}
+                name="discountsForExtendedTurnaround"
+                defaultValue={""}
+                rules={{ validate: (v) => methods.getValues("hardDueDate") !== "No" || !!v || "required" }}
+                render={({ field, fieldState }) => (
+                  <Autocomplete
+                    {...field}
+                    options={["Yes", "No"]}
+                    value={field.value || null}
+                    onChange={(_, newValue) => field.onChange(newValue || "")}
+                    renderInput={(params) => (
+                      <TextField
+                        {...params}
+                        label={EXTRA_WEEK_QUESTION}
+                        variant="outlined"
+                        size="small"
+                        fullWidth
+                        error={!!fieldState.error}
+                        helperText={
+                          fieldState.error
+                            ? "Required"
+                            : discountsForExtendedTurnaround === "Yes"
+                            ? "Turnaround is 10-14 business days plus one week; the draft invoice gets 5% off."
+                            : discountsForExtendedTurnaround === "No"
+                            ? "Normal turnaround: 10-14 business days, no discount."
+                            : undefined
+                        }
+                        sx={{ mb: "1rem", mt: "5px" }}
+                      />
                     )}
                   />
                 )}
-
-                {discountsForExtendedTurnaround === "No" && (
-                  <Controller
-                    control={control}
-                    name="tenFourteenBusinessDayTurnaround"
-                    defaultValue={false}
-                    render={({ field }) => (
-                      <FormGroup>
-                        <FormControlLabel
-                          control={<Checkbox {...field} checked={!!field.value} />}
-                          label="10-14 Business Day Turnaround"
-                        />
-                      </FormGroup>
-                    )}
-                  />
-                )}
-              </>
+              />
             )}
 
             <Controller
