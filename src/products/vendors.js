@@ -152,9 +152,21 @@ export function nearVendors(name, list = currentDealVendors(), max = 3) {
   const uniq = [...new Set((list || []).map((v) => String(v || "").trim()).filter(Boolean))];
   const exact = uniq.find((v) => norm(v) === n);
   if (exact) return [exact];
+  // A long shared start that differs only near the end is a twin too ("Acme Supplies" / "Acme Supply": 3 letters apart).
+  const sharedStart = (a, b) => {
+    let i = 0;
+    while (i < a.length && i < b.length && a[i] === b[i]) i++;
+    return i;
+  };
   return uniq
     .map((v) => ({ v, k: norm(v) }))
-    .filter(({ k }) => k && ((n.length >= 4 && k.length >= 4 && (k.startsWith(n) || n.startsWith(k))) || distance(n, k) <= 2))
+    .filter(
+      ({ k }) =>
+        k &&
+        ((n.length >= 4 && k.length >= 4 && (k.startsWith(n) || n.startsWith(k))) ||
+          distance(n, k) <= 2 ||
+          (sharedStart(n, k) >= 6 && sharedStart(n, k) >= Math.min(n.length, k.length) - 2))
+    )
     .map((x) => ({ ...x, d: distance(n, x.k) }))
     .sort((a, b) => a.d - b.d || a.v.localeCompare(b.v))
     .slice(0, max)

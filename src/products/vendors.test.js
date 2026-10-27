@@ -193,5 +193,7 @@ describe("A0h point 2: vendor look-alikes from ALL Books vendors, up to 3", () =
     expect(nearVendors("D & B Supply", ["D&B Supply", "DB Supply"])).toEqual(["D&B Supply"]);
     expect(nearVendors("DTG Pros", ["DTG PRO", "DTGPro", "Amazon"])).toEqual(["DTG PRO", "DTGPro"]);
     expect(nearVendors("Zzzz Signs", ["Amazon", "San Mar"])).toEqual([]);
+    expect(nearVendors("Acme Supplies", ["Acme Supply", "Acme Corporation"])).toEqual(["Acme Supply"]); // long shared start
+    expect(nearVendors("Printing Plus", ["Printograph"])).toEqual([]); // "printi" vs "printo": 5 shared letters, not a twin
   });
 });

@@ -155,7 +155,9 @@ export default function NewProductForm({ initialStyle = "", garmentKind = "", on
 
   // E-128: the supplier's own number (style, or the outsourced SKU pasted); the vendor code in use (registry / Books, or OK'd by the rep).
   const skuNumber = kind === "supplier" ? normalizeSku(style) : kind === "outsourced" ? normalizeSku(pastedSku) : "";
-  const useCode = gen && (gen.known || gen.status === "approved") ? gen.code : "";
+  // A vendor with a code in Books (or our copy) needs no button press when the code only prefixes a supplier's number (PRI7102).
+  const knownCode = kind === "outsourced" && vendorPicked && vendorPicked.name ? vendorCodeFor(vendorPicked.name, lists.vendors) : "";
+  const useCode = gen && (gen.known || gen.status === "approved") ? gen.code : normalizeSku(pastedSku) && knownCode ? knownCode : "";
   // The rep said the Books product holding the supplier's number is a different product -> the new SKU (RI220 / PRI220) replaces it.
   const fixedBase = clashFix && clashFix.status === "ok" && clashFix.number === skuNumber ? clashFix.base : "";
 
