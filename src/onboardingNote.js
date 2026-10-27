@@ -18,6 +18,7 @@ import { computePrints } from "./printMath";
 import { gangSheetPrints } from "./gangSheet";
 import { checkGarmentQuantity } from "./quantityCheck";
 import { LUMPED_FIELD, LUMPED_NOTE_LINE, lumpedSignals } from "./lumpedOrder";
+import { isOrderedIn, sourcingOf } from "./dealCategory";
 
 /* eslint-disable no-unused-vars */
   // E-78: a bare "YYYY-MM-DD" is read by new Date() as UTC midnight -- the day BEFORE west of UTC. Pin it to
@@ -136,7 +137,9 @@ export function buildOnboardingNote(data) {
         newLine +
         "---------------------------" +
         newLine +
-        newLine;
+        newLine +
+        // E-115: only for a product ordered in (no line = made in house, as on every older note)
+        (isOrderedIn(product) ? "Made: " + sourcingOf(product) + newLine + newLine : "");
 
       let productType = product?.productType;
       if (productType === "garment") {
