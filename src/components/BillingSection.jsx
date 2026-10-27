@@ -121,13 +121,12 @@ export default function BillingSection({ dealId, submittedBy }) {
       "payingByCard",
       "hardDueDate",
       "upchargedForRushTurnaround",
-      "addOneWeekToProductionTime",
-      "tenFourteenBusinessDayTurnaround",
+      "discountsForExtendedTurnaround",
       "roundUpForCharity",
       "isRepeatOrder",
     ],
   });
-  const [products, otherCharges, billingDocument, payingByCard, hardDueDate, rush, oneWeek, tenFourteen, roundUp, isRepeatOrder] = watched;
+  const [products, otherCharges, billingDocument, payingByCard, hardDueDate, rush, extraWeek, roundUp, isRepeatOrder] = watched;
   const [check, setCheck] = useState(null); // { busy } | { prepared, answer }
 
   let built = null;
@@ -141,8 +140,7 @@ export default function BillingSection({ dealId, submittedBy }) {
       payingByCard,
       hardDueDate,
       upchargedForRushTurnaround: rush,
-      addOneWeekToProductionTime: oneWeek,
-      tenFourteenBusinessDayTurnaround: tenFourteen,
+      discountsForExtendedTurnaround: extraWeek,
       roundUpForCharity: roundUp,
       isRepeatOrder,
     });
@@ -168,7 +166,7 @@ export default function BillingSection({ dealId, submittedBy }) {
   const zohoAdds = built
     ? [
         built.flags.rush && "Rush: 20% of the lines (PPFEE1)",
-        built.flags.extendedTurnaround && "Extended turnaround: minus 5% of the lines (PPETD)",
+        built.flags.extendedTurnaround && "Extra week: minus 5% of the lines (PPETD)",
         built.flags.payingByCard &&
           (built.flags.document === "estimate" ? "Card fee: a 3% line on the estimate (PPFEE6)" : "Card fee: Books adds 3% (PPFEE6) about 30 seconds after the draft is made"),
         built.clientFee.length && "Client-provided garment fee: 10% of the decoration on the client's garments (PPFEE8, worked out at Submit with Books prices)",

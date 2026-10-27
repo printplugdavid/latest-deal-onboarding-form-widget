@@ -15,6 +15,7 @@
  *   - print-count fields are only rewritten when the parse REPRODUCES the Deal's current counts.
  */
 import { sumSizeCounts } from "../quantityCheck";
+import { EXTRA_WEEK_QUESTION, OLD_DISCOUNT_QUESTION } from "../turnaround";
 
 const GARMENT_PRODUCTS = [
   "Screen Printing",
@@ -69,6 +70,7 @@ export const NOTE_LABELS = [
   "Made", // E-115: a product ordered in ("Made: Ordered in, ready to go")
   "Account Name",
   "Add 1 Week To Production Time?",
+  "Add one week to turnaround time for an additional 5% off the invoice?", // E-133
   "Are There Any Custom Fields or Notes You Would Like on Your Page?",
   "Are Your Graphics Print-Ready?",
   "Areas They Would Like to Design",
@@ -273,7 +275,8 @@ export function parseNoteToForm(rawContent, knownProducts) {
     hardDueDate: yesNo(field(other, "Does Customer Have A Hard Due Date?")),
     dueDate: field(other, "Due Date"),
     upchargedForRushTurnaround: yes(field(other, "Upcharged For Rush Turnaround Time?")),
-    discountsForExtendedTurnaround: yesNo(field(other, "Discounts for Extended Turnaround Time?")),
+    // E-133: the one question; a note from before 10-27 carries the old "Discounts …?" line instead (its Yes = the discount).
+    discountsForExtendedTurnaround: yesNo(field(other, EXTRA_WEEK_QUESTION) || field(other, OLD_DISCOUNT_QUESTION)),
     addOneWeekToProductionTime: yes(field(other, "Add 1 Week To Production Time?")),
     tenFourteenBusinessDayTurnaround: yes(field(other, "10-14 Business Day Turnaround?")),
     typicalMockup: field(other, "Custmer Acknowledged 24-48 Hour Mock-Up?"),

@@ -19,6 +19,7 @@ import { gangSheetPrints } from "./gangSheet";
 import { checkGarmentQuantity } from "./quantityCheck";
 import { LUMPED_FIELD, LUMPED_NOTE_LINE, lumpedSignals } from "./lumpedOrder";
 import { isOrderedIn, sourcingOf } from "./dealCategory";
+import { EXTRA_WEEK_QUESTION } from "./turnaround";
 
 /* eslint-disable no-unused-vars */
   // E-78: a bare "YYYY-MM-DD" is read by new Date() as UTC midnight -- the day BEFORE west of UTC. Pin it to
@@ -918,31 +919,15 @@ export function buildOnboardingNote(data) {
         newLine;
     }
 
+    // E-133: one question (turnaround.js). Yes = one extra week, 5% off the invoice.
     if (data?.hardDueDate === "No") {
       content =
         content +
-        "Discounts for Extended Turnaround Time?: " +
-        data?.discountsForExtendedTurnaround +
+        EXTRA_WEEK_QUESTION +
+        ": " +
+        (data?.discountsForExtendedTurnaround || "") +
         newLine +
         newLine;
-
-      if (data?.discountsForExtendedTurnaround === "Yes") {
-        content =
-          content +
-          "Add 1 Week To Production Time?: " +
-          yn(data?.addOneWeekToProductionTime) +
-          newLine +
-          newLine;
-      }
-
-      if (data?.discountsForExtendedTurnaround === "No") {
-        content =
-          content +
-          "10-14 Business Day Turnaround?: " +
-          yn(data?.tenFourteenBusinessDayTurnaround) +
-          newLine +
-          newLine;
-      }
     }
 
     content =
