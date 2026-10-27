@@ -41,6 +41,9 @@ import {
   labelCategory,
   labelApplication,
 } from "./i18n";
+// E-132: the onboarding form's Customer Notes save (unchanged copy of main's file) + this form's use of it.
+import { loadAccountNotes, saveCustomerNotes, overLimitBy, todayStamp, CUSTOMER_NOTES_LIMIT } from "./customerNotes";
+import { customerNotesEntry, customerNotesNoteLines, customerNotesWarningKey } from "./revisionCustomerNotes";
 
 const ZOHO = window.ZOHO;
 
@@ -256,6 +259,11 @@ export default function App() {
   const [newClosingDate, setNewClosingDate] = useState("");
   const [closingConfirmed, setClosingConfirmed] = useState(false);
 
+  // E-132: the Account's Customer Notes (shown read-only) and what to add to them.
+  const [accountNotes, setAccountNotes] = useState("");
+  const [hasCustomerNotes, setHasCustomerNotes] = useState("No");
+  const [customerNotesNew, setCustomerNotesNew] = useState("");
+
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState(null);
 
@@ -291,6 +299,8 @@ export default function App() {
           RecordID: recordId,
         });
         setDeal(rec?.data?.[0] || null);
+        // E-132: never blocks the form; a deal with no Account (or a failed read) just shows no box.
+        loadAccountNotes(rec?.data?.[0]).then((a) => setAccountNotes(a.notes || ""));
 
         const p = await readPayload(entity, recordId);
         setPayloadInfo(p);
@@ -401,9 +411,14 @@ export default function App() {
     return garmentStyles(p?.primaryBranches?.[item.garmentIndex]).length >= 2 && !(item.styleKeys || []).length;
   });
 
+  // E-132: what would be added to the Account, and whether it fits its 2,000 characters.
+  const cnEntry = customerNotesEntry(hasCustomerNotes, customerNotesNew);
+  const cnOver = cnEntry ? overLimitBy(accountNotes, cnEntry, todayStamp()) : 0;
+
   const canSubmit =
     !submitting &&
     !overCap &&
+    cnOver === 0 &&
     departments.length > 0 &&
     categories.length > 0 &&
     reason.trim().length > 0 &&
@@ -621,7 +636,7 @@ export default function App() {
     return capDetails([head, ""].concat(buildItemLines({ audit: false })).join("\n"));
   }
 
-  function buildNote() {
+  function buildNote(cnResult) {
     const L = [];
     L.push("ORDER " + formType.toUpperCase() + " FORM");
     L.push(DIV);
@@ -652,6 +667,9 @@ export default function App() {
       L.push((deal?.Closing_Date || "(none)") + "  ->  " + newClosingDate);
       L.push("Client contacted and approved the new date.");
     }
+
+    // E-132: only when something was typed; says whether it reached the Account.
+    customerNotesNoteLines(cnEntry, cnResult, DIV).forEach((line) => L.push(line));
 
     L.push("");
     L.push("AFFECTED ITEMS");
@@ -745,11 +763,27 @@ export default function App() {
         return;
       }
 
+      // E-132: append to the Account's Customer Notes (never replace), then the Deal's copy. Only when
+      // something was typed. After the main write, so a problem here can never cost the revision;
+      // before the note, so the note says what happened. saveCustomerNotes never throws.
+      let cnResult = null;
+      if (cnEntry) {
+        cnResult = await saveCustomerNotes({
+          entity: ctx.entity,
+          recordId: ctx.recordId,
+          deal,
+          entry: cnEntry,
+          dateStr: todayStamp(),
+        });
+        if (cnResult.problem) console.log("Customer notes:", cnResult.problem);
+      }
+      const cnWarnKey = customerNotesWarningKey(cnEntry, cnResult);
+
       await ZOHO.CRM.API.addNotes({
         Entity: ctx.entity,
         RecordID: ctx.recordId,
         Title: "ORDER " + formType.toUpperCase() + " FORM",
-        Content: buildNote(),
+        Content: buildNote(cnResult),
       });
 
       // D-27: move the Stage LAST -- every field and the note are already written, so the Deluge
@@ -784,7 +818,11 @@ export default function App() {
         stageMsg = t("warn.stageManual");
       }
 
-      setResult({ ok: true, message: t("ok.saved", { n: slot }) + (stageMsg ? " " + stageMsg : "") });
+      setResult({
+        ok: true,
+        message:
+          t("ok.saved", { n: slot }) + (stageMsg ? " " + stageMsg : "") + (cnWarnKey ? " " + t(cnWarnKey) : ""),
+      });
       setSubmitting(false);
       // A warning has to be readable before the popup closes on it.
       setTimeout(() => {
@@ -793,7 +831,7 @@ export default function App() {
         } catch (e) {
           /* ignore */
         }
-      }, stageWarn ? 7000 : 900);
+      }, stageWarn || cnWarnKey ? 7000 : 900);
     } catch (err) {
       setResult({ ok: false, message: (err && err.message) || String(err) });
       setSubmitting(false);
@@ -1453,7 +1491,51 @@ export default function App() {
         )}
       </Section>
 
-      <Section n="5" title={t("sec.review")}>
+      {/* E-132: standing notes for the ACCOUNT, as on the onboarding form (E-38). Appended to the
+          Account's Customer Notes (never replacing them); they show on every future deal. */}
+      <Section n="5" title={t("sec.customerNotes")}>
+        {accountNotes !== "" && (
+          <div style={S.notesNow}>
+            <div style={S.notesNowHead}>{t("cn.existing")}</div>
+            <div style={S.notesNowText}>{accountNotes}</div>
+          </div>
+        )}
+
+        <Label>{t("cn.ask")}</Label>
+        <div style={S.row}>
+          {["Yes", "No"].map((v) => (
+            <button
+              key={v}
+              type="button"
+              aria-pressed={hasCustomerNotes === v}
+              onClick={() => setHasCustomerNotes(v)}
+              style={hasCustomerNotes === v ? S.pillOn : S.pill}
+            >
+              {t(v === "Yes" ? "cn.yes" : "cn.no")}
+            </button>
+          ))}
+        </div>
+        <p style={S.hint}>{t("cn.question")}</p>
+
+        {hasCustomerNotes === "Yes" && (
+          <>
+            <Label>{t("cn.label")}</Label>
+            <textarea
+              rows={3}
+              value={customerNotesNew}
+              onChange={(e) => setCustomerNotesNew(e.target.value)}
+              style={cnOver ? { ...S.textarea, borderColor: "#b5372c" } : S.textarea}
+              title={t("cn.tooltip")}
+              aria-label={t("cn.label")}
+            />
+            <p style={cnOver ? S.hintBad : S.hint}>
+              {cnOver ? t("cn.tooLong", { n: cnOver, max: CUSTOMER_NOTES_LIMIT }) : t("cn.tooltip")}
+            </p>
+          </>
+        )}
+      </Section>
+
+      <Section n="6" title={t("sec.review")}>
         <div style={S.totalBox}>
           <div style={S.totalRow}>
             <span>{t("r.screenPrint")}</span>
@@ -1514,6 +1596,8 @@ export default function App() {
           <p style={S.hint}>
             {updateClosing && (newClosingDate === "" || !closingConfirmed)
               ? t("need.closing")
+              : cnOver
+              ? t("need.notes")
               : t("need.all")}
           </p>
         )}
@@ -1598,6 +1682,10 @@ const S = {
   tags: { display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 },
   tag: { display: "inline-flex", alignItems: "center", gap: 6, font: "12.5px " + sans, background: "#e4e7f8", color: "#2743c7", border: "1px solid #c9d0f4", borderRadius: 2, padding: "4px 6px 4px 9px" },
   tagX: { font: "15px/1 " + sans, color: "#2743c7", background: "none", border: "none", cursor: "pointer", padding: "0 2px" },
+  hintBad: { fontSize: 12.5, color: "#b5372c", margin: "6px 0 0", lineHeight: 1.45 },
+  notesNow: { border: "1px solid #ffd8a8", background: "#fff4e5", borderRadius: 2, padding: "10px 12px", marginBottom: 4 },
+  notesNowHead: { fontWeight: 600, fontSize: 13.5, marginBottom: 4 },
+  notesNowText: { fontSize: 13.5, whiteSpace: "pre-wrap" },
   textarea: { width: "100%", font: "14px/1.5 " + sans, padding: "9px 11px", border: "1px solid #d3d6db", borderRadius: 2, resize: "vertical", boxSizing: "border-box" },
   select: { width: "100%", font: "13.5px " + sans, padding: "8px 10px", border: "1px solid #d3d6db", borderRadius: 2, background: "#fff", boxSizing: "border-box" },
   input: { width: 130, font: "14px " + sans, padding: "8px 10px", border: "1px solid #d3d6db", borderRadius: 2, boxSizing: "border-box" },
