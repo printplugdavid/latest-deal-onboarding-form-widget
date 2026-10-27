@@ -72,8 +72,23 @@ const books = (action, payload) => call(RULES.functions.books, { action, payload
  * answered). { done, result, message, name, vendorId, layouts } -- done = the vendor can be used now (added / already_there / partial);
  * name = the spelling to write (Books' own when the vendor already existed).
  */
-export async function addVendor(name) {
-  const a = await call("widget_add_vendor", { name: str(name).trim(), dry_run: "false" });
+/*
+ * A0h (David 10-24): the vendor's website goes to Books' built-in Website (Deluge v2, 10-27). Sent trimmed, https:// added; "" = none.
+ * The code is never sent here: a form-made code is saved at product create, only when the vendor's Vendor Code is blank (D-61).
+ */
+export const cleanWebsite = (w) => {
+  const s = str(w).trim().replace(/\s+/g, "");
+  if (!s) return "";
+  return /^https?:\/\//i.test(s) ? s : "https://" + s;
+};
+export const websiteProblem = (w) => {
+  const s = str(w).trim();
+  if (!s) return "";
+  return /^(https?:\/\/)?[^\s/.]+(\.[^\s/.]+)+(\/\S*)?$/i.test(s) ? "" : "That does not look like a web address (e.g. printograph.com).";
+};
+
+export async function addVendor(name, website = "") {
+  const a = await call("widget_add_vendor", { name: str(name).trim(), dry_run: "false", website: cleanWebsite(website), vendor_code: "" });
   const result = str(a.result);
   return {
     done: a.status === "ok" && ["added", "already_there", "partial"].includes(result),
@@ -82,15 +97,23 @@ export async function addVendor(name) {
     name: str(a.name).trim() || str(name).trim(),
     vendorId: str(a.books_vendor_id),
     layouts: Array.isArray(a.layouts) ? a.layouts : [],
+    website: str(a.website),
+    vendorCode: str(a.vendor_code).trim().toUpperCase(),
+    notKept: Array.isArray(a.not_kept) ? a.not_kept.map(str) : [],
   };
 }
 
-/* Live vendor and brand lists. { status, vendors: [{ id, name }], brands: [name] } */
+/*
+ * Live vendor and brand lists. { status, vendors: [{ id, name, code }], brands: [name] } -- since v5 (10-27) every Books vendor (expense
+ * vendors too, ~346) with its Vendor Code ("" when none); before v5 the list was mostly customers (Books dropped the vendor filter).
+ */
 export async function booksLists() {
   const a = await books("lists");
   return {
     ...a,
-    vendors: Array.isArray(a.vendors) ? a.vendors.filter((v) => v && v.id && v.name).map((v) => ({ id: str(v.id), name: str(v.name) })) : [],
+    vendors: Array.isArray(a.vendors)
+      ? a.vendors.filter((v) => v && v.id && v.name).map((v) => ({ id: str(v.id), name: str(v.name), code: str(v.code).trim().toUpperCase() }))
+      : [],
     brands: Array.isArray(a.brands) ? a.brands.map(str).filter(Boolean) : [],
   };
 }
@@ -180,6 +203,25 @@ export async function findSkusInBooks(skus) {
     .map((r) => ({ r, m: HELD.exec(str(r && r.clash)) }))
     .filter((x) => x.m)
     .map((x) => ({ sku: str(x.r.sku).toUpperCase(), name: x.m[1], active: x.m[2] === "active" }));
+}
+
+/*
+ * E-128: which of these exact SKUs Books already uses, ACTIVE OR INACTIVE (the "check" action; "search" sees active items only).
+ * { status, taken: Map(SKU -> { sku, name, active }) } -- status other than "ok" = Books could not tell (never guess "free").
+ */
+export async function skusInBooks(skus) {
+  const list = [...new Set((skus || []).map((s) => str(s).trim().toUpperCase()).filter(Boolean))];
+  const taken = new Map();
+  for (let i = 0; i < list.length; i += 10) {
+    const part = list.slice(i, i + 10);
+    const a = await checkInBooks(part.map((sku) => ({ sku, name: `zz lookup ${sku} zz`, brand: "lookup" })));
+    if (a.status !== "ok") return { status: a.status, message: a.message, taken };
+    a.results.forEach((r) => {
+      const m = HELD.exec(str(r && r.clash));
+      if (m) taken.set(str(r.sku).toUpperCase(), { sku: str(r.sku).toUpperCase(), name: m[1], active: m[2] === "active" });
+    });
+  }
+  return { status: "ok", message: "", taken };
 }
 
 /*

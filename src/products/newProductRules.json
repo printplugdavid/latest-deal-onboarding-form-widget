@@ -59,11 +59,11 @@
   "clientOwned": { "sku": "PPCO", "name": "Client Owned Garment", "vendorsUsed": "Client Owned", "upchargePercent": 10 },
   "inHouseVendor": "The Print Plug",
   "inHouseBrand": "The Print Plug",
-  "_vendorCodes": "docs/25 §2c registry: one vendor = one code. A vendor not here -> David picks a code.",
+  "_vendorCodes": "docs/25 §2c: one vendor = one code. Since 10-24 (Books step 075) Books is the master: the vendor's Vendor Code field (cf_vendor_code), returned live by widget_books_items lists. This copy is only the fallback when lists is not answering (any letter case). A vendor with no code gets the next free code (E-128, D-61).",
   "vendorCodes": {
     "Printograph": "PRI", "Stahl's": "STA", "GS-JJ": "GSJ", "Banner Buzz": "BB", "Swag Brokers": "BP", "Brilliant Promos": "BP",
     "Koozie Group": "KOO", "PrintRunner": "PRU", "Showdown Display": "SHO", "AnyPromo.com": "AP", "Sticker Mule": "STM",
-    "UPrinting": "UP", "YETI": "YET", "Heat Transfer Warehouse": "HTW", "Discount Mugs": "DM", "Patches 4 Less": "P4L"
+    "UPrinting": "UP", "YETI": "YET", "Heat Transfer Warehouse": "HTW", "Discount Mugs": "DM", "Patches4Less": "P4L"
   },
   "_brandAliases": "supplier catalogue spelling -> the one Books spelling (docs/25 §4, Books step 034). Anything else is matched ignoring case, spaces and punctuation.",
   "brandAliases": {
