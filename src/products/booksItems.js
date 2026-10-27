@@ -208,19 +208,37 @@ export async function findSkusInBooks(skus) {
 /*
  * E-128: which of these exact SKUs Books already uses, ACTIVE OR INACTIVE (the "check" action; "search" sees active items only).
  * { status, taken: Map(SKU -> { sku, name, active }) } -- status other than "ok" = Books could not tell (never guess "free").
+ * "check" does ~1 s per item and starts none after 7 s (Deluge 10-27): an item it never reached comes back "refused" with clash
+ * "not started - time limit; send it again". So 5 per call, the unreached ones sent again on their own, and a SKU with no answer after
+ * that makes the whole answer "partial" (the form says it could not check, never "free").
  */
+const NOT_STARTED = /^not started/i;
 export async function skusInBooks(skus) {
   const list = [...new Set((skus || []).map((s) => str(s).trim().toUpperCase()).filter(Boolean))];
   const taken = new Map();
-  for (let i = 0; i < list.length; i += 10) {
-    const part = list.slice(i, i + 10);
+  const answered = new Set();
+  const ask = async (part) => {
     const a = await checkInBooks(part.map((sku) => ({ sku, name: `zz lookup ${sku} zz`, brand: "lookup" })));
-    if (a.status !== "ok") return { status: a.status, message: a.message, taken };
+    if (a.status !== "ok") return a;
     a.results.forEach((r) => {
+      const sku = str(r && r.sku).toUpperCase();
+      if (!sku || NOT_STARTED.test(str(r && r.clash))) return;
+      answered.add(sku);
       const m = HELD.exec(str(r && r.clash));
-      if (m) taken.set(str(r.sku).toUpperCase(), { sku: str(r.sku).toUpperCase(), name: m[1], active: m[2] === "active" });
+      if (m) taken.set(sku, { sku, name: m[1], active: m[2] === "active" });
     });
+    return a;
+  };
+  for (let i = 0; i < list.length; i += 5) {
+    const a = await ask(list.slice(i, i + 5));
+    if (a.status !== "ok") return { status: a.status, message: a.message, taken };
   }
+  for (const sku of list.filter((s) => !answered.has(s))) {
+    const a = await ask([sku]);
+    if (a.status !== "ok") return { status: a.status, message: a.message, taken };
+  }
+  const missing = list.filter((s) => !answered.has(s));
+  if (missing.length) return { status: "partial", message: `Books ran out of time before checking ${missing.join(", ")}`, taken };
   return { status: "ok", message: "", taken };
 }
 
