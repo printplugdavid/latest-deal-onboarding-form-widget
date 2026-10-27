@@ -9,8 +9,9 @@
  *   - Ordered In - Ready To Go (multi-select, 13 options = the categories that make an in-house task): a category only when EVERY
  *     product under it is ready to go. The production masters skip that category's in-house task(s).
  * `Outsourced` on the category now follows the answers (any product ordered in), not a fixed list of products (it replaces D-55's
- * "Banners / Patches / Magnets always add Outsourced"). A ready-to-go product keeps its own tag (a bought-in Banners order keeps
- * Banners) but not `Vinyl Department`, which means in-house vinyl work.
+ * "Banners / Patches / Magnets always add Outsourced"). Every product keeps its tags as before, `Vinyl Department` included (Deluge
+ * 10-27: the Deal folder function makes the Vinyl Department folder from it, and other reports may count by it; dropping it for a
+ * ready-to-go product was never decided, so it stays as today -- "Ordered In - Ready To Go" alone skips the tasks).
  *
  * The form OWNS the product and department tags below. On Submit it replaces those and keeps everything else on the Deal: School
  * Advertiser, School Sponsorship, Unqualified and any value it does not know (legacy `Fridge Magnets`, a new option nobody told us
@@ -119,9 +120,7 @@ const ORDER = [...OWNED]; // a steady order, so the same products always write t
 export function categoriesFor(products) {
   const want = new Set();
   (products || []).forEach((p) => {
-    const ready = sourcingOf(p) === ORDERED_READY;
-    // a product bought in finished keeps its own tag, but no in-house vinyl work (Vinyl Department)
-    (CATEGORY_FOR[nameOf(p)] || []).filter((c) => !(ready && c === VD)).forEach((c) => want.add(c));
+    (CATEGORY_FOR[nameOf(p)] || []).forEach((c) => want.add(c));
     if (isOrderedIn(p)) want.add(OUT);
   });
   return ORDER.filter((c) => want.has(c));

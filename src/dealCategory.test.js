@@ -33,11 +33,12 @@ test("D-55 mapping: garment methods, gang sheet, storefront (all made in house b
 
 test("E-115: Outsourced follows the answers, not a fixed list of products", () => {
   expect(categoriesFor(p("Banners"))).toEqual(["Banners", VD]); // default: made in house (D-55's fixed Outsourced is gone)
-  expect(categoriesFor([q("Banners", ORDERED_READY)])).toEqual(["Banners", OUT]); // keeps its tag, no in-house vinyl work
+  expect(categoriesFor([q("Banners", ORDERED_READY)])).toEqual(["Banners", OUT, VD]); // keeps its tags as today (Deluge: the VD folder)
   expect(categoriesFor([q("Pressed Patches", ORDERED_FINISH)])).toEqual([OUT, "Patches", VD]); // bought in, pressed here
   expect(categoriesFor(p("Business Cards", "Flyers"))).toEqual([OUT]); // always bought: default ready to go
   expect(categoriesFor([q("Business Cards", IN_HOUSE)])).toEqual([]); // the rep said we make them
   expect(categoriesFor([q("Embroidery", ORDERED_READY)])).toEqual(["Embroidery", OUT]); // garment decoration sent out (rare)
+  expect(categoriesFor([q("Banners", ORDERED_READY), q("Stickers", IN_HOUSE)])).toEqual(["Banners", OUT, "Stickers", VD]);
   expect(categoriesFor([q("Graphic Design", ORDERED_READY)])).toEqual(["Graphic Design"]); // never asked: a service
 });
 
