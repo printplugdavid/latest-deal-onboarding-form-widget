@@ -186,6 +186,54 @@ const STRINGS = {
       "Asegúrese de que se haya contactado al cliente y que haya aprobado la nueva fecha de cierre.",
   },
 
+  // ---- customer notes (E-132; same wording as the onboarding form's E-38 box) ----
+  "sec.customerNotes": { en: "Customer notes for future orders", es: "Notas del cliente para pedidos futuros" },
+  "cn.existing": {
+    en: "Customer Notes already on this account",
+    es: "Notas del cliente que ya están en esta cuenta",
+  },
+  "cn.ask": {
+    en: "Details to consider for ALL future deals in this account?",
+    es: "¿Detalles a considerar para TODOS los acuerdos futuros de esta cuenta?",
+  },
+  "cn.question": {
+    en: "Are there any details or considerations that will need to be considered for all future deals in this account?",
+    es: "¿Hay detalles o consideraciones que se deban tomar en cuenta para todos los acuerdos futuros de esta cuenta?",
+  },
+  "cn.yes": { en: "Yes", es: "Sí" },
+  "cn.no": { en: "No", es: "No" },
+  "cn.label": { en: "Customer Notes to add to this account", es: "Notas del cliente para agregar a esta cuenta" },
+  "cn.tooltip": {
+    en: "Entries will be added to the Customer Notes on the account page, and display on all future deals under this account.",
+    es:
+      "Lo que escriba se agregará a las Notas del cliente en la página de la cuenta y se mostrará en todos los " +
+      "acuerdos futuros de esta cuenta.",
+  },
+  "cn.tooLong": {
+    en:
+      "Too long by {n} characters - the account's Customer Notes field holds {max}. Shorten this, or tidy the old " +
+      "notes on the Account page.",
+    es:
+      "Sobran {n} caracteres - el campo de Notas del cliente de la cuenta admite {max}. Acórtelo, o limpie las " +
+      "notas anteriores en la página de la cuenta.",
+  },
+  "cn.warnFull": {
+    en: "Customer notes were NOT added: the account's Customer Notes field is full. Everything else was saved.",
+    es: "Las notas del cliente NO se agregaron: el campo de Notas del cliente de la cuenta está lleno. Todo lo demás se guardó.",
+  },
+  "cn.warnDealOnly": {
+    en: "Customer notes were saved on this deal only (the account could not be updated). Everything else was saved.",
+    es: "Las notas del cliente se guardaron solo en este acuerdo (no se pudo actualizar la cuenta). Todo lo demás se guardó.",
+  },
+  "cn.warnFailed": {
+    en: "Customer notes could not be saved. Everything else was saved.",
+    es: "No se pudieron guardar las notas del cliente. Todo lo demás se guardó.",
+  },
+  "need.notes": {
+    en: "Shorten the customer notes (see section 5).",
+    es: "Acorte las notas del cliente (vea la sección 5).",
+  },
+
   // ---- review / submit --------------------------------------------------
   "r.screenPrint": { en: "Screen Print", es: "Serigrafía" },
   "r.embroidery": { en: "Embroidery", es: "Bordado" },
