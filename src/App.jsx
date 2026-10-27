@@ -46,6 +46,7 @@ import { BillingOn } from "./invoice/billingContext";
 import { screenPrintShortfall } from "./invoice/minimums";
 import { MAX_UPLOAD_BYTES, artKey, collectArtFiles } from "./graphicArt";
 import { EXTRA_WEEK_QUESTION } from "./turnaround";
+import { RUSH_FIELD, RUSH_REMINDER, rushBoxPlan } from "./rushOrder";
 import {
   CUSTOMER_NOTES_QUESTION,
   CUSTOMER_NOTES_TOOLTIP,
@@ -333,6 +334,17 @@ function App() {
       } catch (err) {
         console.log("Deal Category / outsourcing not set - skipping:", err);
       }
+    }
+
+    // E-142 (David 10-27): the rush answer sets the Deal's "Rush Order?" box, both ways -- one own call, no workflow trigger
+    // (the box only picks the In Production rule at that stage move, which comes later). Only before production (rushOrder.js);
+    // past that point nothing is written and the rep is told.
+    try {
+      const rushPlan = rushBoxPlan(recordData, data);
+      if (rushPlan.change) await ZOHO.CRM.API.updateRecord({ Entity: entity, APIData: { id: entityId, [RUSH_FIELD]: rushPlan.value }, Trigger: [] });
+      if (rushPlan.blocked) window.alert(rushPlan.message);
+    } catch (err) {
+      console.log("Rush Order box not set - skipping:", err);
     }
 
     // E-56: ask the CRM to create this Deal's WorkDrive folders. AFTER the print fields above (the
@@ -1253,6 +1265,10 @@ function App() {
                         control={<Checkbox {...field} checked={!!field.value} />}
                         label="Upcharged For Rush Turnaround Time?"
                       />
+                      {/* E-142: the answer also sets the Deal's "Rush Order?" box; reps do not tick it by hand. */}
+                      <Typography variant="caption" sx={{ ml: "2rem", mt: "-0.4rem", mb: "0.6rem", color: "text.secondary" }}>
+                        {RUSH_REMINDER} This answer also sets the Deal's Rush Order box.
+                      </Typography>
                     </FormGroup>
                   )}
                 />
