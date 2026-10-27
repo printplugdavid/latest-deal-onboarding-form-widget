@@ -55,3 +55,36 @@ test("E-128: skusInBooks reads 'check' clashes, active AND inactive; a failed ch
   delete window.ZOHO;
   expect((await skusInBooks(["220"])).status).toBe("unavailable");
 });
+
+test("E-128 (Deluge 10-27): 5 SKUs per check; 'not started' rows are sent again; still unanswered = partial, never free", async () => {
+  const { skusInBooks } = require("./booksItems");
+  const calls = [];
+  let round = 0;
+  window.ZOHO = {
+    CRM: {
+      FUNCTIONS: {
+        execute: async (name, cfg) => {
+          const items = JSON.parse(JSON.parse(cfg.arguments).payload).items;
+          calls.push(items.map((i) => i.sku));
+          round += 1;
+          // first call: the last two not reached; RI2205 never answers
+          const results = items.map((it, i) =>
+            (round === 1 && i >= 3) || it.sku === "RI2205"
+              ? { sku: it.sku, result: "refused", clash: "not started - time limit; send it again" }
+              : it.sku === "RI2203"
+              ? { sku: it.sku, result: "refused", clash: "SKU already used by: Other - Cap (active)" }
+              : { sku: it.sku, result: "free", clash: "" }
+          );
+          return { details: { output: JSON.stringify({ status: "ok", partial: round === 1, results }) } };
+        },
+      },
+    },
+  };
+  const r = await skusInBooks(["RI220", "RI2201", "RI2202", "RI2203", "RI2204", "RI2205"]);
+  expect(calls[0]).toEqual(["RI220", "RI2201", "RI2202", "RI2203", "RI2204"]); // 5 per call
+  expect(calls.slice(2)).toEqual([["RI2204"], ["RI2205"]]); // unreached ones again, one at a time
+  expect(r.taken.get("RI2203")).toMatchObject({ name: "Other - Cap", active: true });
+  expect(r.status).toBe("partial"); // RI2205 never answered: not "free"
+  expect(r.message).toMatch(/RI2205/);
+  expect(r.taken.has("RI2204")).toBe(false);
+});
