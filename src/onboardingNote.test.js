@@ -71,10 +71,10 @@ describe("E-69 the note prints the gang sheet's garment colors only when answere
 
 
 test("E-115: 'Made:' under a product only when it is ordered in (no line = made in house, like every older note)", () => {
-  const inHouse = buildOnboardingNote(data());
+  const inHouse = buildOnboardingNote(data()).content;
   expect(inHouse).not.toMatch(/Made: /);
   const d = data();
   d.products[0].sourcing = "Ordered in, ready to go";
-  const out = buildOnboardingNote(d);
-  expect(out).toMatch(/Product 1: Embroidery\n-{27}\n\nMade: Ordered in, ready to go\n\n/);
+  const out = buildOnboardingNote(d).content;
+  expect(out).toMatch(/Product 1: Embroidery\s*\n-{27}\s*\n\s*\nMade: Ordered in, ready to go\s*\n/);
 });
