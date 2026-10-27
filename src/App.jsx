@@ -72,8 +72,10 @@ const REVISION_CATEGORIES = [
   "Other (Please Detail in Revision Reason Notes)",
 ];
 
-// Correction_Category is SINGLE-select and has no "Misprint (Placement)".
+// Correction_Category is SINGLE-select. "Misprint (Placement)" added 10-27 (E-136; David added it to the
+// field the same day: Standard layout; School Sponsorship needs it too). Same order as the Standard layout.
 const CORRECTION_CATEGORIES = [
+  "Misprint (Placement)",
   "Misprint (Wrong Graphic)",
   "Misprint (Wrong Colors)",
   "Misprint (Malfunction)",
