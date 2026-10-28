@@ -250,3 +250,28 @@ describe("E-90 see art file, stickers, USDOT; E-93 one garment type per kind", (
     expect(u.held.join(" ")).toMatch(/is a USDOT decal -- not onboarded automatically, by design \(D-44\)/);
   });
 });
+
+// E-130 / D-66 (2026-10-28): the robot gets the one-line ship-to for the Deal's Addressee -- the same rule as a person's Submit.
+describe("E-130 the Addressee handed to the robot", () => {
+  const shipped = (address) => order({
+    summary: { ShippingVendorName: "UPS", ShippingMethodName: "Ground" },
+    package: { ShippingAddress: address },
+  });
+  test("a shipped order: name, street lines, city / state / ZIP, joined with commas", () => {
+    const r = buildForOrder(shipped({ FirstName: "Test", LastName: "Buyer", Street1: "123 Main St", Street2: "Apt 4", City: "Boise", StateCode: "ID", PostCode: "83702" }), deal, { submittedAt: AT });
+    expect(r.ok).toBe(true);
+    expect(r.addressee).toBe("Test Buyer, 123 Main St, Apt 4, Boise, ID 83702");
+    expect(JSON.parse(r.json).doProductsNeedShipped).toBe("Yes");
+  });
+  test("a pickup gives an empty Addressee (the robot writes nothing)", () => {
+    expect(buildForOrder(order(), deal, { submittedAt: AT }).addressee).toBe("");
+  });
+  test("a held order carries no Addressee", () => {
+    expect(buildForOrder(order({ summary: { ProductionCards: [] } }), deal).addressee).toBeUndefined();
+  });
+  test("adding it changed nothing else the robot writes", () => {
+    const r = buildForOrder(order(), deal, { submittedAt: AT });
+    expect(Object.keys(r).sort()).toEqual(["addressee", "cards", "due", "held", "json", "note", "notes", "ok", "printFields"]);
+    expect(r.printFields).not.toHaveProperty("Addressee");
+  });
+});

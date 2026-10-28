@@ -20,13 +20,16 @@ import * as placements from "../placements";
 import { applyGarmentSplits } from "../garmentSplit";
 import { lumpedConcerns } from "../lumpedOrder";
 import { AUTO_SOURCE, buildSubmission } from "../submission";
+import { addresseePlan } from "../addressee";
 
 /**
  * @param order { summary, package }  GetOrderSummaries row (with ProductionCards) + GetOrderPackage body
  * @param deal  { Deal_Name, Account_Name, Contact_Name }  names as strings
  * @param opts  { submittedAt?: ISO string }
- * @returns { ok, held[], notes[], due, printFields, note, json, cards[{name, html}] }
+ * @returns { ok, held[], notes[], due, printFields, note, json, cards[{name, html}], addressee }
  *          ok=false means a person must onboard it; nothing else is meaningful then.
+ *          addressee (E-130 / D-66, tag online-order-2026-10-28): the one-line ship-to for the Deal's `Addressee`, "" for a pickup.
+ *          The Lambda writes it in its OWN update with no workflow trigger (never inside the printFields update); "" = write nothing.
  */
 export function buildForOrder(order, deal, opts = {}) {
   const mapped = inksoftToFormData(order, deal, profiles, styles, undefined, PRODUCT_STYLES, nonGarments);
@@ -45,7 +48,8 @@ export function buildForOrder(order, deal, opts = {}) {
     inksoftOrderId: String(order?.summary?.ID ?? ""),
     submittedAt: opts.submittedAt,
   });
-  return { ok: true, held: [], notes: mapped.notes, due: mapped.due, printFields, note, json, cards };
+  const addressee = addresseePlan(null, answers).value; // same rule as a person's Submit; a pickup gives ""
+  return { ok: true, held: [], notes: mapped.notes, due: mapped.due, printFields, note, json, cards, addressee };
 }
 
 export const PROFILE_COUNT = Object.keys(profiles).length;

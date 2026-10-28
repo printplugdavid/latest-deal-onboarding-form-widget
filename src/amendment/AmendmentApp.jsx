@@ -34,6 +34,7 @@
 import { loadDealVendors } from "../products/dealVendorsLive";
 import { mergeDealVendors } from "../products/vendors";
 import { ASKED_TYPES, categoryWriteOn, mergeCategories, outsourcingFields } from "../dealCategory";
+import { ADDRESSEE_FIELD, ADDRESSEE_MAX, addresseePlan, shipToChanged } from "../addressee";
 import SourcingField from "../components/SourcingField";
 import { productLabel } from "../productLabels";
 import React, { useEffect, useMemo, useRef, useState } from "react";
@@ -673,6 +674,20 @@ const AmendmentApp = () => {
           const APIData = { id: recordId, ...(cat.changed ? { Lead_Category: cat.value } : {}), ...(out.changed ? out.fields : {}) };
           const r = await ZOHO.CRM.API.updateRecord({ Entity: entity, APIData, Trigger: [] });
           if (!ok(r)) throw new Error("deal category / outsourcing: " + JSON.stringify(r?.data?.[0] || r));
+        });
+      }
+    }
+
+    // E-130 / D-66: a ship-to changed IN THIS AMENDMENT updates the Deal's Addressee -- same rule as the onboarding form (newest wins,
+    // a pickup never blanks it, Trigger: []). An amendment that leaves the ship-to alone leaves the Addressee alone (it may have been
+    // corrected since, e.g. at quality check). "Shipped?" is not touched.
+    if (shipToChanged(original.current, saved)) {
+      const shipTo = addresseePlan(loaded.deal, saved);
+      if (shipTo.change) {
+        const label = "ship-to address on the Deal (Addressee" + (shipTo.was ? "; it was: " + shipTo.was : "") + ")" + (shipTo.cut ? " -- cut to " + ADDRESSEE_MAX + " characters, please check it" : "");
+        await step(label, async () => {
+          const r = await ZOHO.CRM.API.updateRecord({ Entity: entity, APIData: { id: recordId, [ADDRESSEE_FIELD]: shipTo.value }, Trigger: [] });
+          if (!ok(r)) throw new Error("addressee: " + JSON.stringify(r?.data?.[0] || r));
         });
       }
     }
