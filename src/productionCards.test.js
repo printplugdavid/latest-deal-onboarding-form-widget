@@ -180,3 +180,28 @@ test("E-117a: the Deal's Garments Ordered Notes show on the cards (viewer); noth
   const without = [...buildCardsFromData(data, {}).values()].join("");
   expect(without).not.toContain("Garments ordered (from the Deal)");
 });
+
+test("E-137: the Deal's garment shipments show on the cards as one-click links (viewer); nothing changes without them", () => {
+  const { buildCardsFromData } = require("./cardBuild");
+  const data = {
+    contactInfo: { Account_Name: "Seneca Foods", Deal_Name: "Deal 4" },
+    products: [{ productName: "Embroidery", productType: "garment", primaryBranches: [{ garmentType: "Hoodies", garmentQuantity: "12", countColorSize: "Black\n12- L", secondaryBranches: [] }] }],
+  };
+  // the new field wins
+  const fresh = [...buildCardsFromData(data, { Production_Tracking: "1Z9432470300000001\nhttps://www.ups.com/track?loc=en_US&tracknum=1Z9432470300000001\n\nG172906100000000001", Tracking_Link_1: "449780000900001" }).values()].join("");
+  expect(fresh).toContain("Garment shipments (from the Deal):</b> ");
+  expect(fresh).toContain('<a href="https://www.ups.com/track?loc=en_US&amp;tracknum=1Z9432470300000001" target="_blank" rel="noopener noreferrer">1Z9432470300000001</a> <span class="omute">UPS</span>');
+  expect(fresh).toContain("TrackingNumbers=G172906100000000001");
+  expect(fresh).not.toContain("449780000900001");
+  // until the move, the old boxes show (the GLS search page replaced by the parcel's own link)
+  const old = [...buildCardsFromData(data, { Tracking_Link_1: "449780000900001", Production_Tracking_URL_1: "https://www.gls-us.com/track-and-trace" }).values()].join("");
+  expect(old).toContain("TrackingNumbers=449780000900001");
+  expect(old).not.toContain("gls-us.com/track-and-trace");
+  // none -> no block; a javascript: link is never made clickable
+  expect([...buildCardsFromData(data, {}).values()].join("")).not.toContain("Garment shipments");
+  const { buildProductionCards } = require("./productionCards");
+  const bad = buildProductionCards(data, {}, { shipments: [{ number: "ABC123", link: "javascript:alert(1)", carrier: "" }] }).map((c) => c.html).join("");
+  expect(bad).toContain("Garment shipments (from the Deal):</b> ABC123</div>");
+  // cards attached at Submit carry no dealInfo.shipments: unchanged
+  expect(buildProductionCards(data, {}, {}).map((c) => c.html).join("")).not.toContain("Garment shipments");
+});
