@@ -205,3 +205,26 @@ test("E-137: the Deal's garment shipments show on the cards as one-click links (
   // cards attached at Submit carry no dealInfo.shipments: unchanged
   expect(buildProductionCards(data, {}, {}).map((c) => c.html).join("")).not.toContain("Garment shipments");
 });
+
+test("E-146: the Deal's revision reorder boxes (Revision Tracking Link) show under their own heading; nothing without them", () => {
+  const { buildCardsFromData } = require("./cardBuild");
+  const data = {
+    contactInfo: { Account_Name: "Quick Dry", Deal_Name: "Deal 5" },
+    products: [{ productName: "Embroidery", productType: "garment", primaryBranches: [{ garmentType: "Polos", garmentQuantity: "6", countColorSize: "Navy\n6- L", secondaryBranches: [] }] }],
+  };
+  // typed by hand today: number, a blank line, an S&S account link -> the parcel's own link is built
+  const html = [...buildCardsFromData(data, {
+    Production_Tracking: "1Z9432470300000001\nhttps://www.ups.com/track?loc=en_US&tracknum=1Z9432470300000001",
+    Revision_Tracking_Link: "G211525100000000001\n\nhttps://www.ssactivewear.com/myaccount/orders",
+  }).values()].join("");
+  expect(html).toContain("Garment shipments (from the Deal):</b> ");
+  expect(html).toContain("Revision shipments (from the Deal):</b> ");
+  expect(html).toContain("TrackingNumbers=G211525100000000001");
+  expect(html).not.toContain("ssactivewear.com/myaccount");
+  expect(html.indexOf("Garment shipments")).toBeLessThan(html.indexOf("Revision shipments"));
+  // revision boxes only (no first-order tracking yet): the revision line alone
+  const only = [...buildCardsFromData(data, { Revision_Tracking_Link: "449780000900002" }).values()].join("");
+  expect(only).toContain("Revision shipments (from the Deal):</b> ");
+  expect(only).not.toContain("Garment shipments");
+  expect([...buildCardsFromData(data, { Revision_Tracking_Link: "" }).values()].join("")).not.toContain("Revision shipments");
+});
