@@ -69,7 +69,8 @@ export function findNumbers(text) {
     if (carrierOf(n) && !out.includes(n)) out.push(n);
   }
   // One number typed in groups ("9405 5301 0935 5290 6451 62"): only when the text is nothing else, so a list of numbers is never glued.
-  if (!out.length && /^[\d\s-]+$/.test(str(text).trim()) && carrierOf(str(text))) out.push(cleanNumber(text));
+  // 20+ digits only (USPS): three POs "4553 4401 4528" must never become a 12-digit "FedEx" number.
+  if (!out.length && /^[\d\s-]+$/.test(str(text).trim()) && cleanNumber(text).length >= 20 && carrierOf(str(text))) out.push(cleanNumber(text));
   return out;
 }
 
@@ -96,7 +97,8 @@ export function numberInLink(url) {
 
 /*
  * Read the field back: [{ number, link, carrier }]. Tolerant of what people type: a line with a number starts a box; a link line under
- * it is that box's link; a link line naming a NEW number is a box of its own; other text is ignored.
+ * it is that box's link; a link line naming a NEW number is a box of its own; a line that is one code (letters + digits, no spaces) is a
+ * box of a carrier we do not know; other text is ignored.
  */
 export function parseTracking(text) {
   const boxes = [];
@@ -110,7 +112,10 @@ export function parseTracking(text) {
       else if (last && !last.typedLink && (!n || n === last.number)) { last.link = line; last.typedLink = true; }
       continue;
     }
-    for (const n of findNumbers(line)) {
+    const found = findNumbers(line);
+    // A carrier we do not know (written by the Shipping Form for Richardson, Stahl's, ...): a line that is one code, letters and digits.
+    if (!found.length && /^[A-Z0-9]{8,40}$/i.test(line) && /\d/.test(line)) found.push(cleanNumber(line));
+    for (const n of found) {
       if (!boxes.some((b) => b.number === n)) boxes.push({ number: n, link: "", carrier: carrierOf(n) });
     }
   }
