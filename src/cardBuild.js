@@ -4,6 +4,7 @@
  * (D-24: imported, never copied). Pure: no ZOHO, no React.
  */
 import { buildProductionCards, workDriveTarget } from "./productionCards";
+import { dealShipments } from "./tracking";
 
 // Tab order and labels, keyed by the filenames buildProductionCards() writes in App.jsx.
 export const CARD_ORDER = [
@@ -77,7 +78,8 @@ export function buildCardsFromData(data, deal) {
   const folder = workDriveTarget(deal);
   // E-117a (Angela, 10-23): where the garments were really ordered from is the Deal's Garments Ordered Notes, written after ordering;
   // the cards here are rebuilt from the Deal as it is now, so they show it.
-  const dealInfo = { poNumber: deal.PO_Number, workDriveLink: folder.href, workDriveLabel: folder.label, garmentsOrderedNotes: deal.Garments_Ordered_Notes };
+  // E-137: the boxes coming in from suppliers, read from the Deal now (the new Production Tracking field, else the 8 old boxes).
+  const dealInfo = { poNumber: deal.PO_Number, workDriveLink: folder.href, workDriveLabel: folder.label, garmentsOrderedNotes: deal.Garments_Ordered_Notes, shipments: dealShipments(deal) };
   for (const c of buildProductionCards(liveDue, counts, dealInfo)) built.set(c.name.toLowerCase(), c.html);
   return built;
 }
