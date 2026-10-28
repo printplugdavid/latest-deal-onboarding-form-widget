@@ -21,6 +21,9 @@ import { applyGarmentSplits } from "../garmentSplit";
 import { lumpedConcerns } from "../lumpedOrder";
 import { AUTO_SOURCE, buildSubmission } from "../submission";
 import { addresseePlan } from "../addressee";
+// E-147 (tag online-order-2026-10-28b): the Lambda calls onlinePoNumber(orderId) when it CREATES the Deal and writes the result to
+// PO_Number ("" -> write nothing). Same rule the E-146 supplier function reads back (E259 -> order 1000259).
+export { onlinePoNumber } from "../onlinePo";
 
 /**
  * @param order { summary, package }  GetOrderSummaries row (with ProductionCards) + GetOrderPackage body
