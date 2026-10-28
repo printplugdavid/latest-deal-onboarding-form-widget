@@ -48,6 +48,7 @@ import { MAX_UPLOAD_BYTES, artKey, collectArtFiles } from "./graphicArt";
 import { CLOSING_FIELD, EXTENDED_DATE_LABEL, EXTRA_WEEK_QUESTION, dueDateProblem, extendedRange, turnaroundPlan, turnaroundWriteOn } from "./turnaround";
 import ExtendedClosingDate from "./components/ExtendedClosingDate";
 import { RUSH_FIELD, RUSH_REMINDER, rushBoxPlan } from "./rushOrder";
+import { ADDRESSEE_FIELD, addresseePlan } from "./addressee";
 import {
   CUSTOMER_NOTES_QUESTION,
   CUSTOMER_NOTES_TOOLTIP,
@@ -360,6 +361,16 @@ function App() {
       } catch (err) {
         console.log("Turnaround / " + CLOSING_FIELD + " not set - skipping:", err);
       }
+    }
+    // E-130 / D-66 (David with the team, 10-28): an order that ships puts its ship-to on the Deal's Addressee (one line, commas, the
+    // style the QC form splits). The newest address wins; a pickup never blanks it; any stage; own call, no workflow trigger.
+    // "Shipped?" is not touched (it means HAS shipped; the QC form ticks it with the tracking number).
+    try {
+      const shipTo = addresseePlan(recordData, data);
+      if (shipTo.change) await ZOHO.CRM.API.updateRecord({ Entity: entity, APIData: { id: entityId, [ADDRESSEE_FIELD]: shipTo.value }, Trigger: [] });
+      if (shipTo.message) turnaroundNotices.push(shipTo.message);
+    } catch (err) {
+      console.log("Addressee not set - skipping:", err);
     }
     if (turnaroundNotices.length) window.alert(turnaroundNotices.join("\n\n"));
 
