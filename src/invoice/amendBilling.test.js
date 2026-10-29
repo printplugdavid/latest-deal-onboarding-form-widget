@@ -16,8 +16,8 @@ import {
 /* Priced lines as priceLines() returns them. */
 const L = (sku, quantity, description, group, rate = 10, item_id = "id-" + sku) => ({ sku, quantity, description, group, rate, item_id, clientQty: 0 });
 
-test("the switch is off until David's yes", () => {
-  expect(amendBillingOn()).toBe(false);
+test("the switch is on (David 10-29, after Deluge v5)", () => {
+  expect(amendBillingOn()).toBe(true);
 });
 
 test("countsOf reads sizes and placements, singular and plural alike", () => {
