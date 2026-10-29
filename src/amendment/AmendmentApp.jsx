@@ -379,6 +379,8 @@ const AmendmentApp = () => {
   );
   // E-157: the Price change step is tied to the order as it was priced; any later edit makes it stale.
   const savedSignature = useMemo(() => (saved ? JSON.stringify(saved) : ""), [saved]);
+  // E-157: Books' "reason for updating a sent invoice" = the rep's own words (step 4), one line.
+  const billingReason = "Amendment: " + (story.trim().replace(/\s+/g, " ") || "order changed");
   const before = useMemo(() => countRows(original.current?.products), [state.status]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Carry mode only: may the form rewrite the Deal's print counts? Only if the order as PARSED
@@ -859,7 +861,7 @@ const AmendmentApp = () => {
             flags: plan.flags,
             dryRun: false,
             submittedBy: currentUser,
-            reason: lines.join("; "),
+            reason: billingReason,
             amendmentId,
           })
         );
@@ -1303,7 +1305,7 @@ The panel at the bottom shows exactly what will be recorded. Saving posts a new 
             original={original.current}
             saved={saved}
             signature={savedSignature}
-            reason={lines.join("; ")}
+            reason={billingReason}
             submittedBy={currentUser}
             disabled={saving || !!outcome}
             onPlan={(p) => (billingPlan.current = p)}
