@@ -10,11 +10,15 @@ import { EXTENDED_DATE_LABEL, extendedRange, toYmd } from "../turnaround";
  * E-144 (David 10-27: "Calendar would be helpful"): when the customer takes the extra week, the rep picks the Closing Date
  * from the standard date + 1 to + 7 days (default + 7). Saved as `extendedClosingDate` (YYYY/MM/DD, like dueDate); the
  * form writes it to the Deal's Closing Date at Submit (turnaround.js).
+ * E-150: the Amendment Form passes `keep` = the date the onboarding already has; that date is never reset or refused (it was in
+ * range on the day it was picked), so opening the Dates section never moves a Deal's date by itself.
  */
-export default function ExtendedClosingDate({ control, setValue, getValues }) {
+export default function ExtendedClosingDate({ control, setValue, getValues, keep }) {
   const range = extendedRange();
+  const kept = toYmd(keep);
   useEffect(() => {
     const now = toYmd(getValues("extendedClosingDate"));
+    if (kept && now === kept) return;
     if (!now || now < range.min || now > range.max) setValue("extendedClosingDate", range.dflt.replace(/-/g, "/"));
     // the range is today's; run once when the calendar appears
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -30,6 +34,7 @@ export default function ExtendedClosingDate({ control, setValue, getValues }) {
             const ymd = toYmd(v);
             if (getValues("hardDueDate") !== "No" || getValues("discountsForExtendedTurnaround") !== "Yes") return true;
             if (!ymd) return "Required";
+            if (kept && ymd === kept) return true;
             return (ymd >= range.min && ymd <= range.max) || `Pick a date from ${range.min} to ${range.max}`;
           },
         }}

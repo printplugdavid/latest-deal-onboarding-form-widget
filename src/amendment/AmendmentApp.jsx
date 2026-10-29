@@ -80,6 +80,9 @@ import {
 import { buildColorMatches } from "../colorMatch";
 import { newestFirst, readFileText } from "../zohoFiles";
 import { AmendContact, AmendDates } from "./AmendSections";
+import { MOVE_FUNCTION, moveArgs, amendmentDatePlan, amendmentDatesOn, datesChanged, describeMove, readMove } from "./closingMove";
+import { RUSH_FIELD, rushBoxPlan } from "../rushOrder";
+import { call as callFunction } from "../products/booksItems";
 import { parseNoteToForm, toPlainText } from "./noteToForm";
 import { countFieldForTask, planTaskRestamp } from "./taskRestamp";
 import {
@@ -499,6 +502,32 @@ const AmendmentApp = () => {
       );
       return;
     }
+    // E-150 (David 10-29): changed Dates answers move the Deal's Closing Date (closingMove.js). In production the move also moves the
+    // open Produce tasks, so the rep sees what will move BEFORE anything is saved, and can stop.
+    const datesMoved = amendmentDatesOn() && datesChanged(original.current, saved);
+    const datePlan = datesMoved ? amendmentDatePlan(loaded.deal, saved) : { kind: "none" };
+    let moveAllowed = false;
+    if (datePlan.kind === "move") {
+      setSaving(true);
+      const preview = readMove(
+        await callFunction(MOVE_FUNCTION, moveArgs(ctx.current.recordId, datePlan, true))
+      );
+      setSaving(false);
+      if (preview.ok) {
+        moveAllowed = window.confirm(
+          "Saving will move this Deal's dates:\n\n" + describeMove(preview) + "\n\nOK to save the amendment and move them? " +
+            "Cancel to go back without saving."
+        );
+        if (!moveAllowed) return;
+      } else {
+        const goOn = window.confirm(
+          "The Closing Date can't be moved right now (" + (preview.message || "no answer") + ").\n\nOK to save the rest of the " +
+            "amendment without moving it (then tell the production manager)? Cancel to go back without saving."
+        );
+        if (!goOn) return;
+      }
+    }
+    const dateNotices = [];
     setSaving(true);
     const { entity, recordId } = ctx.current;
     const when = nowStamp();
@@ -692,6 +721,39 @@ const AmendmentApp = () => {
       }
     }
 
+    // E-150: the Dates answers changed in this amendment -> the Rush box (E-142 rule: before production only), then Turnaround /
+    // Closing Date (Trigger [], as onboarding), then -- in production, switch on, rep said OK -- the Deluge move of the date + tasks.
+    if (datesMoved) {
+      const rush = rushBoxPlan(loaded.deal, saved);
+      if (rush.change) {
+        await step(`"Rush Order?" box on the Deal (${rush.value ? "ticked" : "unticked"})`, async () => {
+          const r = await ZOHO.CRM.API.updateRecord({ Entity: entity, APIData: { id: recordId, [RUSH_FIELD]: rush.value }, Trigger: [] });
+          if (!ok(r)) throw new Error("rush box: " + JSON.stringify(r?.data?.[0] || r));
+        });
+      }
+      if (rush.blocked) dateNotices.push(rush.message);
+      const fields = datePlan.fields || {};
+      if (Object.keys(fields).length) {
+        const what = Object.entries(fields).map(([k, v]) => (k === "Closing_Date" ? "Closing Date " : k + " ") + v).join(", ");
+        await step(`Deal ${what}`, async () => {
+          const r = await ZOHO.CRM.API.updateRecord({ Entity: entity, APIData: { id: recordId, ...fields }, Trigger: [] });
+          if (!ok(r)) throw new Error("turnaround / closing date: " + JSON.stringify(r?.data?.[0] || r));
+        });
+      }
+      if (datePlan.kind === "move" && moveAllowed) {
+        let label = "moving the Closing Date and production tasks";
+        const moved = await step(label, async () => {
+          const m = readMove(await callFunction(MOVE_FUNCTION, moveArgs(recordId, datePlan, false)));
+          if (!m.ok) throw new Error(m.message || "no answer");
+          label = describeMove(m);
+        });
+        const at = (moved ? done : failed).indexOf("moving the Closing Date and production tasks");
+        if (moved) done[at] = label;
+        else failed[at] = "moving the Closing Date and production tasks (the Closing Date may still be " + (datePlan.from || "blank") + "; tell the production manager)";
+      }
+      if (datePlan.kind === "blocked" && datePlan.message) dateNotices.push(datePlan.message);
+    }
+
     // E-56: an amendment can add a department. Ask the CRM to make sure this Deal's WorkDrive folders
     // exist (it only adds what is missing). After the Deal fields above, not awaited, cannot throw.
     // Not sent for a Deal whose folder was made by hand (David: no back-fill).
@@ -749,6 +811,7 @@ const AmendmentApp = () => {
       }
     }
 
+    if (dateNotices.length) window.alert(dateNotices.join("\n\n"));
     setOutcome({ done, failed });
     setSaving(false);
     if (!failed.length) {
@@ -759,7 +822,7 @@ const AmendmentApp = () => {
         } catch (e) {
           /* ignore */
         }
-      }, done.some((d) => /^open production tasks updated/.test(d)) ? 5000 : 1200);
+      }, done.some((d) => /^open production tasks updated|^Closing Date /.test(d)) ? 5000 : 1200);
     }
   };
 
@@ -1110,7 +1173,7 @@ The panel at the bottom shows exactly what will be recorded. Saving posts a new 
             <Typography fontWeight="bold" sx={{ mb: 2 }}>
               Dates
             </Typography>
-            <AmendDates />
+            <AmendDates originalDueDate={original.current?.dueDate} originalExtendedDate={original.current?.extendedClosingDate} />
           </Box>
         )}
 
