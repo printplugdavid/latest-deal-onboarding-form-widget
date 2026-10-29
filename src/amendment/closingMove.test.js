@@ -9,9 +9,9 @@ const PROD = "Mock-Up Approved / In Production";
 const hard = (due, rush = false) => ({ hardDueDate: "Yes", dueDate: dayjs(due), upchargedForRushTurnaround: rush });
 
 describe("E-150 switches", () => {
-  test("Dates writes on, the in-production move off until Deluge has built it", () => {
+  test("Dates writes on; the in-production move on (David 10-29: \"Yes, push it on\", after Deluge's dry runs)", () => {
     expect(amendmentDatesOn()).toBe(true);
-    expect(moveInProductionOn()).toBe(false);
+    expect(moveInProductionOn()).toBe(true);
   });
 });
 
