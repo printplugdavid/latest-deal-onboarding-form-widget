@@ -28,8 +28,16 @@ export const DEPARTMENTS = {
   screen: { key: "screen", label: "Screen Print", card: "production-card-screenprint.html", inks: true },
   embroidery: { key: "embroidery", label: "Embroidery", card: "production-card-embroidery.html", inks: false },
   vinyl: { key: "vinyl", label: "Vinyl", card: "production-card-vinyl.html", inks: false },
+  /* E-164 (D-75): the Production Manager's packing step for outsourced products. No start steps; David's two close questions only. */
+  outsourced: { key: "outsourced", label: "Outsourced", card: "production-card-outsourced.html", inks: false, start: false },
 };
 export const deptForCard = (cardName) => Object.values(DEPARTMENTS).find((d) => d.card === str(cardName).toLowerCase()) || null;
+/* The card tab's flow, if any: the Outsourced tab only while its switch is on (productionConfig.json outsourcedOn). */
+export const outsourcedOn = (config) => !!config && config.outsourcedOn === true;
+export const flowDeptFor = (cardName, config) => {
+  const d = deptForCard(cardName);
+  return d && d.key === "outsourced" && !outsourcedOn(config) ? null : d;
+};
 
 /* The English half of a bilingual subject, upper-cased, without "RUSH: ". */
 const englishHalf = (subject) =>
@@ -43,10 +51,13 @@ const englishHalf = (subject) =>
  * A production WORK task and its department, from the subject (measured 10-29 on every task since 09-15):
  *   EMBROIDERY: Produce Order · SCREEN PRINT(ING): Produce Order · VINYL DEPARTMENT[: DTF | DTG | DECALS | ...]: Produce Order
  *   and the same with Reproduce Order (revisions) / Correct Order (corrections), with or without "RUSH: ".
+ * E-164: "PRODUCTION MANAGER: Package Outsourced Products" is the Outsourced tab's work task (the fulfill step, made when the order
+ * task is completed; Deluge evidence 10-29, subjects confirmed unchanged by Deluge E-165).
  * Anything else (Emulsion Screens, Quality Check, Order Products, manager tasks) is not a work task -> null.
  */
 export function deptOfTask(subject) {
   const s = englishHalf(subject);
+  if (s === "PRODUCTION MANAGER: PACKAGE OUTSOURCED PRODUCTS") return "outsourced";
   if (!/: (PRODUCE|REPRODUCE|CORRECT) ORDER$/.test(s)) return null;
   if (/^EMBROIDERY:/.test(s)) return "embroidery";
   if (/^SCREEN PRINT(ING)?:/.test(s)) return "screen";
@@ -54,8 +65,35 @@ export function deptOfTask(subject) {
   return null;
 }
 const isOpen = (t) => t && t.id && !/^completed$/i.test(str(t.Status).trim());
-export const openWorkTasks = (tasks) => (tasks || []).filter((t) => isOpen(t) && deptOfTask(t.Subject));
-export const openDeptTasks = (tasks, dept) => openWorkTasks(tasks).filter((t) => deptOfTask(t.Subject) === dept);
+/* withOutsourced false = round 1 as before: the Package task is not counted (switch off). */
+export const openWorkTasks = (tasks, withOutsourced = false) =>
+  (tasks || []).filter((t) => {
+    const d = isOpen(t) && deptOfTask(t.Subject);
+    return !!d && (withOutsourced || d !== "outsourced");
+  });
+export const openDeptTasks = (tasks, dept) => (tasks || []).filter((t) => isOpen(t) && deptOfTask(t.Subject) === dept);
+
+/*
+ * E-164 / D-75 (David 10-29, "Order + Package"): the outsourced ORDER task, "OUTSOURCED: Order Products" (+ "RUSH: ", + "OUTSOURCED:
+ * PATCHES: "), holds the move to Quality Check too, but is the Account Manager's job, so it is never closed from a card. The Account
+ * Manager's parallel "ACCOUNT MANAGER: OUTSOURCED: Order Outsourced Product" is NOT counted (a duplicate, E-165).
+ */
+/* E-165 (Deluge 10-29, David approved there): the order task is being renamed role-first, "ACCOUNT MANAGER: OUTSOURCED: Order Products";
+   old-name tasks stay open for a while, so both names match. "...: Order Outsourced Product" (the old duplicate) never does. */
+export const isOrderProductsTask = (subject) => /^(ACCOUNT MANAGER: )?OUTSOURCED: (PATCHES: )?ORDER PRODUCTS$/.test(englishHalf(subject));
+export const openOrderTasks = (tasks) => (tasks || []).filter((t) => isOpen(t) && isOrderProductsTask(t.Subject));
+/*
+ * The Outsourced tab must exist whenever outsourced work is open, even when the order has no Outsourced card (measured 10-29: 5 of 21
+ * outsourced Deals since 09-01 had none -- patches go on the Vinyl card, a car-magnet order had no card), or the hold would leave the
+ * Deal with no place to close its tasks.
+ */
+export const needsOutsourcedTab = (tasks, config) =>
+  outsourcedOn(config) && (openOrderTasks(tasks).length > 0 || openDeptTasks(tasks, "outsourced").length > 0);
+/* Every open task that keeps the Deal out of Quality Check. */
+export const openHoldTasks = (tasks, withOutsourced = false) => [
+  ...openWorkTasks(tasks, withOutsourced),
+  ...(withOutsourced ? openOrderTasks(tasks) : []),
+];
 export const ownerOf = (t) => ({ id: str(t && t.Owner && t.Owner.id), name: str(t && t.Owner && t.Owner.name) });
 export const taskTitle = (t) => str(t && t.Subject).split(" / ")[0].trim();
 
@@ -69,7 +107,7 @@ export const START_STEPS = [
   {
     key: "artwork",
     question:
-      "Print-ready artwork and placement verified with the mock-up and the original art, with a critical eye (no errors, no drift from the original)?",
+      "Print-ready artwork and placement verified with the mock-up, the notes and the original art, with a critical eye (no errors, no drift from the original)?",
     stop: "Stop and talk to the sales person before you go on. Use \"Call Client\" below to flag it if the client needs to be asked.",
   },
   {
@@ -79,12 +117,12 @@ export const START_STEPS = [
   },
 ];
 
-/* David's Close Task questions, word for word (10-29). Each must be Yes. */
+/* David's Close Task questions, word for word (10-29; "notes" added by David the same evening). Each must be Yes. */
 export const CLOSE_QUESTIONS = [
   { key: "sorted", question: "Garments counted and sorted by size?" },
   {
     key: "standards",
-    question: "Job completed according to mock-up and standards, ensuring no drift from original artwork unless approved by client?",
+    question: "Job completed according to mock-up, notes and standards, ensuring no drift from original artwork unless approved by client?",
   },
   { key: "clean", question: "Work space cleaned up and ready for next job?" },
   { key: "stocked", question: "Products stocked, with any needs recorded for Inventory Ordering?" },
@@ -94,7 +132,28 @@ export const DEPT_CLOSE_QUESTIONS = {
   embroidery: [],
   vinyl: [],
 };
-export const closeQuestionsFor = (dept) => [...CLOSE_QUESTIONS, ...(DEPT_CLOSE_QUESTIONS[dept] || [])];
+/*
+ * E-164: the Outsourced tab has two steps, each closing its own task (David 10-29: "Order task and Package task have to be closed out
+ * separately"). Word for word; they replace the four.
+ *   "order"   -> closes "OUTSOURCED: Order Products" (with workflow: Zoho's rule makes the Package task); never moves the Deal.
+ *   "package" -> closes "Package Outsourced Products"; the Deal moves to Quality Check when nothing is left open.
+ */
+export const ORDER_CLOSE_QUESTIONS = [
+  { key: "mockup", question: "Mock-up verified against notes and client-provided artwork?" },
+  { key: "ordered", question: "Double-checked total count and variables of products ordered?" },
+];
+export const OUTSOURCED_CLOSE_QUESTIONS = [
+  { key: "verified", question: "Products counted and verified against mock-up, notes and original artwork?" },
+  { key: "boxed", question: "Products removed from supplier boxes and put into Print Plug / unbranded boxes?" },
+];
+export const closeQuestionsFor = (dept, step) =>
+  dept === "outsourced"
+    ? [...(step === "order" ? ORDER_CLOSE_QUESTIONS : OUTSOURCED_CLOSE_QUESTIONS)]
+    : [...CLOSE_QUESTIONS, ...(DEPT_CLOSE_QUESTIONS[dept] || [])];
+/* The note's label for a close: "Outsourced order" / "Outsourced packing" for the two outsourced steps. */
+export const closeLabel = (dept, step) =>
+  dept === "outsourced" ? (step === "order" ? "Outsourced order" : "Outsourced packing") : (DEPARTMENTS[dept] || {}).label || dept;
+export const hasStartSteps = (dept) => !!DEPARTMENTS[dept] && DEPARTMENTS[dept].start !== false;
 
 export const MISSING_REASONS = [
   "Supplier sent the wrong item",
@@ -251,9 +310,10 @@ export const QC_STAGE = "Quality Check";
  * What Close does: { problems[], close[] (task ids), stage: { move, to, reason }, fields }.
  * answers = { questionKey: "yes" | "no" }; closing = ids of the department's tasks the agent is closing; inkLeft = grams typed per row.
  */
-export function closePlan({ dept, tasks, closing, answers, rows, inkLeft, stage }) {
+export function closePlan({ dept, step, tasks, closing, answers, rows, inkLeft, stage, withOutsourced = false }) {
   const problems = [];
-  closeQuestionsFor(dept).forEach((q) => {
+  const isOrder = dept === "outsourced" && step === "order";
+  closeQuestionsFor(dept, step).forEach((q) => {
     const a = str(answers && answers[q.key]);
     if (a === "no") problems.push(`${q.question} - ${BLOCK_TEXT}`);
     else if (a !== "yes") problems.push(`Answer: ${q.question}`);
@@ -264,15 +324,19 @@ export function closePlan({ dept, tasks, closing, answers, rows, inkLeft, stage 
     (rows || []).forEach((r, i) => {
       if (grams(inkLeft && inkLeft[i]) == null) problems.push(`Grams of ink left for Pantone ${r.code}.`);
     });
-  const stillOpen = openWorkTasks(tasks).filter((t) => !ids.includes(str(t.id)));
+  const stillOpen = openHoldTasks(tasks, withOutsourced).filter((t) => !ids.includes(str(t.id)));
+  const outsourcedOpen = stillOpen.some((t) => deptOfTask(t.Subject) === "outsourced" || isOrderProductsTask(t.Subject));
   const cur = str(stage);
   let move = { move: false, to: QC_STAGE, reason: "" };
-  if (stillOpen.length) move.reason = `${stillOpen.length} production task(s) still open: ${stillOpen.map(taskTitle).join("; ")}`;
+  if (isOrder) move.reason = "the Package Outsourced Products task comes next";
+  else if (stillOpen.length)
+    move.reason = `${stillOpen.length} ${outsourcedOpen ? "production or outsourced" : "production"} task(s) still open: ${stillOpen.map(taskTitle).join("; ")}`;
   else if (cur === QC_STAGE) move.reason = "already in Quality Check";
   else if (!PRODUCTION_STAGES.includes(cur)) move.reason = `the Deal is at "${cur}", not a production stage - the stage is left as it is`;
   else move = { move: true, to: QC_STAGE, reason: "" };
   const fields = DEPARTMENTS[dept] && DEPARTMENTS[dept].inks ? pantoneFields(rows, "Left", inkLeft) : {};
-  return { problems, close: ids, stage: move, fields, stillOpen };
+  /* Closing the order task fires workflow so Zoho's rule makes the Package task; every other close is Trigger [] as before. */
+  return { problems, close: ids, stage: move, fields, stillOpen, workflowOnClose: isOrder };
 }
 
 /* ---------- the note ---------- */
@@ -296,17 +360,16 @@ export function startNote({ dept, who, when, answers, rows, inkMixed }) {
 }
 
 /* "Screen Print · CLOSED" note: tasks closed, the answers, grams left, feedback per task, what happened to the stage. */
-export function closeNote({ dept, who, when, tasks, closing, answers, rows, inkLeft, feedback, stage }) {
-  const d = DEPARTMENTS[dept];
+export function closeNote({ dept, step, who, when, tasks, closing, answers, rows, inkLeft, feedback, stage }) {
   const byId = new Map((tasks || []).map((t) => [str(t.id), t]));
-  const lines = [`${d ? d.label : dept} - CLOSED - ${str(when)}${who ? " - " + str(who) : ""}`];
+  const lines = [`${closeLabel(dept, step)} - CLOSED - ${str(when)}${who ? " - " + str(who) : ""}`];
   (closing || []).forEach((id) => {
     const t = byId.get(str(id));
     lines.push(`Closed: ${t ? taskTitle(t) : id}${t && ownerOf(t).name ? " (" + ownerOf(t).name + ")" : ""}`);
     const f = str(feedback && feedback[id]).trim();
     if (f) lines.push(`  Feedback: ${f}`);
   });
-  closeQuestionsFor(dept).forEach((q) => lines.push(`${q.question} ${yn(answers && answers[q.key])}`));
+  closeQuestionsFor(dept, step).forEach((q) => lines.push(`${q.question} ${yn(answers && answers[q.key])}`));
   const ink = inkLines(rows, inkLeft, "left");
   if (ink.length) lines.push("Ink left:", ...ink);
   if (stage) lines.push(stage.move ? `Deal moved to ${stage.to}.` : `Stage not moved: ${stage.reason}.`);

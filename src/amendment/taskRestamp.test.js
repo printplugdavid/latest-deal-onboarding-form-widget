@@ -19,8 +19,12 @@ const REAL = [
   ["VINYL DEPARTMENT: BANNERS: Produce Order / DEPARTAMENTO DE VINILO: BANNERS: Orden de producción", "Banners_Prints"],
   ["VINYL DEPARTMENT: PATCHES: Produce Order / DEPARTAMENTO DE VINILO: PARCHES: Orden de producción", "Patches_Prints"],
   ["RUSH: VINYL DEPARTMENT: DTF GANG SHEET: Produce Order / CORRER: DEPARTAMENTO DE VINILO: HOJA DE GANG DTF: Orden de producción", "DTF_Gang_Sheet_Prints"],
+  // E-165 (10-29): the role-first names Deluge's masters move to
+  ["ACCOUNT MANAGER: OUTSOURCED: Order Products / GERENTE DE CUENTAS: TERCERIZADA: Ordenar Productos", "Outsourced_Prints"],
+  ["RUSH: ACCOUNT MANAGER: OUTSOURCED: Order Products / CORRER: GERENTE DE CUENTAS: TERCERIZADA: Ordenar Productos", "Outsourced_Prints"],
 ];
 const NEVER = [
+  "ACCOUNT MANAGER: OUTSOURCED: Order Outsourced Product / GERENTE DE CUENTAS: TERCERIZADA: Orden Producto Subcontratado", // the old duplicate
   "EMBROIDERY: Reproduce Order / BORDADO: Reproducir Orden",
   "SCREEN PRINT: Reproduce Order / SERIGRAFÍA: Reproducir Orden",
   "VINYL DEPARTMENT: Reproduce Order / DEPARTAMENTO DE VINILO: Reproducir Orden",

@@ -9,6 +9,7 @@
  *     SCREEN PRINT(ING): Produce Order               -> Screen_Print_Prints
  *     VINYL DEPARTMENT: <JOB>: Produce Order         -> that job's own field (DTF_Prints, ...)
  *     OUTSOURCED: Order Products                     -> Outsourced_Prints
+ *       (E-165, 10-29: renamed "ACCOUNT MANAGER: OUTSOURCED: Order Products" by Deluge; both names match)
  * with or without a leading "RUSH: ". The production function (Deluge, not ours) does the first
  * stamp; this only RE-stamps, so the two can never disagree about a task this file does not know.
  *
@@ -41,7 +42,7 @@ const englishHalf = (subject) =>
 export function countFieldForTask(subject) {
   const s = englishHalf(subject);
   if (/\bREPRODUCE\b|\bCORRECT\b|\bRE-?ORDER\b/.test(s)) return null;
-  if (/^OUTSOURCED: ORDER PRODUCTS$/.test(s)) return "Outsourced_Prints";
+  if (/^(ACCOUNT MANAGER: )?OUTSOURCED: ORDER PRODUCTS$/.test(s)) return "Outsourced_Prints"; // E-165: old + role-first name
   if (!/: PRODUCE ORDER$/.test(s)) return null;
   if (/^EMBROIDERY: PRODUCE ORDER$/.test(s)) return "Embroidery_Department_Prints";
   if (/^SCREEN PRINT(ING)?: PRODUCE ORDER$/.test(s)) return "Screen_Print_Prints";

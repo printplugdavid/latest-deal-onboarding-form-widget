@@ -18,6 +18,13 @@ import {
   deptStarted,
   pantoneCodeFields,
   writePantonesOn,
+  isOrderProductsTask,
+  openOrderTasks,
+  openHoldTasks,
+  flowDeptFor,
+  hasStartSteps,
+  outsourcedOn,
+  needsOutsourcedTab,
   BLOCK_TEXT,
   FLOW_NOTE_TITLE,
 } from "./productionFlow";
@@ -48,7 +55,7 @@ test("work tasks by department, from the real subjects (RUSH, Reproduce, Correct
 test("Close questions: David's four for everyone, the Pantone one for screen print", () => {
   expect(closeQuestionsFor("embroidery").map((q) => q.question)).toEqual([
     "Garments counted and sorted by size?",
-    "Job completed according to mock-up and standards, ensuring no drift from original artwork unless approved by client?",
+    "Job completed according to mock-up, notes and standards, ensuring no drift from original artwork unless approved by client?",
     "Work space cleaned up and ready for next job?",
     "Products stocked, with any needs recorded for Inventory Ordering?",
   ]);
@@ -177,3 +184,138 @@ test("E-159: the order's Pantone codes onto the Deal, only what changes, never b
   expect(writePantonesOn({ writePantones: false })).toBe(false);
   expect(writePantonesOn({ writePantones: true })).toBe(true);
 });
+
+/* ---------- E-164 (D-75): outsourced work holds Quality Check; the Outsourced tab closes the Package task ---------- */
+const ORDER = "OUTSOURCED: Order Products / TERCERIZADA: Ordenar Productos";
+const ORDER_RUSH = "RUSH: OUTSOURCED: Order Products / CORRER: TERCERIZADA: Ordenar Productos";
+const PACKAGE = "PRODUCTION MANAGER: Package Outsourced Products / GERENTE DE PRODUCCIÓN: Empaquetar Productos Tercerizados";
+const AM = "ACCOUNT MANAGER: OUTSOURCED: Order Outsourced Product / GERENTE DE CUENTAS: TERCERIZADA: Orden Producto Subcontratado";
+const DESIGN = "GRAPHIC DESIGN: OUTSOURCED: Artwork & Mock-Up / DISEÑO GRÁFICO: TERCERIZADA: Arte y Maqueta";
+
+test("E-164: the real outsourced subjects (COQL 10-29): Package is the Outsourced tab's task, Order Products holds, the AM duplicate does not", () => {
+  expect(deptOfTask(PACKAGE)).toBe("outsourced");
+  expect(deptOfTask(ORDER)).toBe(null);
+  expect(isOrderProductsTask(ORDER)).toBe(true);
+  expect(isOrderProductsTask(ORDER_RUSH)).toBe(true);
+  expect(isOrderProductsTask("OUTSOURCED: PATCHES: Order Products / x")).toBe(true);
+  expect(isOrderProductsTask(AM)).toBe(false);
+  expect(isOrderProductsTask(DESIGN)).toBe(false);
+  expect(isOrderProductsTask("Order Outsourced product")).toBe(false);
+  // E-165: the role-first names (Deluge 10-29) match too; old names stay matched while old tasks are open
+  expect(isOrderProductsTask("ACCOUNT MANAGER: OUTSOURCED: Order Products / GERENTE DE CUENTAS: TERCERIZADA: Ordenar Productos")).toBe(true);
+  expect(isOrderProductsTask("RUSH: ACCOUNT MANAGER: OUTSOURCED: Order Products / CORRER: GERENTE DE CUENTAS: TERCERIZADA: Ordenar Productos")).toBe(true);
+  expect(deptOfTask("ACCOUNT MANAGER: OUTSOURCED: Order Products / x")).toBe(null);
+  expect(deptOfTask(AM)).toBe(null);
+  expect(deptOfTask(DESIGN)).toBe(null);
+  const tasks = [T("1", ORDER), T("2", PACKAGE), T("3", AM), T("4", DESIGN), T("5", ORDER_RUSH, "Completed"), T("6", "EMBROIDERY: Produce Order / x")];
+  expect(openOrderTasks(tasks).map((t) => t.id)).toEqual(["1"]);
+  expect(openHoldTasks(tasks, true).map((t) => t.id)).toEqual(["2", "6", "1"]);
+  // switch off = round 1 exactly: only the department work tasks
+  expect(openHoldTasks(tasks, false).map((t) => t.id)).toEqual(["6"]);
+  expect(openWorkTasks(tasks).map((t) => t.id)).toEqual(["6"]);
+  expect(openDeptTasks(tasks, "outsourced").map((t) => t.id)).toEqual(["2"]);
+});
+
+test("E-164: the Outsourced tab has a flow only with the switch on; no start steps; David's two questions only", () => {
+  expect(flowDeptFor("production-card-outsourced.html", { outsourcedOn: true }).key).toBe("outsourced");
+  expect(flowDeptFor("production-card-outsourced.html", { outsourcedOn: false })).toBe(null);
+  expect(flowDeptFor("production-card-outsourced.html", {})).toBe(null);
+  expect(flowDeptFor("production-card-embroidery.html", {}).key).toBe("embroidery");
+  expect(flowDeptFor("production-card-graphicdesign.html", { outsourcedOn: true })).toBe(null);
+  expect(outsourcedOn(require("./productionConfig.json"))).toBe(true);
+  expect(hasStartSteps("outsourced")).toBe(false);
+  expect(hasStartSteps("screen")).toBe(true);
+  expect(closeQuestionsFor("outsourced").map((q) => q.question)).toEqual([
+    "Products counted and verified against mock-up, notes and original artwork?",
+    "Products removed from supplier boxes and put into Print Plug / unbranded boxes?",
+  ]);
+  expect(closeQuestionsFor("outsourced", "package")).toEqual(closeQuestionsFor("outsourced"));
+  expect(closeQuestionsFor("outsourced", "order").map((q) => q.question)).toEqual([
+    "Mock-up verified against notes and client-provided artwork?",
+    "Double-checked total count and variables of products ordered?",
+  ]);
+  expect(closeQuestionsFor("embroidery")).toHaveLength(4);
+});
+
+test("E-164: production finishing first waits for the outsourced order and packing; the Package close then moves the Deal", () => {
+  const stage = "Mock-Up Approved / In Production";
+  // embroidery closes last of production, but the order is not placed yet
+  let tasks = [T("1", "EMBROIDERY: Produce Order / x"), T("2", ORDER, "Not Started", "Korie"), T("3", AM, "Not Started", "Korie")];
+  let p = closePlan({ dept: "embroidery", tasks, closing: ["1"], answers: allYes("embroidery"), stage, withOutsourced: true });
+  expect(p.stage.move).toBe(false);
+  expect(p.stage.reason).toBe("1 production or outsourced task(s) still open: OUTSOURCED: Order Products");
+  // the same with the switch off: moves, as round 1 did
+  p = closePlan({ dept: "embroidery", tasks, closing: ["1"], answers: allYes("embroidery"), stage });
+  expect(p.stage.move).toBe(true);
+  // order placed (Order Products done, AM duplicate still open), Package open, production done -> held by Package only
+  tasks = [T("1", "EMBROIDERY: Produce Order / x", "Completed"), T("2", ORDER, "Completed"), T("3", AM), T("4", PACKAGE, "Not Started", "Kris")];
+  p = closePlan({ dept: "embroidery", tasks: [...tasks, T("5", "EMBROIDERY: Reproduce Order / x")], closing: ["5"], answers: allYes("embroidery"), stage, withOutsourced: true });
+  expect(p.stage.reason).toBe("1 production or outsourced task(s) still open: PRODUCTION MANAGER: Package Outsourced Products");
+  // the Production Manager closes Package on the Outsourced tab: two Yes -> the Deal moves (the AM duplicate is not counted)
+  const ans = { verified: "yes", boxed: "yes" };
+  p = closePlan({ dept: "outsourced", tasks, closing: ["4"], answers: ans, stage, withOutsourced: true });
+  expect(p.problems).toEqual([]);
+  expect(p.stage).toEqual({ move: true, to: "Quality Check", reason: "" });
+  expect(p.fields).toEqual({});
+  // a No blocks with David's words; blank asks for the answer
+  p = closePlan({ dept: "outsourced", tasks, closing: ["4"], answers: { verified: "yes", boxed: "no" }, stage, withOutsourced: true });
+  expect(p.problems).toEqual([`Products removed from supplier boxes and put into Print Plug / unbranded boxes? - ${BLOCK_TEXT}`]);
+  // packing done before production: Package closes, the Deal waits for the embroidery task
+  tasks = [T("1", "EMBROIDERY: Produce Order / x"), T("4", PACKAGE)];
+  p = closePlan({ dept: "outsourced", tasks, closing: ["4"], answers: ans, stage, withOutsourced: true });
+  expect(p.stage.move).toBe(false);
+  expect(p.stage.reason).toBe("1 production task(s) still open: EMBROIDERY: Produce Order");
+});
+
+test("E-164: the Outsourced close notes (packing, order)", () => {
+  const tasks = [T("4", PACKAGE, "Not Started", "Kris")];
+  const c = closeNote({ dept: "outsourced", step: "package", who: "Kris", when: "w", tasks, closing: ["4"], answers: { verified: "yes", boxed: "yes" }, rows: [], inkLeft: [], feedback: {}, stage: { move: true, to: "Quality Check" } });
+  expect(c.split("\n")).toEqual([
+    "Outsourced packing - CLOSED - w - Kris",
+    "Closed: PRODUCTION MANAGER: Package Outsourced Products (Kris)",
+    "Products counted and verified against mock-up, notes and original artwork? Yes",
+    "Products removed from supplier boxes and put into Print Plug / unbranded boxes? Yes",
+    "Deal moved to Quality Check.",
+  ]);
+});
+
+test("E-164: the Order step closes the order task with workflow (Zoho makes the Package task) and never moves the Deal", () => {
+  const stage = "Mock-Up Approved / In Production";
+  const ans = { mockup: "yes", ordered: "yes" };
+  // nothing else open: still no move -- the Package task follows
+  let p = closePlan({ dept: "outsourced", step: "order", tasks: [T("2", ORDER, "Not Started", "Korie")], closing: ["2"], answers: ans, stage, withOutsourced: true });
+  expect(p.problems).toEqual([]);
+  expect(p.close).toEqual(["2"]);
+  expect(p.workflowOnClose).toBe(true);
+  expect(p.stage).toEqual({ move: false, to: "Quality Check", reason: "the Package Outsourced Products task comes next" });
+  // the package step and the work tabs close without workflow, as before
+  expect(closePlan({ dept: "outsourced", step: "package", tasks: [T("4", PACKAGE)], closing: ["4"], answers: { verified: "yes", boxed: "yes" }, stage, withOutsourced: true }).workflowOnClose).toBe(false);
+  expect(closePlan({ dept: "embroidery", tasks: [T("1", "EMBROIDERY: Produce Order / x")], closing: ["1"], answers: allYes("embroidery"), stage }).workflowOnClose).toBe(false);
+  // a No blocks; the package questions are not asked here
+  p = closePlan({ dept: "outsourced", step: "order", tasks: [T("2", ORDER_RUSH)], closing: ["2"], answers: { mockup: "yes", ordered: "no" }, stage, withOutsourced: true });
+  expect(p.problems).toEqual([`Double-checked total count and variables of products ordered? - ${BLOCK_TEXT}`]);
+  const c = closeNote({ dept: "outsourced", step: "order", who: "Korie", when: "w", tasks: [T("2", ORDER, "Not Started", "Korie")], closing: ["2"], answers: ans, rows: [], inkLeft: [], feedback: {}, stage: p.stage });
+  expect(c.split("\n")).toEqual([
+    "Outsourced order - CLOSED - w - Korie",
+    "Closed: OUTSOURCED: Order Products (Korie)",
+    "Mock-up verified against notes and client-provided artwork? Yes",
+    "Double-checked total count and variables of products ordered? Yes",
+    "Stage not moved: the Package Outsourced Products task comes next.",
+  ]);
+});
+
+test("notes wording (David 10-29): the start artwork step mentions the notes", () => {
+  const { START_STEPS } = require("./productionFlow");
+  expect(START_STEPS.find((s) => s.key === "artwork").question).toBe(
+    "Print-ready artwork and placement verified with the mock-up, the notes and the original art, with a critical eye (no errors, no drift from the original)?"
+  );
+});
+
+test("E-164: an Outsourced tab is needed while outsourced work is open (patches orders have no Outsourced card)", () => {
+  const on = { outsourcedOn: true };
+  expect(needsOutsourcedTab([T("1", ORDER)], on)).toBe(true);
+  expect(needsOutsourcedTab([T("4", PACKAGE)], on)).toBe(true);
+  expect(needsOutsourcedTab([T("1", ORDER, "Completed"), T("3", AM)], on)).toBe(false);
+  expect(needsOutsourcedTab([T("1", ORDER)], { outsourcedOn: false })).toBe(false);
+});
+
