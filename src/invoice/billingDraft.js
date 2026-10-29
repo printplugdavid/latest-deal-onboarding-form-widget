@@ -7,10 +7,25 @@
  * billingConfig.json `createDraft: false` turns the Submit call off (the preview and its dry run still work), without a code change.
  */
 import { buildBillingLines, priceLines, skusToFind, draftPayload, cannotSend } from "./billingLines";
+import { draftOrBackground } from "./draftLater";
 import { searchBooks, createBillingDraft } from "../products/booksItems";
 import CONFIG from "./billingConfig.json";
 
 export const draftsOn = () => CONFIG.createDraft === true;
+export const backgroundOn = () => CONFIG.backgroundDraft === true; // E-158
+
+/* E-158: the instant draft, with the background hand-off when Books is slow (switch: billingConfig.json backgroundDraft). */
+export const sendWithFallback = (zoho, entity, dealId, prepared, { submittedBy = "" } = {}) =>
+  draftOrBackground({
+    zoho,
+    entity,
+    dealId,
+    prepared,
+    submittedBy,
+    backgroundOn: backgroundOn(),
+    send: sendDraft,
+    payloadOf: (p, o) => draftPayload(p, o),
+  });
 
 /* The pilot: while billingConfig.json lists Deals, only those get the Invoice section and a draft. */
 export const billingOnFor = (dealId) => {

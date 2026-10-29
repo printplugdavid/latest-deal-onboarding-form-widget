@@ -1,14 +1,16 @@
 import React, { useEffect, useState } from "react";
 import { Alert, Box, Button, CircularProgress, Typography } from "@mui/material";
 import BillingResult from "./BillingResult";
-import { prepareDraft, sendDraft } from "../invoice/billingDraft";
+import { prepareDraft, sendDraft, sendWithFallback } from "../invoice/billingDraft";
 
 /*
  * E-151 (David 10-29: "Draft only"). Shown instead of the onboarding form when the Deal is already onboarded. It never submits the
  * form again. If the draft can be made (`offer.can`), a dry run first asks Zoho whether the Deal already has one (checked before
  * anything is made); then the rep can make it from the saved onboarding. Changes to the order go through the Amendment Form.
  */
-export default function AlreadyOnboarded({ dealId, found, offer, submittedBy, onClose }) {
+export default function AlreadyOnboarded({ dealId, found, offer: given, submittedBy, onClose, drafting = false, entity = "Deals" }) {
+  // E-158: while the hidden Invoice Drafting box is ticked the background is making the draft -- no check, no button (no race).
+  const offer = drafting ? { ...given, can: false, why: "" } : given;
   const [check, setCheck] = useState(offer.can ? { busy: true } : null);
   const [billing, setBilling] = useState(null);
   const [prepared, setPrepared] = useState(null);
@@ -43,7 +45,7 @@ export default function AlreadyOnboarded({ dealId, found, offer, submittedBy, on
         p = await prepareDraft(found.json);
         setPrepared(p);
       }
-      answer = await sendDraft(dealId, p, { submittedBy });
+      answer = await sendWithFallback(window.ZOHO, entity, dealId, p, { submittedBy });
     } catch (e) {
       answer = { result: "not_sent", message: "The draft could not be made (" + String((e && e.message) || e) + "). Please make it in Books." };
     }
@@ -65,6 +67,12 @@ export default function AlreadyOnboarded({ dealId, found, offer, submittedBy, on
       <Typography sx={{ mb: 2 }}>To change the order, use the Amendment Form.</Typography>
       {found.unreadable && !found.noteOnly && <Alert severity="warning">The saved onboarding could not be read.</Alert>}
       {offer.why && <Alert severity="info">{offer.why}</Alert>}
+      {drafting && (
+        <Alert severity="info">
+          This Deal's draft is being made in the background (Books was slow). It will show under the Deal's Finance section; nothing
+          to do here.
+        </Alert>
+      )}
       {offer.can && check && check.busy && (
         <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
           <CircularProgress size={20} color="inherit" /> Checking Books for this Deal's draft {docWord}...

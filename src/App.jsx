@@ -43,7 +43,7 @@ import BillingResult from "./components/BillingResult";
 import AlreadyOnboarded from "./components/AlreadyOnboarded";
 import { draftOffer, loadOnboarding } from "./invoice/draftLater";
 import { buildBillingLines } from "./invoice/billingLines";
-import { billingOnFor, billingRecord, draftsOn, prepareDraft, sendDraft } from "./invoice/billingDraft";
+import { billingOnFor, billingRecord, draftsOn, prepareDraft, sendWithFallback } from "./invoice/billingDraft";
 import { BillingOn } from "./invoice/billingContext";
 import { screenPrintShortfall } from "./invoice/minimums";
 import { MAX_UPLOAD_BYTES, artKey, collectArtFiles } from "./graphicArt";
@@ -492,7 +492,7 @@ function App() {
           try {
             draftDataRef.current = data;
             prepared = await prepareDraft(data);
-            answer = await sendDraft(entityId, prepared, { submittedBy: currentUser });
+            answer = await sendWithFallback(ZOHO, entity, entityId, prepared, { submittedBy: currentUser });
           } catch (err) {
             answer = { result: "not_sent", message: "The draft could not be made (" + String((err && err.message) || err) + "). Please make it in Books." };
           }
@@ -515,7 +515,7 @@ function App() {
     let answer;
     try {
       if (!prepared) prepared = await prepareDraft(draftDataRef.current);
-      answer = await sendDraft(entityId, prepared, { submittedBy: currentUser });
+      answer = await sendWithFallback(ZOHO, entity, entityId, prepared, { submittedBy: currentUser });
     } catch (err) {
       answer = { result: "not_sent", message: "The draft could not be made (" + String((err && err.message) || err) + "). Please make it in Books." };
     }
@@ -532,6 +532,8 @@ function App() {
         found={onboarding}
         offer={draftOffer(onboarding, { draftsOn: draftsOn(), billingOn: billingOnFor(entityId) })}
         submittedBy={currentUser}
+        drafting={!!(recordData && recordData.Invoice_Drafting)}
+        entity={entity}
         onClose={() => ZOHO.CRM.UI.Popup.closeReload()}
       />
     );

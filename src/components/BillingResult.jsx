@@ -36,7 +36,7 @@ export default function BillingResult({ state, onClose, onRetry }) {
           Draft {doc} <b>{a.number}</b> was made in Books. It has not been sent: check it, adjust if needed, and send it from Books.
         </Alert>
       ) : (
-        <Alert severity={a.result === "exists" ? "info" : "warning"}>{a.message || "No draft was made."}</Alert>
+        <Alert severity={a.result === "exists" || a.result === "background" ? "info" : "warning"}>{a.message || "No draft was made."}</Alert>
       )}
       {retry && (
         <Typography sx={{ mt: 1 }}>
