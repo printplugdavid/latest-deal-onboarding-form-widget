@@ -318,7 +318,7 @@ const CardViewer = () => {
 
       <Box sx={{ flexGrow: 1, overflow: "auto", background: "#e9eaec" }}>
         {flowOn && flow && current && deptForCard(current.name) && (
-          <ProductionFlow key={current.name} dept={deptForCard(current.name).key} ctx={flow} refresh={refreshFlow} />
+          <ProductionFlow key={"flow-" + current.name} dept={deptForCard(current.name).key} ctx={flow} refresh={refreshFlow} />
         )}
         {current?.error ? (
           <Box sx={{ p: 3 }}>
