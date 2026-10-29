@@ -510,7 +510,7 @@ const AmendmentApp = () => {
     if (datePlan.kind === "move") {
       setSaving(true);
       const preview = readMove(
-        await callFunction(MOVE_FUNCTION, { deal_id: String(ctx.current.recordId), new_date: datePlan.to, dry_run: true })
+        await callFunction(MOVE_FUNCTION, { deal_id: String(ctx.current.recordId), new_date: datePlan.to, turnaround: datePlan.turnaround, dry_run: true })
       );
       setSaving(false);
       if (preview.ok) {
@@ -743,7 +743,7 @@ const AmendmentApp = () => {
       if (datePlan.kind === "move" && moveAllowed) {
         let label = "moving the Closing Date and production tasks";
         const moved = await step(label, async () => {
-          const m = readMove(await callFunction(MOVE_FUNCTION, { deal_id: String(recordId), new_date: datePlan.to, dry_run: false }));
+          const m = readMove(await callFunction(MOVE_FUNCTION, { deal_id: String(recordId), new_date: datePlan.to, turnaround: datePlan.turnaround, dry_run: false }));
           if (!m.ok) throw new Error(m.message || "no answer");
           label = describeMove(m);
         });

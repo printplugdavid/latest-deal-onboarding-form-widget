@@ -15,7 +15,7 @@
  * No React. Tested in closingMove.test.js.
  */
 import TURNAROUND_CONFIG from "../turnaroundConfig.json";
-import { CLOSING_FIELD, TURNAROUND_FIELD, toYmd, turnaroundOf, turnaroundPlan } from "../turnaround";
+import { CLOSING_FIELD, TURNAROUND_FIELD, denverToday, toYmd, turnaroundOf, turnaroundPlan } from "../turnaround";
 import { PRE_PRODUCTION_STAGES } from "../rushOrder";
 
 export const MOVE_FUNCTION = "WIDGET_Move_Closing_Date";
@@ -25,6 +25,16 @@ export const IN_PRODUCTION_STAGES = ["Mock-Up Approved / In Production", "Online
 
 export const amendmentDatesOn = () => TURNAROUND_CONFIG.writeOnSubmit === true && TURNAROUND_CONFIG.amendmentDates === true;
 export const moveInProductionOn = () => amendmentDatesOn() && TURNAROUND_CONFIG.moveInProduction === true;
+
+/*
+ * Deluge docs/51 §6: a Deal is stamped "past due" for the KPI board the morning after its Closing Date, and the stamp never clears,
+ * so a NEW date from the Amendment Form must be tomorrow or later (Denver). An unchanged date is not checked here.
+ */
+export function newDateProblem(v, today = denverToday()) {
+  const ymd = toYmd(v);
+  if (!ymd) return "Required";
+  return ymd <= today ? "Pick a date after today (a date of today or earlier counts as past due)" : "";
+}
 
 const tick = (v) => (v === true || v === "true" || v === "Yes" ? "Yes" : "");
 const same = (a, b) => String(a ?? "").trim() === String(b ?? "").trim();
@@ -49,7 +59,7 @@ export function datesChanged(before, after) {
  *   { kind: "move", fields, from, to }                       write `fields` (Turnaround only), then the Deluge move from -> to
  *   { kind: "blocked", fields, message }                     write `fields` if any; the date is NOT moved; `message` is for the rep
  */
-export function amendmentDatePlan(deal, data, { moveOn = moveInProductionOn() } = {}) {
+export function amendmentDatePlan(deal, data, { moveOn = moveInProductionOn(), today = denverToday() } = {}) {
   const stage = String((deal && deal.Stage) || "").trim();
   if (PRE_PRODUCTION_STAGES.includes(stage)) {
     const p = turnaroundPlan(deal, data);
@@ -61,11 +71,14 @@ export function amendmentDatePlan(deal, data, { moveOn = moveInProductionOn() } 
   const inProduction = IN_PRODUCTION_STAGES.includes(stage);
   if (inProduction && turnaround && !same(deal && deal[TURNAROUND_FIELD], turnaround)) fields[TURNAROUND_FIELD] = turnaround;
   if (!closingDate || closingDate === from) return Object.keys(fields).length ? { kind: "write", fields } : { kind: "none" };
-  if (inProduction && moveOn) return { kind: "move", fields, from, to: closingDate };
+  if (inProduction && moveOn && closingDate > today) return { kind: "move", fields, from, to: closingDate, turnaround };
   return {
     kind: "blocked",
     fields,
-    message: inProduction
+    message: inProduction && moveOn
+      ? `Closing Date: ${closingDate} is not after today, so the form did not move it (a date of today or earlier counts as past ` +
+        "due). The rest of the amendment is being saved as normal."
+      : inProduction
       ? `Closing Date: your answers say ${closingDate} (it is ${from || "blank"}), but the Deal is already in production and moving ` +
         "its date and production tasks from this form is not switched on yet. The Closing Date was not changed. Tell the " +
         "production manager. The rest of the amendment is being saved as normal."
@@ -75,17 +88,28 @@ export function amendmentDatePlan(deal, data, { moveOn = moveInProductionOn() } 
   };
 }
 
-/* The Deluge answer, read the same careful way as the other widget calls. */
+/*
+ * The Deluge answer (their docs/51 §1: { ok, closing_before, closing_after, shift_days, moved, skipped, reason }). `ok: true` or a
+ * status of "ok" both count; anything else (not installed, refused, failed) is not ok and nothing is claimed as moved.
+ */
+const taskLine = (t) => ({
+  subject: String((t && t.subject) || "").split(" / ")[0],
+  from: String((t && t.from) || (t && t.due) || ""),
+  to: String((t && t.to) || ""),
+  reason: String((t && t.reason) || ""),
+});
 export function readMove(answer) {
   const a = answer || {};
   const moved = Array.isArray(a.moved) ? a.moved : [];
+  const skipped = Array.isArray(a.skipped) ? a.skipped : [];
   return {
-    ok: a.status === "ok",
-    message: String(a.message || ""),
+    ok: a.ok === true || a.status === "ok",
+    message: String(a.message || a.reason || ""),
+    skipped: skipped.map(taskLine),
     shiftDays: Number(a.shift_days) || 0,
     before: String(a.closing_before || ""),
     after: String(a.closing_after || ""),
-    moved: moved.map((t) => ({ subject: String((t && t.subject) || "").split(" / ")[0], from: String((t && t.from) || ""), to: String((t && t.to) || "") })),
+    moved: moved.map(taskLine),
   };
 }
 
@@ -95,6 +119,12 @@ const plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
 export function describeMove(m) {
   const days = m.shiftDays > 0 ? `+${plural(m.shiftDays, "day")}` : `${m.shiftDays < 0 ? "-" : ""}${plural(Math.abs(m.shiftDays), "day")}`;
   const head = `Closing Date ${m.before || "(blank)"} → ${m.after} (${days})`;
-  if (!m.moved.length) return head + "; no open production tasks to move";
-  return head + `; ${plural(m.moved.length, "open production task")} moved: ` + m.moved.map((t) => `${t.subject} ${t.from} → ${t.to}`).join("; ");
+  const moved = m.moved.length
+    ? `; ${plural(m.moved.length, "open production task")} moved: ` + m.moved.map((t) => `${t.subject} ${t.from} → ${t.to}`).join("; ")
+    : "; no open production tasks to move";
+  const left = m.skipped.length
+    ? `. Not moved: ` + m.skipped.map((t) => `${t.subject}${t.from ? " (due " + t.from + ")" : ""}${t.reason ? " - " + t.reason : ""}`).join("; ") +
+      ". Tell the production manager if those need a new date"
+    : "";
+  return head + moved + left;
 }

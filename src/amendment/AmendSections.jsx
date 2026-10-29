@@ -19,9 +19,9 @@ import { Autocomplete, Box, Checkbox, FormControlLabel, FormLabel, TextField } f
 import { Controller, useFormContext, useWatch } from "react-hook-form";
 import { DatePicker, LocalizationProvider } from "@mui/x-date-pickers";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
-import { EXTRA_WEEK_QUESTION, dueDateProblem, toYmd } from "../turnaround";
+import { EXTRA_WEEK_QUESTION, toYmd } from "../turnaround";
 import ExtendedClosingDate from "../components/ExtendedClosingDate";
-import { amendmentDatesOn } from "./closingMove";
+import { amendmentDatesOn, newDateProblem } from "./closingMove";
 
 const YesNo = ({ name, label }) => {
   const { control } = useFormContext();
@@ -102,7 +102,7 @@ export const AmendDates = ({ originalDueDate, originalExtendedDate } = {}) => {
               name="dueDate"
               rules={{
                 validate: (v) =>
-                  !datesOn || getValues("hardDueDate") !== "Yes" || (toYmd(v) && toYmd(v) === toYmd(originalDueDate)) || dueDateProblem(v) || true,
+                  !datesOn || getValues("hardDueDate") !== "Yes" || (toYmd(v) && toYmd(v) === toYmd(originalDueDate)) || newDateProblem(v) || true,
               }}
               render={({ field, fieldState }) => (
                 <LocalizationProvider dateAdapter={AdapterDayjs}>

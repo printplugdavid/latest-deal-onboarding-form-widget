@@ -1,5 +1,7 @@
 import dayjs from "dayjs";
-import { IN_PRODUCTION_STAGES, amendmentDatePlan, amendmentDatesOn, datesChanged, describeMove, moveInProductionOn, readMove } from "./closingMove";
+import { IN_PRODUCTION_STAGES, amendmentDatePlan, amendmentDatesOn, datesChanged, describeMove, moveInProductionOn, newDateProblem, readMove } from "./closingMove";
+
+const TODAY = "2026-10-29";
 
 // E-150 (David 10-29): the Amendment Form's Dates answers move the Deal's Closing Date; in production the open Produce tasks follow.
 const EARLY = "Design Mock-Up Sent";
@@ -43,17 +45,18 @@ describe("E-150 amendmentDatePlan", () => {
   });
   test("in production, switch on: Turnaround written here, the date moved by Deluge from -> to", () => {
     const deal = { Stage: PROD, Turnaround: "Standard", Closing_Date: "2026-11-16" };
-    expect(amendmentDatePlan(deal, hard("2026-11-23"), { moveOn: true })).toEqual({
+    expect(amendmentDatePlan(deal, hard("2026-11-23"), { moveOn: true, today: TODAY })).toEqual({
       kind: "move",
       fields: { Turnaround: "Hard Due Date" },
       from: "2026-11-16",
       to: "2026-11-23",
+      turnaround: "Hard Due Date",
     });
-    expect(amendmentDatePlan({ ...deal, Stage: "Online Purchase / In Production" }, hard("2026-11-23"), { moveOn: true }).kind).toBe("move");
+    expect(amendmentDatePlan({ ...deal, Stage: "Online Purchase / In Production" }, hard("2026-11-23"), { moveOn: true, today: TODAY }).kind).toBe("move");
   });
   test("in production, switch off: the date is NOT moved and the rep is told; the Turnaround still follows", () => {
     const deal = { Stage: PROD, Turnaround: "Standard", Closing_Date: "2026-11-16" };
-    const p = amendmentDatePlan(deal, hard("2026-11-23"), { moveOn: false });
+    const p = amendmentDatePlan(deal, hard("2026-11-23"), { moveOn: false, today: TODAY });
     expect(p.kind).toBe("blocked");
     expect(p.fields).toEqual({ Turnaround: "Hard Due Date" });
     expect(p.message).toMatch(/not switched on yet/);
@@ -61,17 +64,32 @@ describe("E-150 amendmentDatePlan", () => {
   });
   test("in production, same date: nothing to move (a Turnaround-only change is just written)", () => {
     const deal = { Stage: PROD, Turnaround: "Hard Due Date", Closing_Date: "2026-11-23" };
-    expect(amendmentDatePlan(deal, hard("2026-11-23"), { moveOn: true })).toEqual({ kind: "none" });
-    expect(amendmentDatePlan(deal, hard("2026-11-23", true), { moveOn: true })).toEqual({ kind: "write", fields: { Turnaround: "Rush" } });
+    expect(amendmentDatePlan(deal, hard("2026-11-23"), { moveOn: true, today: TODAY })).toEqual({ kind: "none" });
+    expect(amendmentDatePlan(deal, hard("2026-11-23", true), { moveOn: true, today: TODAY })).toEqual({ kind: "write", fields: { Turnaround: "Rush" } });
+  });
+  test("in production, switch on, a new date of today: not moved (Deluge docs/51 §6: it would be stamped past due)", () => {
+    const deal = { Stage: PROD, Turnaround: "Hard Due Date", Closing_Date: "2026-11-16" };
+    const p = amendmentDatePlan(deal, hard(TODAY), { moveOn: true, today: TODAY });
+    expect(p.kind).toBe("blocked");
+    expect(p.message).toMatch(/not after today/);
   });
   test("past production: nothing written, the rep is told", () => {
     const deal = { Stage: "Quality Check", Turnaround: "Standard", Closing_Date: "2026-11-16" };
-    const p = amendmentDatePlan(deal, hard("2026-11-23"), { moveOn: true });
+    const p = amendmentDatePlan(deal, hard("2026-11-23"), { moveOn: true, today: TODAY });
     expect(p).toMatchObject({ kind: "blocked", fields: {} });
     expect(p.message).toMatch(/past production/);
   });
   test("the in-production list holds only stages measured in the CRM", () => {
     expect(IN_PRODUCTION_STAGES).toEqual(["Mock-Up Approved / In Production", "Online Purchase / In Production"]);
+  });
+});
+
+describe("E-150 newDateProblem", () => {
+  test("a new date must be tomorrow or later", () => {
+    expect(newDateProblem(dayjs("2026-10-29"), TODAY)).toMatch(/after today/);
+    expect(newDateProblem("2026/10/28", TODAY)).toMatch(/after today/);
+    expect(newDateProblem(dayjs("2026-10-30"), TODAY)).toBe("");
+    expect(newDateProblem(null, TODAY)).toBe("Required");
   });
 });
 
@@ -94,5 +112,24 @@ describe("E-150 the Deluge answer", () => {
       "Closing Date 2026-11-23 → 2026-11-20 (-3 days); no open production tasks to move"
     );
     expect(readMove({ status: "unavailable", message: "WIDGET_Move_Closing_Date is not installed yet" }).ok).toBe(false);
+  });
+  test("Deluge's own shape (ok: true, docs/51) counts; a refusal shows its reason; skipped rush tasks are named", () => {
+    const m = readMove({
+      status: "unavailable", // what our reader sets when the answer has no status key
+      ok: true,
+      closing_before: "2026-11-23",
+      closing_after: "2026-11-18",
+      shift_days: -5,
+      moved: [],
+      skipped: [{ subject: "RUSH: OUTSOURCED: Order Products / CORRER: TERCERIZADA: Ordenar Productos", due: "2026-11-20", reason: "due after the new Closing Date" }],
+    });
+    expect(m.ok).toBe(true);
+    expect(describeMove(m)).toBe(
+      "Closing Date 2026-11-23 → 2026-11-18 (-5 days); no open production tasks to move. Not moved: RUSH: OUTSOURCED: Order Products " +
+        "(due 2026-11-20) - due after the new Closing Date. Tell the production manager if those need a new date"
+    );
+    const no = readMove({ ok: false, reason: "new_date is before tomorrow" });
+    expect(no.ok).toBe(false);
+    expect(no.message).toBe("new_date is before tomorrow");
   });
 });
