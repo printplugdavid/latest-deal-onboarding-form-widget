@@ -1,5 +1,5 @@
 /*
- * ProductionFlow.jsx -- E-70 round 1: the job's flow on a department's card tab (logic: productionFlow.js).
+^ * ProductionFlowPanel.jsx -- E-70 round 1: the job's flow on a department's card tab (logic: productionFlow.js).
  *
  * Start (count, artwork, tools; screen print: grams of ink mixed) -> actions (missing / damaged garments, Call Client, revisions)
  * -> Close (David's questions, all Yes; screen print: grams left; feedback per task) -> tasks closed -> Quality Check when the

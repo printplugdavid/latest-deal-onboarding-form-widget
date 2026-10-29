@@ -33,7 +33,7 @@ import { ALWAYS_BUILT, buildCardsFromData, labelFor, orderOf } from "./cardBuild
 import { workDriveTarget } from "./productionCards";
 import { NOTE_EDITED_WARNING, newestFirst, noteEditedAfterSave, readFileText } from "./zohoFiles";
 import { LIVE_NOTE_TITLE } from "./amendment/amendmentDiff";
-import ProductionFlow from "./production/ProductionFlow";
+import ProductionFlow from "./production/ProductionFlowPanel";
 import { deptForCard } from "./production/productionFlow";
 import PRODUCTION_CONFIG from "./production/productionConfig.json";
 
