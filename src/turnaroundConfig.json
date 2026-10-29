@@ -1,4 +1,7 @@
 {
-  "_note": "E-144 (Deluge docs/49): at onboarding Submit the form writes the Deal's Turnaround (Standard / Extended / Hard Due Date / Rush) and, for Extended / Hard Due Date / Rush, the Closing Date; it also shows the Extended calendar. ON since the 10-27 paste window: Deluge production master ee5f7ac1 live 16:11:33, old rule 'Mock-Up Approved: Update Closing Date No Rush' inactive 16:29:35. Set writeOnSubmit to false to stop the writes and hide the calendar.",
-  "writeOnSubmit": true
+  "_note": "E-144 (Deluge docs/49): at onboarding Submit the form writes the Deal's Turnaround (Standard / Extended / Hard Due Date / Rush) and, for Extended / Hard Due Date / Rush, the Closing Date; it also shows the Extended calendar. ON since the 10-27 paste window: Deluge production master ee5f7ac1 live 16:11:33, old rule 'Mock-Up Approved: Update Closing Date No Rush' inactive 16:29:35. Set writeOnSubmit to false to stop the writes and hide the calendar (it also stops the two E-150 switches below).",
+  "writeOnSubmit": true,
+  "_amendmentNote": "E-150 (David 10-29, amendment/closingMove.js): amendmentDates = the Amendment Form's Dates answers write Turnaround, Closing Date and the Rush box before production, as onboarding does, and show the Extended calendar. moveInProduction = in production, the form asks Deluge WIDGET_Move_Closing_Date to move the date and the open Produce tasks (our docs/83); leave false until Deluge has built it and we have read it back.",
+  "amendmentDates": true,
+  "moveInProduction": false
 }

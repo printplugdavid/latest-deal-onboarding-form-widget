@@ -185,6 +185,8 @@ const FIELD_LABELS = {
   dueDate: "Due Date",
   hardDueDate: "Hard Due Date",
   discountsForExtendedTurnaround: "Extra week for 5% off", // E-133
+  extendedClosingDate: "Extended Closing Date", // E-150
+  upchargedForRushTurnaround: "Upcharged For Rush Turnaround Time?", // E-150
   numberOfColorsUsed: "Number of Colors",
   quantityOrdered: "Quantity Ordered",
   sku: "SKU",

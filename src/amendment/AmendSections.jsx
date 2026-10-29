@@ -19,7 +19,9 @@ import { Autocomplete, Box, Checkbox, FormControlLabel, FormLabel, TextField } f
 import { Controller, useFormContext, useWatch } from "react-hook-form";
 import { DatePicker, LocalizationProvider } from "@mui/x-date-pickers";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
-import { EXTRA_WEEK_QUESTION } from "../turnaround";
+import { EXTRA_WEEK_QUESTION, dueDateProblem, toYmd } from "../turnaround";
+import ExtendedClosingDate from "../components/ExtendedClosingDate";
+import { amendmentDatesOn } from "./closingMove";
 
 const YesNo = ({ name, label }) => {
   const { control } = useFormContext();
@@ -79,9 +81,15 @@ const Text = ({ name, label, multiline }) => {
   );
 };
 
-export const AmendDates = () => {
-  const { control } = useFormContext();
+/*
+ * E-150: with the switch on, these answers also move the Deal's Closing Date (closingMove.js), so a NEW due date must not be in the
+ * past (an old one left as it was is fine), and the extra week gets the same calendar as onboarding. `originalDueDate` = as loaded.
+ */
+export const AmendDates = ({ originalDueDate, originalExtendedDate } = {}) => {
+  const { control, setValue, getValues } = useFormContext();
   const hardDueDate = useWatch({ control, name: "hardDueDate" });
+  const extraWeek = useWatch({ control, name: "discountsForExtendedTurnaround" });
+  const datesOn = amendmentDatesOn();
   return (
     <Box>
       <YesNo name="hardDueDate" label="Hard Due Date?" />
@@ -92,10 +100,18 @@ export const AmendDates = () => {
             <Controller
               control={control}
               name="dueDate"
-              render={({ field }) => (
+              rules={{
+                validate: (v) =>
+                  !datesOn || getValues("hardDueDate") !== "Yes" || (toYmd(v) && toYmd(v) === toYmd(originalDueDate)) || dueDateProblem(v) || true,
+              }}
+              render={({ field, fieldState }) => (
                 <LocalizationProvider dateAdapter={AdapterDayjs}>
                   {/* value must be a dayjs object or null -- toFormValues() guarantees that on prefill */}
-                  <DatePicker value={field.value ?? null} onChange={field.onChange} slotProps={{ textField: { size: "small" } }} />
+                  <DatePicker
+                    value={field.value ?? null}
+                    onChange={field.onChange}
+                    slotProps={{ textField: { size: "small", error: !!fieldState.error, helperText: fieldState.error ? fieldState.error.message || "Required" : undefined } }}
+                  />
                 </LocalizationProvider>
               )}
             />
@@ -105,6 +121,14 @@ export const AmendDates = () => {
       )}
       {/* E-133: the same one question as the onboarding form. */}
       {hardDueDate === "No" && <YesNo name="discountsForExtendedTurnaround" label={EXTRA_WEEK_QUESTION} />}
+      {datesOn && hardDueDate === "No" && extraWeek === "Yes" && (
+        <ExtendedClosingDate control={control} setValue={setValue} getValues={getValues} keep={originalExtendedDate} />
+      )}
+      {datesOn && (
+        <FormLabel sx={{ display: "block", color: "text.secondary", fontSize: "0.85rem" }}>
+          A new due date (or extended date) also becomes the Deal's Closing Date when you save.
+        </FormLabel>
+      )}
     </Box>
   );
 };
