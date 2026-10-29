@@ -10,7 +10,7 @@
  */
 import React, { useState } from "react";
 import { Alert, Box, Button, Checkbox, CircularProgress, FormControlLabel, Radio, RadioGroup, Typography } from "@mui/material";
-import { AMEND_FUNCTION, NOTHING_TO_SEND, amendArgs, billingDiff, netSwaps, newHandItems, priceBeforeAfter, readAmendAnswer } from "../invoice/amendBilling";
+import { AMEND_FUNCTION, amendArgs, billingDiff, netSwaps, newHandItems, priceBeforeAfter, readAmendAnswer, sendable } from "../invoice/amendBilling";
 import { call as callFunction, searchBooks } from "../products/booksItems";
 
 const money = (n) => (n < 0 ? "-$" : "+$") + Math.abs(Number(n) || 0).toFixed(2);
@@ -19,7 +19,7 @@ export const HAND_EDIT_WARNING =
   "This invoice was changed by hand in Books, so these lines could not be matched. Fix them in Books yourself, and please make " +
   "future changes with the Amendment Form.";
 
-const AmendBilling = ({ dealId, original, saved, signature, reason, submittedBy, onPlan, disabled }) => {
+const AmendBilling = ({ dealId, original, saved, signature, reason, amendmentId, submittedBy, onPlan, disabled }) => {
   const [work, setWork] = useState(null); // { diff, hand, flags, lookup, signature }
   const [ticked, setTicked] = useState([]); // ids of the add / lower lines the rep keeps
   const [answer, setAnswer] = useState(null); // dry run, read
@@ -40,13 +40,12 @@ const AmendBilling = ({ dealId, original, saved, signature, reason, submittedBy,
   const dryRun = async (w, ids) => {
     setBusy("Asking Books what it would do…");
     const pick = { add: w.diff.add.filter((x) => ids.includes(x.id)), lower: w.diff.lower.filter((x) => ids.includes(x.id)) };
-    const a = await callFunction(AMEND_FUNCTION, amendArgs(dealId, { ...pick, flags: w.flags, dryRun: true, submittedBy, reason }));
+    const a = await callFunction(AMEND_FUNCTION, amendArgs(dealId, { ...pick, flags: w.flags, dryRun: true, submittedBy, reason, amendmentId }));
     const read = readAmendAnswer(a, { dryRun: true });
     setAnswer(read);
     setCheckedFor(tickKey(ids));
     setBusy("");
-    const sendable = read.ok && !NOTHING_TO_SEND.includes(read.result) && (pick.add.length || pick.lower.length);
-    const d = sendable ? "send" : "leave";
+    const d = sendable(read) && (pick.add.length || pick.lower.length) ? "send" : "leave";
     setDecision(d);
     publish({ decision: d, ...pick, flags: w.flags, signature: w.signature, answer: read });
     return read;
@@ -98,7 +97,7 @@ const AmendBilling = ({ dealId, original, saved, signature, reason, submittedBy,
   };
 
   const needsCheck = work && all.length > 0 && tickKey(ticked) !== checkedFor;
-  const canSend = answer && answer.ok && !NOTHING_TO_SEND.includes(answer.result) && ticked.length > 0 && !needsCheck;
+  const canSend = sendable(answer) && ticked.length > 0 && !needsCheck;
 
   return (
     <Box sx={{ border: "1px solid #ccc", p: 2, my: 2 }}>

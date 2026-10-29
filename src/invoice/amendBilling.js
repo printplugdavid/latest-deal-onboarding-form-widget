@@ -214,8 +214,21 @@ export async function priceBeforeAfter(beforeData, afterData, search) {
   return { before, after, found: !!found, lookup, flags: aBuilt.flags };
 }
 
-/* The id Deluge's v4 duplicate guard keys on: Deal id + the moment the rep pressed Save. */
-export const amendmentIdOf = (dealId, isoTime) => `${str(dealId)}-${str(isoTime)}`;
+/*
+ * The id Deluge's duplicate guard keys on (v5, note "AMENDMENT BILLING [<id>]" on the Deal). It must stay the SAME when a rep retries the
+ * same amendment (a timeout, a reopened form): Deal id + when the order it amends was saved + a fingerprint of the amended order. A
+ * different amendment (or the next one, which amends the newer order) gets a new id. Deluge keeps letters, digits and . _ : - (90 max).
+ */
+const fnv = (text) => {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < text.length; i++) {
+    h ^= text.charCodeAt(i);
+    h = Math.imul(h, 0x01000193) >>> 0;
+  }
+  return h.toString(16).padStart(8, "0");
+};
+export const amendmentIdOf = (dealId, base, signature) =>
+  `${str(dealId)}-${str(base).replace(/[^A-Za-z0-9._:-]/g, "_")}-${fnv(str(signature))}`.slice(0, 90);
 
 /* widget_amend_billing's arguments ({ deal_id, payload: "<json string>" }, Deluge docs/54 §3 + their 10-29 interface message). */
 export function amendArgs(dealId, { add, lower, flags, dryRun, submittedBy, reason, amendmentId }) {
@@ -238,6 +251,14 @@ export function amendArgs(dealId, { add, lower, flags, dryRun, submittedBy, reas
 export const WROTE = ["changed", "credit_note", "changed_and_credit", "new_draft", "new_draft_and_credit"];
 /* Results where nothing will be changed whatever the rep does -- no OK button. */
 export const NOTHING_TO_SEND = ["nothing_to_change", "nothing_in_books", "online_order"];
+/* v5 guard answers (status error): check_books = an earlier try started writing and never finished; guard_failed = nothing changed. */
+export const GUARD_MESSAGES = {
+  check_books:
+    "An earlier try of this same amendment started changing Books and did not finish. Nothing was changed now. Check the invoice in Books before doing anything else.",
+  guard_failed: "Zoho could not check whether this amendment was already sent, so nothing was changed. Try again in a minute.",
+};
+/* Nothing more may be sent for this answer: no change to make, already done, or the guard says stop. */
+export const sendable = (ans) => !!(ans && ans.ok && !ans.duplicate && !NOTHING_TO_SEND.includes(ans.result));
 
 const money2 = (n) => (n == null || n === "" || isNaN(Number(n)) ? "" : "$" + Number(n).toFixed(2));
 
@@ -282,8 +303,9 @@ export function readAmendAnswer(a, { dryRun }) {
   return {
     ...raw,
     ok: raw.status === "ok",
+    duplicate: raw.duplicate === true || raw.duplicate === "true",
     result,
-    message: str(raw.message),
+    message: str(raw.message) || GUARD_MESSAGES[result] || "",
     notMatched,
     changes: list(raw.changes).map(str),
     notes: list(raw.notes).map(str),
@@ -294,6 +316,7 @@ export function readAmendAnswer(a, { dryRun }) {
 /* One plain line for the amendment's result list (the Save outcome). */
 export function outcomeLine(ans) {
   if (!ans) return "";
+  if (ans.duplicate) return "invoice: already changed earlier for this amendment - nothing was changed again";
   if (WROTE.includes(ans.result)) return "invoice updated in Books: " + (ans.summary.join("; ") || ans.message);
   return "invoice: " + (ans.message || ans.result);
 }

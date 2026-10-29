@@ -9,6 +9,7 @@ import {
   amendmentIdOf,
   readAmendAnswer,
   outcomeLine,
+  sendable,
   amendBillingOn,
 } from "./amendBilling";
 
@@ -152,8 +153,13 @@ test("both orders are priced with ONE Books search and the same rates", async ()
 });
 
 test("amendArgs: Deluge's shape, the amendment id in the reason and as its own key", () => {
-  const id = amendmentIdOf("5249", "2026-10-29T15:30:12.345Z");
-  expect(id).toBe("5249-2026-10-29T15:30:12.345Z");
+  const id = amendmentIdOf("5249", "2026-10-29T15:30:12-06:00", '{"products":[1]}');
+  expect(id).toMatch(/^5249-2026-10-29T15:30:12-06:00-[0-9a-f]{8}$/);
+  // the same amendment retried = the same id; a different order = a new one; only Deluge's characters, 90 at most
+  expect(amendmentIdOf("5249", "2026-10-29T15:30:12-06:00", '{"products":[1]}')).toBe(id);
+  expect(amendmentIdOf("5249", "2026-10-29T15:30:12-06:00", '{"products":[2]}')).not.toBe(id);
+  expect(amendmentIdOf("5249", "2026-10-29 15:30+06 Ünï", "x")).toMatch(/^[A-Za-z0-9._:-]+$/);
+  expect(amendmentIdOf("5".repeat(80), "2026-10-29T15:30:12-06:00", "x").length).toBe(90);
   const a = amendArgs("5249", {
     add: [{ line: { sku: "PC54", quantity: 2, description: "x", item_id: "1", rate: 3 } }],
     lower: [],
@@ -168,7 +174,7 @@ test("amendArgs: Deluge's shape, the amendment id in the reason and as its own k
   expect(p).toEqual({
     dry_run: true,
     submitted_by: "Ray",
-    reason: "Added 2 Large [5249-2026-10-29T15:30:12.345Z]",
+    reason: "Added 2 Large [" + id + "]",
     add: [{ sku: "PC54", quantity: 2, description: "x", item_id: "1", rate: 3 }],
     lower: [],
     rush: true,
@@ -239,4 +245,16 @@ test("paid invoice: a same-price color swap cancels out; a real increase stays",
   // different prices never cancel
   const d3 = billingDiff([L("PC54", 3, "Navy\n\n3 Large", "garment", 4)], [L("PC61", 3, "Navy\n\n3 Large", "garment", 6)]);
   expect(netSwaps(d3).netted).toBe(0);
+});
+
+test("v5 guard answers: already done = nothing more to send; check_books / guard_failed explained", () => {
+  const dup = readAmendAnswer({ status: "ok", result: "changed", duplicate: true, message: "Already done earlier - nothing was changed again." }, { dryRun: true });
+  expect(dup.duplicate).toBe(true);
+  expect(sendable(dup)).toBe(false);
+  expect(outcomeLine(dup)).toMatch(/already changed earlier/);
+  const cb = readAmendAnswer({ status: "error", result: "check_books" }, { dryRun: false });
+  expect(cb.ok).toBe(false);
+  expect(cb.message).toMatch(/Check the invoice in Books/);
+  expect(readAmendAnswer({ status: "error", result: "guard_failed" }, { dryRun: true }).message).toMatch(/nothing was changed/);
+  expect(sendable(readAmendAnswer({ status: "ok", result: "dry_run" }, { dryRun: true }))).toBe(true);
 });

@@ -381,6 +381,11 @@ const AmendmentApp = () => {
   const savedSignature = useMemo(() => (saved ? JSON.stringify(saved) : ""), [saved]);
   // E-157: Books' "reason for updating a sent invoice" = the rep's own words (step 4), one line.
   const billingReason = "Amendment: " + (story.trim().replace(/\s+/g, " ") || "order changed");
+  // E-157 / Deluge v5 guard: one id per amendment, the same for its dry runs, its real call and any retry of the same amendment.
+  const amendmentId = useMemo(
+    () => amendmentIdOf(ctx.current.recordId, loaded?.jsonCreated || "", savedSignature),
+    [loaded, savedSignature]
+  );
   const before = useMemo(() => countRows(original.current?.products), [state.status]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Carry mode only: may the form rewrite the Deal's print counts? Only if the order as PARSED
@@ -526,7 +531,6 @@ const AmendmentApp = () => {
       return;
     }
     const sendBilling = billingStep && plan.decision === "send";
-    const amendmentId = amendmentIdOf(ctx.current.recordId, new Date().toISOString());
 
     // E-150 (David 10-29): changed Dates answers move the Deal's Closing Date (closingMove.js). In production the move also moves the
     // open Produce tasks, so the rep sees what will move BEFORE anything is saved, and can stop.
@@ -1306,6 +1310,7 @@ The panel at the bottom shows exactly what will be recorded. Saving posts a new 
             saved={saved}
             signature={savedSignature}
             reason={billingReason}
+            amendmentId={amendmentId}
             submittedBy={currentUser}
             disabled={saving || !!outcome}
             onPlan={(p) => (billingPlan.current = p)}
