@@ -18,7 +18,8 @@ import TURNAROUND_CONFIG from "../turnaroundConfig.json";
 import { CLOSING_FIELD, TURNAROUND_FIELD, denverToday, toYmd, turnaroundOf, turnaroundPlan } from "../turnaround";
 import { PRE_PRODUCTION_STAGES } from "../rushOrder";
 
-export const MOVE_FUNCTION = "WIDGET_Move_Closing_Date";
+// The REST API name as installed in Zoho (lower case, like the folder and art-copy calls; Deluge read back 23a3e74a, 10-29).
+export const MOVE_FUNCTION = "widget_move_closing_date";
 
 /* The call's arguments, all text as the function takes them (Deluge PENDING 23a3e74a: anything but dry_run "false" is a dry run). */
 export const moveArgs = (dealId, plan, dryRun) => ({
