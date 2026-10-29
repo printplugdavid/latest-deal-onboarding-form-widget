@@ -6,6 +6,8 @@
  * last department closes. Each write is the smallest one that does the job; the stage is moved last, with workflow (as the QC form
  * does). Every step leaves a dated "PRODUCTION FLOW" note. `ctx` = { entity, recordId, deal, data, tasks, notes, user } from the
  * card viewer; `refresh()` reloads them after a write.
+ * E-164: the Outsourced tab has no start steps -- the Production Manager answers David's two questions and closes the Package task;
+ * while the order task is still open it shows "waiting". With the switch on, every tab's close counts the outsourced tasks.
  */
 import React, { useMemo, useState } from "react";
 import {
@@ -34,9 +36,12 @@ import {
   closeQuestionsFor,
   deptStarted,
   grams,
+  hasStartSteps,
   missingLine,
   openDeptTasks,
+  openOrderTasks,
   orderGarments,
+  outsourcedOn,
   ownerOf,
   pantoneFields,
   pantoneSlots,
@@ -45,6 +50,7 @@ import {
   startNote,
   taskTitle,
 } from "./productionFlow";
+import PRODUCTION_CONFIG from "./productionConfig.json";
 
 const ZOHO = window.ZOHO;
 const ok = (r) => r?.data?.[0]?.code === "SUCCESS";
@@ -71,7 +77,10 @@ const ProductionFlow = ({ dept, ctx, refresh }) => {
   const d = DEPARTMENTS[dept];
   const { entity, recordId, deal = {}, data, tasks = [], notes = [], user = {} } = ctx || {};
   const myTasks = useMemo(() => openDeptTasks(tasks, dept), [tasks, dept]);
-  const started = useMemo(() => deptStarted(notes, dept), [notes, dept]);
+  const hasStart = hasStartSteps(dept);
+  const withOutsourced = outsourcedOn(PRODUCTION_CONFIG);
+  const started = useMemo(() => !hasStart || deptStarted(notes, dept), [hasStart, notes, dept]);
+  const orderOpen = useMemo(() => (dept === "outsourced" ? openOrderTasks(tasks) : []), [dept, tasks]);
   const rows = useMemo(() => (d.inks ? pantoneSlots(deal, pantonesOf(data)) : []), [d.inks, deal, data]);
   const garments = useMemo(() => orderGarments(data), [data]);
 
@@ -149,7 +158,7 @@ const ProductionFlow = ({ dept, ctx, refresh }) => {
     });
 
   /* ---------- close ---------- */
-  const plan = closePlan({ dept, tasks, closing, answers, rows, inkLeft, stage: deal.Stage });
+  const plan = closePlan({ dept, tasks, closing, answers, rows, inkLeft, stage: deal.Stage, withOutsourced });
   const doClose = () =>
     run("Closing the task(s)", async () => {
       if (Object.keys(plan.fields).length) await write(plan.fields, false);
@@ -186,14 +195,21 @@ const ProductionFlow = ({ dept, ctx, refresh }) => {
       <Typography variant="h6" fontWeight="bold">
         {d.label} production flow
       </Typography>
-      {!myTasks.length && (
+      {!myTasks.length && orderOpen.length > 0 && (
         <Alert severity="info" sx={{ mt: 1 }}>
-          No open {d.label} production task on this Deal. You can still report missing garments or flag Call Client below.
+          Waiting: the order hasn't been placed yet ({orderOpen.map((t) => taskTitle(t) + (ownerOf(t).name ? " - " + ownerOf(t).name : "")).join("; ")}).
+          The Package Outsourced Products task appears here once the order task is marked done.
+        </Alert>
+      )}
+      {!myTasks.length && !orderOpen.length && (
+        <Alert severity="info" sx={{ mt: 1 }}>
+          No open {dept === "outsourced" ? "Package Outsourced Products" : d.label + " production"} task on this Deal. You can still report
+          missing garments or flag Call Client below.
         </Alert>
       )}
 
       {/* 1. START */}
-      {!started && myTasks.length > 0 && (
+      {hasStart && !started && myTasks.length > 0 && (
         <Section title="Start the job">
           {START_STEPS.map((s, i) => {
             const before = START_STEPS.slice(0, i).every((p) => start[p.key] === "yes");
@@ -220,7 +236,7 @@ const ProductionFlow = ({ dept, ctx, refresh }) => {
           </Button>
         </Section>
       )}
-      {started && myTasks.length > 0 && <Alert severity="success" sx={{ mt: 1 }}>Job started (count, artwork and tools checked).</Alert>}
+      {hasStart && started && myTasks.length > 0 && <Alert severity="success" sx={{ mt: 1 }}>Job started (count, artwork and tools checked).</Alert>}
 
       {/* 2. ACTIONS */}
       {artworkOk && (

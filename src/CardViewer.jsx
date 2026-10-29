@@ -34,7 +34,7 @@ import { workDriveTarget } from "./productionCards";
 import { NOTE_EDITED_WARNING, newestFirst, noteEditedAfterSave, readFileText } from "./zohoFiles";
 import { LIVE_NOTE_TITLE } from "./amendment/amendmentDiff";
 import ProductionFlow from "./production/ProductionFlowPanel";
-import { deptForCard } from "./production/productionFlow";
+import { flowDeptFor } from "./production/productionFlow";
 import PRODUCTION_CONFIG from "./production/productionConfig.json";
 
 const ZOHO = window.ZOHO;
@@ -317,8 +317,8 @@ const CardViewer = () => {
       )}
 
       <Box sx={{ flexGrow: 1, overflow: "auto", background: "#e9eaec" }}>
-        {flowOn && flow && current && deptForCard(current.name) && (
-          <ProductionFlow key={"flow-" + current.name} dept={deptForCard(current.name).key} ctx={flow} refresh={refreshFlow} />
+        {flowOn && flow && current && flowDeptFor(current.name, PRODUCTION_CONFIG) && (
+          <ProductionFlow key={"flow-" + current.name} dept={flowDeptFor(current.name, PRODUCTION_CONFIG).key} ctx={flow} refresh={refreshFlow} />
         )}
         {current?.error ? (
           <Box sx={{ p: 3 }}>

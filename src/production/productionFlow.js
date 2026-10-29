@@ -28,8 +28,16 @@ export const DEPARTMENTS = {
   screen: { key: "screen", label: "Screen Print", card: "production-card-screenprint.html", inks: true },
   embroidery: { key: "embroidery", label: "Embroidery", card: "production-card-embroidery.html", inks: false },
   vinyl: { key: "vinyl", label: "Vinyl", card: "production-card-vinyl.html", inks: false },
+  /* E-164 (D-75): the Production Manager's packing step for outsourced products. No start steps; David's two close questions only. */
+  outsourced: { key: "outsourced", label: "Outsourced", card: "production-card-outsourced.html", inks: false, start: false },
 };
 export const deptForCard = (cardName) => Object.values(DEPARTMENTS).find((d) => d.card === str(cardName).toLowerCase()) || null;
+/* The card tab's flow, if any: the Outsourced tab only while its switch is on (productionConfig.json outsourcedOn). */
+export const outsourcedOn = (config) => !!config && config.outsourcedOn === true;
+export const flowDeptFor = (cardName, config) => {
+  const d = deptForCard(cardName);
+  return d && d.key === "outsourced" && !outsourcedOn(config) ? null : d;
+};
 
 /* The English half of a bilingual subject, upper-cased, without "RUSH: ". */
 const englishHalf = (subject) =>
@@ -43,10 +51,13 @@ const englishHalf = (subject) =>
  * A production WORK task and its department, from the subject (measured 10-29 on every task since 09-15):
  *   EMBROIDERY: Produce Order · SCREEN PRINT(ING): Produce Order · VINYL DEPARTMENT[: DTF | DTG | DECALS | ...]: Produce Order
  *   and the same with Reproduce Order (revisions) / Correct Order (corrections), with or without "RUSH: ".
+ * E-164: "PRODUCTION MANAGER: Package Outsourced Products" is the Outsourced tab's work task (the fulfill step, made when the order
+ * task is completed; Deluge evidence 10-29, subjects confirmed unchanged by Deluge E-165).
  * Anything else (Emulsion Screens, Quality Check, Order Products, manager tasks) is not a work task -> null.
  */
 export function deptOfTask(subject) {
   const s = englishHalf(subject);
+  if (s === "PRODUCTION MANAGER: PACKAGE OUTSOURCED PRODUCTS") return "outsourced";
   if (!/: (PRODUCE|REPRODUCE|CORRECT) ORDER$/.test(s)) return null;
   if (/^EMBROIDERY:/.test(s)) return "embroidery";
   if (/^SCREEN PRINT(ING)?:/.test(s)) return "screen";
@@ -54,8 +65,26 @@ export function deptOfTask(subject) {
   return null;
 }
 const isOpen = (t) => t && t.id && !/^completed$/i.test(str(t.Status).trim());
-export const openWorkTasks = (tasks) => (tasks || []).filter((t) => isOpen(t) && deptOfTask(t.Subject));
-export const openDeptTasks = (tasks, dept) => openWorkTasks(tasks).filter((t) => deptOfTask(t.Subject) === dept);
+/* withOutsourced false = round 1 as before: the Package task is not counted (switch off). */
+export const openWorkTasks = (tasks, withOutsourced = false) =>
+  (tasks || []).filter((t) => {
+    const d = isOpen(t) && deptOfTask(t.Subject);
+    return !!d && (withOutsourced || d !== "outsourced");
+  });
+export const openDeptTasks = (tasks, dept) => (tasks || []).filter((t) => isOpen(t) && deptOfTask(t.Subject) === dept);
+
+/*
+ * E-164 / D-75 (David 10-29, "Order + Package"): the outsourced ORDER task, "OUTSOURCED: Order Products" (+ "RUSH: ", + "OUTSOURCED:
+ * PATCHES: "), holds the move to Quality Check too, but is the Account Manager's job, so it is never closed from a card. The Account
+ * Manager's parallel "ACCOUNT MANAGER: OUTSOURCED: Order Outsourced Product" is NOT counted (a duplicate, E-165).
+ */
+export const isOrderProductsTask = (subject) => /^OUTSOURCED: (PATCHES: )?ORDER PRODUCTS$/.test(englishHalf(subject));
+export const openOrderTasks = (tasks) => (tasks || []).filter((t) => isOpen(t) && isOrderProductsTask(t.Subject));
+/* Every open task that keeps the Deal out of Quality Check. */
+export const openHoldTasks = (tasks, withOutsourced = false) => [
+  ...openWorkTasks(tasks, withOutsourced),
+  ...(withOutsourced ? openOrderTasks(tasks) : []),
+];
 export const ownerOf = (t) => ({ id: str(t && t.Owner && t.Owner.id), name: str(t && t.Owner && t.Owner.name) });
 export const taskTitle = (t) => str(t && t.Subject).split(" / ")[0].trim();
 
@@ -94,7 +123,14 @@ export const DEPT_CLOSE_QUESTIONS = {
   embroidery: [],
   vinyl: [],
 };
-export const closeQuestionsFor = (dept) => [...CLOSE_QUESTIONS, ...(DEPT_CLOSE_QUESTIONS[dept] || [])];
+/* E-164: David's two questions for the Outsourced tab, word for word (10-29, "Only those two for now"). They replace the four. */
+export const OUTSOURCED_CLOSE_QUESTIONS = [
+  { key: "verified", question: "Products counted and verified against mock-up and original artwork?" },
+  { key: "boxed", question: "Products removed from supplier boxes and put into Print Plug / unbranded boxes?" },
+];
+export const closeQuestionsFor = (dept) =>
+  dept === "outsourced" ? [...OUTSOURCED_CLOSE_QUESTIONS] : [...CLOSE_QUESTIONS, ...(DEPT_CLOSE_QUESTIONS[dept] || [])];
+export const hasStartSteps = (dept) => !!DEPARTMENTS[dept] && DEPARTMENTS[dept].start !== false;
 
 export const MISSING_REASONS = [
   "Supplier sent the wrong item",
@@ -251,7 +287,7 @@ export const QC_STAGE = "Quality Check";
  * What Close does: { problems[], close[] (task ids), stage: { move, to, reason }, fields }.
  * answers = { questionKey: "yes" | "no" }; closing = ids of the department's tasks the agent is closing; inkLeft = grams typed per row.
  */
-export function closePlan({ dept, tasks, closing, answers, rows, inkLeft, stage }) {
+export function closePlan({ dept, tasks, closing, answers, rows, inkLeft, stage, withOutsourced = false }) {
   const problems = [];
   closeQuestionsFor(dept).forEach((q) => {
     const a = str(answers && answers[q.key]);
@@ -264,10 +300,12 @@ export function closePlan({ dept, tasks, closing, answers, rows, inkLeft, stage 
     (rows || []).forEach((r, i) => {
       if (grams(inkLeft && inkLeft[i]) == null) problems.push(`Grams of ink left for Pantone ${r.code}.`);
     });
-  const stillOpen = openWorkTasks(tasks).filter((t) => !ids.includes(str(t.id)));
+  const stillOpen = openHoldTasks(tasks, withOutsourced).filter((t) => !ids.includes(str(t.id)));
+  const outsourcedOpen = stillOpen.some((t) => deptOfTask(t.Subject) === "outsourced" || isOrderProductsTask(t.Subject));
   const cur = str(stage);
   let move = { move: false, to: QC_STAGE, reason: "" };
-  if (stillOpen.length) move.reason = `${stillOpen.length} production task(s) still open: ${stillOpen.map(taskTitle).join("; ")}`;
+  if (stillOpen.length)
+    move.reason = `${stillOpen.length} ${outsourcedOpen ? "production or outsourced" : "production"} task(s) still open: ${stillOpen.map(taskTitle).join("; ")}`;
   else if (cur === QC_STAGE) move.reason = "already in Quality Check";
   else if (!PRODUCTION_STAGES.includes(cur)) move.reason = `the Deal is at "${cur}", not a production stage - the stage is left as it is`;
   else move = { move: true, to: QC_STAGE, reason: "" };

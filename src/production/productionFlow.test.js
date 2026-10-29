@@ -18,6 +18,12 @@ import {
   deptStarted,
   pantoneCodeFields,
   writePantonesOn,
+  isOrderProductsTask,
+  openOrderTasks,
+  openHoldTasks,
+  flowDeptFor,
+  hasStartSteps,
+  outsourcedOn,
   BLOCK_TEXT,
   FLOW_NOTE_TITLE,
 } from "./productionFlow";
@@ -176,4 +182,89 @@ test("E-159: the order's Pantone codes onto the Deal, only what changes, never b
   expect(pantoneCodeFields({ PANTONE_1: "186 C", PANTONE_2: "286 C" }, data)).toEqual({});
   expect(writePantonesOn({ writePantones: false })).toBe(false);
   expect(writePantonesOn({ writePantones: true })).toBe(true);
+});
+
+/* ---------- E-164 (D-75): outsourced work holds Quality Check; the Outsourced tab closes the Package task ---------- */
+const ORDER = "OUTSOURCED: Order Products / TERCERIZADA: Ordenar Productos";
+const ORDER_RUSH = "RUSH: OUTSOURCED: Order Products / CORRER: TERCERIZADA: Ordenar Productos";
+const PACKAGE = "PRODUCTION MANAGER: Package Outsourced Products / GERENTE DE PRODUCCIÓN: Empaquetar Productos Tercerizados";
+const AM = "ACCOUNT MANAGER: OUTSOURCED: Order Outsourced Product / GERENTE DE CUENTAS: TERCERIZADA: Orden Producto Subcontratado";
+const DESIGN = "GRAPHIC DESIGN: OUTSOURCED: Artwork & Mock-Up / DISEÑO GRÁFICO: TERCERIZADA: Arte y Maqueta";
+
+test("E-164: the real outsourced subjects (COQL 10-29): Package is the Outsourced tab's task, Order Products holds, the AM duplicate does not", () => {
+  expect(deptOfTask(PACKAGE)).toBe("outsourced");
+  expect(deptOfTask(ORDER)).toBe(null);
+  expect(isOrderProductsTask(ORDER)).toBe(true);
+  expect(isOrderProductsTask(ORDER_RUSH)).toBe(true);
+  expect(isOrderProductsTask("OUTSOURCED: PATCHES: Order Products / x")).toBe(true);
+  expect(isOrderProductsTask(AM)).toBe(false);
+  expect(isOrderProductsTask(DESIGN)).toBe(false);
+  expect(isOrderProductsTask("Order Outsourced product")).toBe(false);
+  expect(deptOfTask(AM)).toBe(null);
+  expect(deptOfTask(DESIGN)).toBe(null);
+  const tasks = [T("1", ORDER), T("2", PACKAGE), T("3", AM), T("4", DESIGN), T("5", ORDER_RUSH, "Completed"), T("6", "EMBROIDERY: Produce Order / x")];
+  expect(openOrderTasks(tasks).map((t) => t.id)).toEqual(["1"]);
+  expect(openHoldTasks(tasks, true).map((t) => t.id)).toEqual(["2", "6", "1"]);
+  // switch off = round 1 exactly: only the department work tasks
+  expect(openHoldTasks(tasks, false).map((t) => t.id)).toEqual(["6"]);
+  expect(openWorkTasks(tasks).map((t) => t.id)).toEqual(["6"]);
+  expect(openDeptTasks(tasks, "outsourced").map((t) => t.id)).toEqual(["2"]);
+});
+
+test("E-164: the Outsourced tab has a flow only with the switch on; no start steps; David's two questions only", () => {
+  expect(flowDeptFor("production-card-outsourced.html", { outsourcedOn: true }).key).toBe("outsourced");
+  expect(flowDeptFor("production-card-outsourced.html", { outsourcedOn: false })).toBe(null);
+  expect(flowDeptFor("production-card-outsourced.html", {})).toBe(null);
+  expect(flowDeptFor("production-card-embroidery.html", {}).key).toBe("embroidery");
+  expect(flowDeptFor("production-card-graphicdesign.html", { outsourcedOn: true })).toBe(null);
+  expect(outsourcedOn(require("./productionConfig.json"))).toBe(true);
+  expect(hasStartSteps("outsourced")).toBe(false);
+  expect(hasStartSteps("screen")).toBe(true);
+  expect(closeQuestionsFor("outsourced").map((q) => q.question)).toEqual([
+    "Products counted and verified against mock-up and original artwork?",
+    "Products removed from supplier boxes and put into Print Plug / unbranded boxes?",
+  ]);
+  expect(closeQuestionsFor("embroidery")).toHaveLength(4);
+});
+
+test("E-164: production finishing first waits for the outsourced order and packing; the Package close then moves the Deal", () => {
+  const stage = "Mock-Up Approved / In Production";
+  // embroidery closes last of production, but the order is not placed yet
+  let tasks = [T("1", "EMBROIDERY: Produce Order / x"), T("2", ORDER, "Not Started", "Korie"), T("3", AM, "Not Started", "Korie")];
+  let p = closePlan({ dept: "embroidery", tasks, closing: ["1"], answers: allYes("embroidery"), stage, withOutsourced: true });
+  expect(p.stage.move).toBe(false);
+  expect(p.stage.reason).toBe("1 production or outsourced task(s) still open: OUTSOURCED: Order Products");
+  // the same with the switch off: moves, as round 1 did
+  p = closePlan({ dept: "embroidery", tasks, closing: ["1"], answers: allYes("embroidery"), stage });
+  expect(p.stage.move).toBe(true);
+  // order placed (Order Products done, AM duplicate still open), Package open, production done -> held by Package only
+  tasks = [T("1", "EMBROIDERY: Produce Order / x", "Completed"), T("2", ORDER, "Completed"), T("3", AM), T("4", PACKAGE, "Not Started", "Kris")];
+  p = closePlan({ dept: "embroidery", tasks: [...tasks, T("5", "EMBROIDERY: Reproduce Order / x")], closing: ["5"], answers: allYes("embroidery"), stage, withOutsourced: true });
+  expect(p.stage.reason).toBe("1 production or outsourced task(s) still open: PRODUCTION MANAGER: Package Outsourced Products");
+  // the Production Manager closes Package on the Outsourced tab: two Yes -> the Deal moves (the AM duplicate is not counted)
+  const ans = { verified: "yes", boxed: "yes" };
+  p = closePlan({ dept: "outsourced", tasks, closing: ["4"], answers: ans, stage, withOutsourced: true });
+  expect(p.problems).toEqual([]);
+  expect(p.stage).toEqual({ move: true, to: "Quality Check", reason: "" });
+  expect(p.fields).toEqual({});
+  // a No blocks with David's words; blank asks for the answer
+  p = closePlan({ dept: "outsourced", tasks, closing: ["4"], answers: { verified: "yes", boxed: "no" }, stage, withOutsourced: true });
+  expect(p.problems).toEqual([`Products removed from supplier boxes and put into Print Plug / unbranded boxes? - ${BLOCK_TEXT}`]);
+  // packing done before production: Package closes, the Deal waits for the embroidery task
+  tasks = [T("1", "EMBROIDERY: Produce Order / x"), T("4", PACKAGE)];
+  p = closePlan({ dept: "outsourced", tasks, closing: ["4"], answers: ans, stage, withOutsourced: true });
+  expect(p.stage.move).toBe(false);
+  expect(p.stage.reason).toBe("1 production task(s) still open: EMBROIDERY: Produce Order");
+});
+
+test("E-164: the Outsourced close note", () => {
+  const tasks = [T("4", PACKAGE, "Not Started", "Kris")];
+  const c = closeNote({ dept: "outsourced", who: "Kris", when: "w", tasks, closing: ["4"], answers: { verified: "yes", boxed: "yes" }, rows: [], inkLeft: [], feedback: {}, stage: { move: true, to: "Quality Check" } });
+  expect(c.split("\n")).toEqual([
+    "Outsourced - CLOSED - w - Kris",
+    "Closed: PRODUCTION MANAGER: Package Outsourced Products (Kris)",
+    "Products counted and verified against mock-up and original artwork? Yes",
+    "Products removed from supplier boxes and put into Print Plug / unbranded boxes? Yes",
+    "Deal moved to Quality Check.",
+  ]);
 });
