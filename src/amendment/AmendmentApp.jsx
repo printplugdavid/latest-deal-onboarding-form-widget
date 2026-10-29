@@ -84,6 +84,8 @@ import { MOVE_FUNCTION, moveArgs, amendmentDatePlan, amendmentDatesOn, datesChan
 import { RUSH_FIELD, rushBoxPlan } from "../rushOrder";
 import { call as callFunction } from "../products/booksItems";
 import { parseNoteToForm, toPlainText } from "./noteToForm";
+import AmendBilling from "./AmendBilling";
+import { AMEND_FUNCTION, amendArgs, amendBillingOn, amendmentIdOf, outcomeLine, readAmendAnswer } from "../invoice/amendBilling";
 import { countFieldForTask, planTaskRestamp } from "./taskRestamp";
 import {
   copyGarment,
@@ -263,6 +265,8 @@ const AmendmentApp = () => {
   const [rev, setRev] = useState(0); // E-50: bumped when rows are spliced, so the editors remount on fresh values
   const [saving, setSaving] = useState(false);
   const [outcome, setOutcome] = useState(null); // { done: [..], failed: [..] } after a save
+  const [currentUser, setCurrentUser] = useState(""); // E-157: who changed the invoice (Books reason, Deluge submitted_by)
+  const billingPlan = useRef(null); // E-157: the Price change step's plan (AmendBilling onPlan)
   const ctx = useRef({ entity: null, recordId: null });
   const original = useRef(null);
 
@@ -308,6 +312,10 @@ const AmendmentApp = () => {
         const res = await loadDeal(entity, recordId);
         setLoaded(res);
         loadAccountNotes(res?.deal).then((a) => setAccountNotes(a?.notes || "")); // E-38, never fatal
+        Promise.resolve()
+          .then(() => ZOHO.CRM.CONFIG.getCurrentUser())
+          .then((r) => setCurrentUser((r && r.users && r.users[0] && r.users[0].full_name) || ""))
+          .catch(() => {}); // E-157: the name only labels the change in Books
         if (!res.json) {
           setState({ status: "nojson" });
           return;
@@ -369,6 +377,8 @@ const AmendmentApp = () => {
         : null,
     [current, removed, removedGarments]
   );
+  // E-157: the Price change step is tied to the order as it was priced; any later edit makes it stale.
+  const savedSignature = useMemo(() => (saved ? JSON.stringify(saved) : ""), [saved]);
   const before = useMemo(() => countRows(original.current?.products), [state.status]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Carry mode only: may the form rewrite the Deal's print counts? Only if the order as PARSED
@@ -502,6 +512,20 @@ const AmendmentApp = () => {
       );
       return;
     }
+    // E-157 (David 10-29): the Price change step must be decided for THIS version of the order (send / leave / no change).
+    const billingStep = amendBillingOn() && !carry;
+    const plan = billingPlan.current;
+    if (billingStep && (!plan || plan.signature !== savedSignature || !["send", "leave", "none"].includes(plan.decision))) {
+      window.alert(
+        "Please work out the price change (step 5) before saving" +
+          (plan && plan.signature !== savedSignature ? " - the order changed after it was worked out." : ".") +
+          " If the invoice should stay as it is, choose \"Leave the invoice as it is\" there."
+      );
+      return;
+    }
+    const sendBilling = billingStep && plan.decision === "send";
+    const amendmentId = amendmentIdOf(ctx.current.recordId, new Date().toISOString());
+
     // E-150 (David 10-29): changed Dates answers move the Deal's Closing Date (closingMove.js). In production the move also moves the
     // open Produce tasks, so the rep sees what will move BEFORE anything is saved, and can stop.
     const datesMoved = amendmentDatesOn() && datesChanged(original.current, saved);
@@ -591,6 +615,16 @@ const AmendmentApp = () => {
         _submittedAt: new Date().toISOString(),
         ...(carry ? { _source: "note" } : {}),
         _amendment: { amendedAt: when, changes: lines, story: story.trim(), supersedes: loaded.jsonCreated },
+        // E-157: what the Price change step decided (the lines sent, by Books' text); the result is in the save outcome.
+        ...(billingStep
+          ? {
+              _amendBilling: {
+                id: amendmentId,
+                decision: plan.decision,
+                ...(sendBilling ? { add: plan.add.map((x) => x.line), lower: plan.lower.map((x) => x.line) } : {}),
+              },
+            }
+          : {}),
       });
       await ZOHO.CRM.API.attachFile({
         Entity: entity,
@@ -811,6 +845,31 @@ const AmendmentApp = () => {
       }
     }
 
+    // E-157: the invoice in Books, LAST and ONCE (Deluge 10-29: never retried -- a call that did not answer may still have written).
+    // Only when everything else saved: a half-saved amendment must not change the money.
+    if (sendBilling) {
+      if (failed.length) {
+        failed.push("invoice in Books: not changed, because part of the amendment did not save - change it in Books if needed");
+      } else {
+        const a = await callFunction(
+          AMEND_FUNCTION,
+          amendArgs(recordId, {
+            add: plan.add,
+            lower: plan.lower,
+            flags: plan.flags,
+            dryRun: false,
+            submittedBy: currentUser,
+            reason: lines.join("; "),
+            amendmentId,
+          })
+        );
+        const ans = readAmendAnswer(a, { dryRun: false });
+        const missed = ans.notMatched.length ? ` (${ans.notMatched.length} line(s) not matched - fix them in Books)` : "";
+        if (ans.ok) done.push(outcomeLine(ans) + missed);
+        else failed.push("invoice in Books: " + ans.message);
+      }
+    }
+
     if (dateNotices.length) window.alert(dateNotices.join("\n\n"));
     setOutcome({ done, failed });
     setSaving(false);
@@ -822,7 +881,7 @@ const AmendmentApp = () => {
         } catch (e) {
           /* ignore */
         }
-      }, done.some((d) => /^open production tasks updated|^Closing Date /.test(d)) ? 5000 : 1200);
+      }, done.some((d) => /^open production tasks updated|^Closing Date |^invoice /.test(d)) ? 5000 : 1200);
     }
   };
 
@@ -1237,6 +1296,19 @@ The panel at the bottom shows exactly what will be recorded. Saving posts a new 
           onChange={(e) => setStory(e.target.value)}
           placeholder="e.g. Client called and added 12 more shirts in XL, and wants them a week later."
         />
+
+        {amendBillingOn() && !carry && lines.length > 0 && (
+          <AmendBilling
+            dealId={ctx.current.recordId}
+            original={original.current}
+            saved={saved}
+            signature={savedSignature}
+            reason={lines.join("; ")}
+            submittedBy={currentUser}
+            disabled={saving || !!outcome}
+            onPlan={(p) => (billingPlan.current = p)}
+          />
+        )}
 
         <Box sx={{ mt: 3, p: 2, background: "#f6f6f6", border: "1px solid #ddd" }}>
           <Typography fontWeight="bold">What this amendment will record</Typography>
