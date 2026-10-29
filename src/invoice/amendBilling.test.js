@@ -233,7 +233,9 @@ test("paid invoice: a same-price color swap cancels out; a real increase stays",
   const n2 = netSwaps(d2);
   expect(n2.netted).toBe(3);
   expect(n2.lower).toEqual([]);
-  expect(n2.add.map((x) => [x.line.quantity, x.amount])).toEqual([[2, 8]]);
+  expect(n2.add.map((x) => [x.line.quantity, x.amount, x.plain, x.line.description])).toEqual([
+    [2, 8, "Add 2 x PC54 Black", "Black\n\nAdded: 2 (the rest was swapped at the same price)"],
+  ]);
   // different prices never cancel
   const d3 = billingDiff([L("PC54", 3, "Navy\n\n3 Large", "garment", 4)], [L("PC61", 3, "Navy\n\n3 Large", "garment", 6)]);
   expect(netSwaps(d3).netted).toBe(0);

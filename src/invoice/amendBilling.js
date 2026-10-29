@@ -174,7 +174,13 @@ export function netSwaps({ add, lower }) {
         const take = Math.min(b, x.line.quantity);
         budget.set(key(x), b - take);
         const q = round2(x.line.quantity - take);
-        return q > 0 ? { ...x, id: x.id + ":net", line: { ...x.line, quantity: q }, amount: round2((x.amount / x.line.quantity) * q) } : null;
+        if (!(q > 0)) return null;
+        const isAdd = x.id.startsWith("add:");
+        const line = { ...x.line, quantity: q };
+        // an add line's text names what it charges; a lower keeps Books' text (it is how the line is found)
+        if (isAdd) line.description = `${str(x.line.description).split("\n\nAdded:")[0]}\n\nAdded: ${q} (the rest was swapped at the same price)`.trim();
+        const plain = x.plain.replace(/^(Add|Take off|Remove) [\d.]+ x/, (m, verb) => `${verb === "Remove" ? "Take off" : verb} ${q} x`);
+        return { ...x, id: x.id + ":net", line, plain, amount: round2((x.amount / x.line.quantity) * q) };
       })
       .filter(Boolean);
   };
