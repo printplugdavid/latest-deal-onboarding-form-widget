@@ -134,7 +134,7 @@ export default function BillingSection({ dealId, submittedBy }) {
   let suggestions = [];
   let shortfall = null;
   let art = [];
-  let artOpen = { vector: 0, digitized: 0 };
+  let artOpen = { ready: 0, vector: 0, digitized: 0 };
   try {
     const data = applyGarmentSplits({
       products,
@@ -189,7 +189,7 @@ export default function BillingSection({ dealId, submittedBy }) {
       {yesNo(control, "payingByCard", "Paying by card?", ["Yes", "No"], "Yes adds the 3% card processing fee")}
 
       {/* E-154 (David 10-29): art fees from each graphic's answers, on the draft unless switched off here. */}
-      {(art.length > 0 || artOpen.vector > 0 || artOpen.digitized > 0) && (
+      {(art.length > 0 || artOpen.ready > 0 || artOpen.vector > 0 || artOpen.digitized > 0) && (
         <Box sx={{ mt: 1 }}>
           <Typography sx={{ fontWeight: "bold" }}>Art fees (added on their own)</Typography>
           {art.map((f) => (
@@ -216,8 +216,9 @@ export default function BillingSection({ dealId, submittedBy }) {
               }
             />
           ))}
-          {(artOpen.vector > 0 || artOpen.digitized > 0) && (
+          {(artOpen.ready > 0 || artOpen.vector > 0 || artOpen.digitized > 0) && (
             <Typography variant="body2" sx={{ color: "text.secondary" }}>
+              {artOpen.ready > 0 ? `${artOpen.ready} graphic(s) still need "Is Graphic Print Ready?". ` : ""}
               {artOpen.vector > 0 ? `${artOpen.vector} screen print graphic(s) still need "Do They Have A Print-Ready Vector File?". ` : ""}
               {artOpen.digitized > 0 ? `${artOpen.digitized} embroidery graphic(s) still need "Do They Have A Digitized File (DST)?".` : ""}
             </Typography>

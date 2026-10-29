@@ -55,14 +55,14 @@ export function suggestCharges(data) {
  *   Screen Printing   not print ready -> Graphic Design half hour (PPGD1); no print-ready vector file -> Vector Fee (PPFEE3) (both can apply)
  *   Embroidery        no digitized file (DST) -> Digitizing (PPEDF)
  *   DTF / DTG / HTV   not print ready -> Graphic Design half hour (PPGD1)
- * "Is Graphic Print Ready?" is a tick box (true / false; "Yes" / "No" in older or robot data). The two new questions are Yes / No;
- * blank = not answered = no fee (artQuestionsOpen counts those so the rep sees them).
+ * "Is Graphic Print Ready?" is a required Yes / No on garment graphics since E-154 (older orders saved a tick box: false = not ready).
+ * The two new questions are Yes / No too. Blank = not answered yet = no fee (artQuestionsOpen counts those so the rep sees them).
  * [{ sku, quantity, description, why, on, graphics }] one row per fee; `on` false when the rep switched it off (`artFeesOff`) or
  * already added that charge by hand (the hand-added line wins).
  */
 export const ART_FEES = { design: "PPGD1", vector: "PPFEE3", digitizing: "PPEDF" };
 const IMAGE_METHODS = ["Direct-to-Film", "Direct-to-Garment", "Heat-Transfer"];
-const isReady = (v) => v === true || ["yes", "true"].includes(str(v).trim().toLowerCase());
+const notReady = (v) => v === false || ["no", "false"].includes(str(v).trim().toLowerCase()); // blank = not answered yet
 const saysNo = (v) => str(v).trim().toLowerCase() === "no";
 const short = (t) => {
   const s = str(t).replace(/\s+/g, " ").trim();
@@ -74,7 +74,7 @@ export function artFees(data) {
   const found = { PPGD1: [], PPFEE3: [], PPEDF: [] };
   const label = (method, x, k) => `${method} graphic ${k + 1}${short(x.g.graphicDescription) ? ": " + short(x.g.graphicDescription) : ""}`;
   graphicsOf(d.products, "Screen Printing").forEach((x, k) => {
-    if (!isReady(x.g.isGraphicPrintReady)) found.PPGD1.push(label("Screen print", x, k));
+    if (notReady(x.g.isGraphicPrintReady)) found.PPGD1.push(label("Screen print", x, k));
     if (saysNo(x.g.hasPrintReadyVector)) found.PPFEE3.push(label("Screen print", x, k));
   });
   graphicsOf(d.products, "Embroidery").forEach((x, k) => {
@@ -82,7 +82,7 @@ export function artFees(data) {
   });
   IMAGE_METHODS.forEach((m) =>
     graphicsOf(d.products, m).forEach((x, k) => {
-      if (!isReady(x.g.isGraphicPrintReady)) found.PPGD1.push(label(m, x, k));
+      if (notReady(x.g.isGraphicPrintReady)) found.PPGD1.push(label(m, x, k));
     })
   );
   const off = new Set((d.artFeesOff || []).map((v) => str(v).toUpperCase()));
@@ -101,11 +101,13 @@ export function artFees(data) {
     }));
 }
 
-/* How many graphics still need the vector (screen print) or DST (embroidery) answer before their fees can be worked out. */
+/* How many graphics still need an answer before their art fees can be worked out (print ready, vector, DST). */
 export function artQuestionsOpen(data) {
   const d = data || {};
+  const blank = (v) => v !== true && v !== false && !str(v).trim();
+  const ready = ["Screen Printing", ...IMAGE_METHODS].reduce((n, m) => n + graphicsOf(d.products, m).filter((x) => blank(x.g.isGraphicPrintReady)).length, 0);
   const v = graphicsOf(d.products, "Screen Printing").filter((x) => !str(x.g.hasPrintReadyVector).trim()).length;
   const e = graphicsOf(d.products, "Embroidery").filter((x) => !str(x.g.hasDigitizedFile).trim()).length;
-  return { vector: v, digitized: e };
+  return { ready, vector: v, digitized: e };
 }
 

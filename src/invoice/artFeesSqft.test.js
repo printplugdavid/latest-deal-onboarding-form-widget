@@ -49,7 +49,13 @@ describe("E-154 art fees", () => {
   test("blank answers add nothing and are counted for the rep", () => {
     const d = { products: [garment("Screen Printing", [g({ isGraphicPrintReady: true })]), garment("Embroidery", [g({}), g({})])] };
     expect(fees(d)).toEqual([]);
-    expect(artQuestionsOpen(d)).toEqual({ vector: 1, digitized: 2 });
+    expect(artQuestionsOpen(d)).toEqual({ ready: 0, vector: 1, digitized: 2 });
+  });
+  test("print ready not answered yet (blank) adds no design fee and is counted; an older order's false still means not ready", () => {
+    const blank = { products: [garment("Direct-to-Film", [g({ isGraphicPrintReady: "" }), g({})])] };
+    expect(fees(blank)).toEqual([]);
+    expect(artQuestionsOpen(blank).ready).toBe(2);
+    expect(fees({ products: [garment("Direct-to-Film", [g({ isGraphicPrintReady: false })])] })).toEqual([["PPGD1", 1, true]]);
   });
   test("the art fees land on the draft lines; vector / digitizing are no longer suggestions", () => {
     const d = {
