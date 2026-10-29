@@ -80,6 +80,13 @@ export const openDeptTasks = (tasks, dept) => (tasks || []).filter((t) => isOpen
  */
 export const isOrderProductsTask = (subject) => /^OUTSOURCED: (PATCHES: )?ORDER PRODUCTS$/.test(englishHalf(subject));
 export const openOrderTasks = (tasks) => (tasks || []).filter((t) => isOpen(t) && isOrderProductsTask(t.Subject));
+/*
+ * The Outsourced tab must exist whenever outsourced work is open, even when the order has no Outsourced card (measured 10-29: 5 of 21
+ * outsourced Deals since 09-01 had none -- patches go on the Vinyl card, a car-magnet order had no card), or the hold would leave the
+ * Deal with no place to close its tasks.
+ */
+export const needsOutsourcedTab = (tasks, config) =>
+  outsourcedOn(config) && (openOrderTasks(tasks).length > 0 || openDeptTasks(tasks, "outsourced").length > 0);
 /* Every open task that keeps the Deal out of Quality Check. */
 export const openHoldTasks = (tasks, withOutsourced = false) => [
   ...openWorkTasks(tasks, withOutsourced),

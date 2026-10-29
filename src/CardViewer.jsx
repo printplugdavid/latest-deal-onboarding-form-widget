@@ -34,7 +34,7 @@ import { workDriveTarget } from "./productionCards";
 import { NOTE_EDITED_WARNING, newestFirst, noteEditedAfterSave, readFileText } from "./zohoFiles";
 import { LIVE_NOTE_TITLE } from "./amendment/amendmentDiff";
 import ProductionFlow from "./production/ProductionFlowPanel";
-import { flowDeptFor } from "./production/productionFlow";
+import { DEPARTMENTS, flowDeptFor, needsOutsourcedTab } from "./production/productionFlow";
 import PRODUCTION_CONFIG from "./production/productionConfig.json";
 
 const ZOHO = window.ZOHO;
@@ -158,6 +158,7 @@ const CardViewer = () => {
   const [tab, setTab] = useState(0);
   const [flow, setFlow] = useState(null); // E-70: { entity, recordId, deal, data, tasks, notes, user }
   const frameRef = useRef(null);
+  const keepOutsourcedTab = useRef(false); // E-164: once shown, the flow-only Outsourced tab stays for this visit
   const flowOn = PRODUCTION_CONFIG.flowOn === true;
   const refreshFlow = async () => {
     if (!flow) return;
@@ -196,7 +197,14 @@ const CardViewer = () => {
     ZOHO.embeddedApp.init();
   }, []);
 
-  const current = state.cards[tab];
+  /* E-164: an Outsourced tab with only the flow when outsourced work is open but the order has no Outsourced card. */
+  const outsourcedCard = DEPARTMENTS.outsourced.card;
+  const cards =
+    flowOn && flow && (keepOutsourcedTab.current = keepOutsourcedTab.current || needsOutsourcedTab(flow.tasks, PRODUCTION_CONFIG)) &&
+    !state.cards.some((c) => c.name === outsourcedCard)
+      ? [...state.cards, { name: outsourcedCard, label: "Outsourced", flowOnly: true }]
+      : state.cards;
+  const current = cards[tab];
 
   // Grow the frame to the card's full height so the popup scrolls, not the frame.
   const fitFrame = () => {
@@ -280,7 +288,7 @@ const CardViewer = () => {
           scrollButtons="auto"
           sx={{ flexGrow: 1, minHeight: 48 }}
         >
-          {state.cards.map((c) => (
+          {cards.map((c) => (
             <Tab key={c.name} label={c.label} />
           ))}
         </Tabs>
@@ -320,7 +328,13 @@ const CardViewer = () => {
         {flowOn && flow && current && flowDeptFor(current.name, PRODUCTION_CONFIG) && (
           <ProductionFlow key={"flow-" + current.name} dept={flowDeptFor(current.name, PRODUCTION_CONFIG).key} ctx={flow} refresh={refreshFlow} />
         )}
-        {current?.error ? (
+        {current?.flowOnly ? (
+          <Box sx={{ p: 3 }}>
+            <Typography variant="body2" color="text.secondary">
+              This order has no Outsourced card (its outsourced items are on another card). The outsourced steps are above.
+            </Typography>
+          </Box>
+        ) : current?.error ? (
           <Box sx={{ p: 3 }}>
             <Alert severity="error">
               Couldn't read the {current.label} card: {current.error}

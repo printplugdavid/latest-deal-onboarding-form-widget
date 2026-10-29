@@ -24,6 +24,7 @@ import {
   flowDeptFor,
   hasStartSteps,
   outsourcedOn,
+  needsOutsourcedTab,
   BLOCK_TEXT,
   FLOW_NOTE_TITLE,
 } from "./productionFlow";
@@ -304,5 +305,13 @@ test("notes wording (David 10-29): the start artwork step mentions the notes", (
   expect(START_STEPS.find((s) => s.key === "artwork").question).toBe(
     "Print-ready artwork and placement verified with the mock-up, the notes and the original art, with a critical eye (no errors, no drift from the original)?"
   );
+});
+
+test("E-164: an Outsourced tab is needed while outsourced work is open (patches orders have no Outsourced card)", () => {
+  const on = { outsourcedOn: true };
+  expect(needsOutsourcedTab([T("1", ORDER)], on)).toBe(true);
+  expect(needsOutsourcedTab([T("4", PACKAGE)], on)).toBe(true);
+  expect(needsOutsourcedTab([T("1", ORDER, "Completed"), T("3", AM)], on)).toBe(false);
+  expect(needsOutsourcedTab([T("1", ORDER)], { outsourcedOn: false })).toBe(false);
 });
 
