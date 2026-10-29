@@ -33,6 +33,9 @@ import { ALWAYS_BUILT, buildCardsFromData, labelFor, orderOf } from "./cardBuild
 import { workDriveTarget } from "./productionCards";
 import { NOTE_EDITED_WARNING, newestFirst, noteEditedAfterSave, readFileText } from "./zohoFiles";
 import { LIVE_NOTE_TITLE } from "./amendment/amendmentDiff";
+import ProductionFlow from "./production/ProductionFlowPanel";
+import { deptForCard } from "./production/productionFlow";
+import PRODUCTION_CONFIG from "./production/productionConfig.json";
 
 const ZOHO = window.ZOHO;
 
@@ -82,7 +85,7 @@ async function loadCards(entity, recordId) {
     if (!byName.has(name)) byName.set(name, { olderCopies: 0 });
     else byName.get(name).olderCopies += 1;
   }
-  if (!byName.size) return { cards: [], info: "", workDrive: "", workDriveLabel: "" };
+  if (!byName.size) return { cards: [], info: "", workDrive: "", workDriveLabel: "", flow: null };
 
   const json = all
     .filter((a) => String(a?.File_Name || "").toLowerCase().endsWith(".json"))
@@ -121,13 +124,46 @@ async function loadCards(entity, recordId) {
   const folder = workDriveTarget(deal);
   const liveNote = (notesResp?.data || []).filter((n) => n?.Note_Title === LIVE_NOTE_TITLE).sort(newestFirst)[0];
   const noteEdited = noteEditedAfterSave(liveNote, json);
-  return { cards: cards.sort((a, b) => orderOf(a.name) - orderOf(b.name)), info, workDrive: folder.href, workDriveLabel: folder.label, noteEdited: noteEdited ? pcStamp(noteEdited.toISOString()) : "" };
+  return {
+    cards: cards.sort((a, b) => orderOf(a.name) - orderOf(b.name)),
+    info,
+    workDrive: folder.href,
+    workDriveLabel: folder.label,
+    noteEdited: noteEdited ? pcStamp(noteEdited.toISOString()) : "",
+    // E-70: what the production flow needs (tasks + who is looking are read after, by loadFlow)
+    flow: { entity, recordId, deal, data, notes: notesResp?.data || [] },
+  };
+}
+
+/* E-70: the Deal, its tasks and notes (fresh), and who is looking. Never fatal: a part that fails comes back empty. */
+async function loadFlow(entity, recordId) {
+  const soft = (p) => p.then((r) => r).catch(() => null);
+  const [rec, tasks, notes, me] = await Promise.all([
+    soft(ZOHO.CRM.API.getRecord({ Entity: entity, RecordID: recordId, approved: "both" })),
+    soft(ZOHO.CRM.API.getRelatedRecords({ Entity: entity, RecordID: recordId, RelatedList: "Tasks", page: 1, per_page: 200 })),
+    soft(ZOHO.CRM.API.getRelatedRecords({ Entity: entity, RecordID: recordId, RelatedList: "Notes", page: 1, per_page: 200 })),
+    soft(ZOHO.CRM.CONFIG.getCurrentUser()),
+  ]);
+  const u = me?.users?.[0] || {};
+  return {
+    deal: rec?.data?.[0] || null,
+    tasks: tasks?.data || [],
+    notes: notes?.data || null,
+    user: { id: String(u.id || ""), name: String(u.full_name || "") },
+  };
 }
 
 const CardViewer = () => {
   const [state, setState] = useState({ status: "loading", cards: [], message: "", info: "" });
   const [tab, setTab] = useState(0);
+  const [flow, setFlow] = useState(null); // E-70: { entity, recordId, deal, data, tasks, notes, user }
   const frameRef = useRef(null);
+  const flowOn = PRODUCTION_CONFIG.flowOn === true;
+  const refreshFlow = async () => {
+    if (!flow) return;
+    const f = await loadFlow(flow.entity, flow.recordId);
+    setFlow((old) => ({ ...old, ...(f.deal ? { deal: f.deal } : {}), tasks: f.tasks, ...(f.notes ? { notes: f.notes } : {}), user: f.user.id ? f.user : old.user }));
+  };
 
   useEffect(() => {
     if (!ZOHO?.embeddedApp) {
@@ -147,8 +183,12 @@ const CardViewer = () => {
       const entity = data?.Entity;
       const recordId = data?.EntityId?.[0] ?? data?.EntityId;
       try {
-        const { cards, info, workDrive, workDriveLabel, noteEdited } = await loadCards(entity, recordId);
+        const { cards, info, workDrive, workDriveLabel, noteEdited, flow: base } = await loadCards(entity, recordId);
         setState({ status: "ready", cards, message: "", info, workDrive, workDriveLabel, noteEdited });
+        if (PRODUCTION_CONFIG.flowOn === true && base) {
+          const f = await loadFlow(entity, recordId);
+          setFlow({ ...base, ...(f.deal ? { deal: f.deal } : {}), tasks: f.tasks, ...(f.notes ? { notes: f.notes } : {}), user: f.user });
+        }
       } catch (e) {
         setState({ status: "error", cards: [], message: String(e?.message || e) });
       }
@@ -277,6 +317,9 @@ const CardViewer = () => {
       )}
 
       <Box sx={{ flexGrow: 1, overflow: "auto", background: "#e9eaec" }}>
+        {flowOn && flow && current && deptForCard(current.name) && (
+          <ProductionFlow key={"flow-" + current.name} dept={deptForCard(current.name).key} ctx={flow} refresh={refreshFlow} />
+        )}
         {current?.error ? (
           <Box sx={{ p: 3 }}>
             <Alert severity="error">

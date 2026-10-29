@@ -1,0 +1,8 @@
+{
+  "_flowOn": "E-70 round 1 (David 10-29): the production flow on the Screen Print / Embroidery / Vinyl card tabs. false = the cards look and work exactly as before. ON since David's \"Push it\" 10-29.",
+  "flowOn": true,
+  "_qcPartOn": "E-82 (David 10-29): the Quality Check form's \"Part ready - rest still in production\" result (nothing failed, stays in QC, a task for the Sales Person) and \"Record what the customer picked up\" when a part is waiting. false = the QC form works as before.",
+  "qcPartOn": true,
+  "_writePantones": "E-159 (David 10-29): onboarding Submit and the Amendment Form write the order's screen print Pantone codes into the Deal's PANTONE 1-8 fields (code only, never blanked; Trigger []). false = nothing written.",
+  "writePantones": true
+}
