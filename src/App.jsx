@@ -40,6 +40,8 @@ import { afterRequestLeaves, requestArtCopy, shouldCopyArt } from "./artCopy";
 import { ArtFilesContext } from "./components/GraphicArt";
 import BillingSection from "./components/BillingSection";
 import BillingResult from "./components/BillingResult";
+import AlreadyOnboarded from "./components/AlreadyOnboarded";
+import { draftOffer, loadOnboarding } from "./invoice/draftLater";
 import { buildBillingLines } from "./invoice/billingLines";
 import { billingOnFor, billingRecord, draftsOn, prepareDraft, sendDraft } from "./invoice/billingDraft";
 import { BillingOn } from "./invoice/billingContext";
@@ -85,6 +87,9 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [billing, setBilling] = useState(null); // E-108: after Submit, the draft invoice's progress and Zoho's answer
   const [currentUser, setCurrentUser] = useState(""); // E-108: the rep's name, logged by the draft function
+  // E-151: null while checking; { onboarded: false } = the normal form; onboarded = the "already onboarded" screen (draft only).
+  const [onboarding, setOnboarding] = useState(null);
+  const draftDataRef = useRef(null); // E-151: the answers the draft was built from, for Try again
 
   useEffect(() => {
     // initialize the app
@@ -114,6 +119,10 @@ function App() {
           RecordID: entityId,
         });
         setRecordData(recordResp?.data?.[0]);
+        // E-151: already onboarded? Then only the draft is offered. Any failure here shows the normal form (never blocks a rep).
+        loadOnboarding(ZOHO, entity, entityId)
+          .then((found) => setOnboarding(found))
+          .catch(() => setOnboarding({ onboarded: false }));
         // E-38: the Account's standing Customer Notes, shown read-only. Never blocks the form.
         loadAccountNotes(recordResp?.data?.[0]).then((a) => setAccountNotes(a?.notes || ""));
 
@@ -481,6 +490,7 @@ function App() {
           let prepared = null;
           let answer;
           try {
+            draftDataRef.current = data;
             prepared = await prepareDraft(data);
             answer = await sendDraft(entityId, prepared, { submittedBy: currentUser });
           } catch (err) {
@@ -496,9 +506,38 @@ function App() {
     }
   };
 
-  if (billing) return <BillingResult state={billing} onClose={() => ZOHO.CRM.UI.Popup.closeReload()} />;
+  // E-151: Try again re-sends the same draft (the Zoho function refuses a second draft for the Deal, so it cannot duplicate).
+  const retryDraft = async () => {
+    const was = billing || {};
+    const doc = (was.prepared && was.prepared.flags && was.prepared.flags.document) || "invoice";
+    setBilling({ busy: doc });
+    let prepared = was.prepared || null;
+    let answer;
+    try {
+      if (!prepared) prepared = await prepareDraft(draftDataRef.current);
+      answer = await sendDraft(entityId, prepared, { submittedBy: currentUser });
+    } catch (err) {
+      answer = { result: "not_sent", message: "The draft could not be made (" + String((err && err.message) || err) + "). Please make it in Books." };
+    }
+    setBilling({ prepared, answer });
+  };
 
-  if (recordData && options) {
+  if (billing) return <BillingResult state={billing} onClose={() => ZOHO.CRM.UI.Popup.closeReload()} onRetry={retryDraft} />;
+
+  // E-151 (David 10-29, "Draft only"): a Deal that is already onboarded never gets the full form again.
+  if (onboarding && onboarding.onboarded) {
+    return (
+      <AlreadyOnboarded
+        dealId={entityId}
+        found={onboarding}
+        offer={draftOffer(onboarding, { draftsOn: draftsOn(), billingOn: billingOnFor(entityId) })}
+        submittedBy={currentUser}
+        onClose={() => ZOHO.CRM.UI.Popup.closeReload()}
+      />
+    );
+  }
+
+  if (recordData && options && onboarding) {
     return (
       <Box sx={{ width: "100%" }}>
         <FormProvider {...methods}>
