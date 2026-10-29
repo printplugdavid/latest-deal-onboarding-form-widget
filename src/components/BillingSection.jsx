@@ -1,10 +1,10 @@
 import React, { useState } from "react";
-import { Alert, Autocomplete, Box, Button, TextField, Typography } from "@mui/material";
+import { Alert, Autocomplete, Box, Button, Checkbox, FormControlLabel, TextField, Typography } from "@mui/material";
 import { Controller, useFieldArray, useFormContext, useWatch } from "react-hook-form";
 import { applyGarmentSplits } from "../garmentSplit";
 import { buildBillingLines, itemName, printLabel, snapshotRate } from "../invoice/billingLines";
 import { prepareDraft, sendDraft, draftsOn } from "../invoice/billingDraft";
-import { OTHER_CHARGES, chargeLabel, suggestCharges } from "../invoice/otherCharges";
+import { OTHER_CHARGES, artFees, artQuestionsOpen, chargeLabel, suggestCharges } from "../invoice/otherCharges";
 import { screenPrintShortfall } from "../invoice/minimums";
 
 /*
@@ -110,7 +110,7 @@ export function HandList({ items }) {
 }
 
 export default function BillingSection({ dealId, submittedBy }) {
-  const { control, getValues } = useFormContext();
+  const { control, getValues, setValue } = useFormContext();
   const { fields, append, remove } = useFieldArray({ control, name: "otherCharges" });
   const watched = useWatch({
     control,
@@ -124,14 +124,17 @@ export default function BillingSection({ dealId, submittedBy }) {
       "discountsForExtendedTurnaround",
       "roundUpForCharity",
       "isRepeatOrder",
+      "artFeesOff",
     ],
   });
-  const [products, otherCharges, billingDocument, payingByCard, hardDueDate, rush, extraWeek, roundUp, isRepeatOrder] = watched;
+  const [products, otherCharges, billingDocument, payingByCard, hardDueDate, rush, extraWeek, roundUp, isRepeatOrder, artFeesOff] = watched;
   const [check, setCheck] = useState(null); // { busy } | { prepared, answer }
 
   let built = null;
   let suggestions = [];
   let shortfall = null;
+  let art = [];
+  let artOpen = { ready: 0, vector: 0, digitized: 0 };
   try {
     const data = applyGarmentSplits({
       products,
@@ -143,8 +146,11 @@ export default function BillingSection({ dealId, submittedBy }) {
       discountsForExtendedTurnaround: extraWeek,
       roundUpForCharity: roundUp,
       isRepeatOrder,
+      artFeesOff,
     });
     built = buildBillingLines(data);
+    art = artFees(data);
+    artOpen = artQuestionsOpen(data);
     shortfall = screenPrintShortfall(data);
     suggestions = suggestCharges(data);
   } catch (e) {
@@ -182,9 +188,47 @@ export default function BillingSection({ dealId, submittedBy }) {
       {yesNo(control, "billingDocument", "Invoice or Estimate?", ["Invoice", "Estimate"], "One per Deal")}
       {yesNo(control, "payingByCard", "Paying by card?", ["Yes", "No"], "Yes adds the 3% card processing fee")}
 
+      {/* E-154 (David 10-29): art fees from each graphic's answers, on the draft unless switched off here. */}
+      {(art.length > 0 || artOpen.ready > 0 || artOpen.vector > 0 || artOpen.digitized > 0) && (
+        <Box sx={{ mt: 1 }}>
+          <Typography sx={{ fontWeight: "bold" }}>Art fees (added on their own)</Typography>
+          {art.map((f) => (
+            <FormControlLabel
+              key={f.sku}
+              sx={{ display: "flex", alignItems: "flex-start" }}
+              control={
+                <Checkbox
+                  checked={f.on}
+                  disabled={f.byHand}
+                  onChange={(e) => {
+                    const now = new Set((getValues("artFeesOff") || []).map(String));
+                    if (e.target.checked) now.delete(f.sku);
+                    else now.add(f.sku);
+                    setValue("artFeesOff", [...now], { shouldDirty: true });
+                  }}
+                />
+              }
+              label={
+                <Typography variant="body2" sx={{ pt: "9px" }}>
+                  {chargeLabel(f.sku)} x {f.quantity} ({f.why}): {f.graphics.join("; ")}
+                  {f.byHand ? " -- you added this charge below, so it is not added twice" : f.on ? "" : " -- switched off, not on the draft"}
+                </Typography>
+              }
+            />
+          ))}
+          {(artOpen.ready > 0 || artOpen.vector > 0 || artOpen.digitized > 0) && (
+            <Typography variant="body2" sx={{ color: "text.secondary" }}>
+              {artOpen.ready > 0 ? `${artOpen.ready} graphic(s) still need "Is Graphic Print Ready?". ` : ""}
+              {artOpen.vector > 0 ? `${artOpen.vector} screen print graphic(s) still need "Do They Have A Print-Ready Vector File?". ` : ""}
+              {artOpen.digitized > 0 ? `${artOpen.digitized} embroidery graphic(s) still need "Do They Have A Digitized File (DST)?".` : ""}
+            </Typography>
+          )}
+        </Box>
+      )}
+
       <Typography sx={{ fontWeight: "bold", mt: 1 }}>Other charges</Typography>
       <Typography variant="body2" sx={{ mb: 1 }}>
-        Setup, digitizing, art time and other fees go on the draft only when you add them here.
+        Setup and other fees go on the draft only when you add them here (art fees above are added on their own).
       </Typography>
       {fields.map((f, i) => (
         <Box key={f.id} sx={{ display: "flex", gap: 1, alignItems: "flex-start" }}>

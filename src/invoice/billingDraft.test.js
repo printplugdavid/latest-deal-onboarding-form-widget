@@ -9,6 +9,7 @@ test("rolled out 10-22: the pilot list is empty, so every onboarding gets the In
 
 /* E-108: the two Zoho calls, with a fake ZOHO that answers like Deluge docs/43. */
 const order = {
+  artFeesOff: ["PPGD1", "PPFEE3", "PPEDF"], // E-154: about the draft call, not the art fees
   billingDocument: "Estimate",
   payingByCard: "Yes",
   hardDueDate: "Yes",

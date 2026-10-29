@@ -96,6 +96,7 @@ export const NOTE_LABELS = [
   "Desired Graphic Application",
   "Detail Lead Source",
   "Dimensions",
+  "Digitized File (DST)?",
   "Discounts for Extended Turnaround Time?",
   "Display Contact Info on the Storefront?",
   "Do Products Need Shipped?",
@@ -117,6 +118,8 @@ export const NOTE_LABELS = [
   "How Many Per Sheet",
   "How Would You Like To Fulfill Orders?",
   "Is Graphic Print Ready?",
+  "Print-Ready Vector File?",
+  "Square Feet",
   "Is Outsourced?",
   "Is This Garment Used With Other Application Types?",
   "Is This a Repeat Order?",
@@ -322,6 +325,8 @@ export function parseNoteToForm(rawContent, knownProducts) {
             return {
               graphicDescription: field(gTop, "Graphic Description"),
               isGraphicPrintReady: yes(field(gTop, "Is Graphic Print Ready?")),
+              hasPrintReadyVector: field(gTop, "Print-Ready Vector File?"), // E-154
+              hasDigitizedFile: field(gTop, "Digitized File (DST)?"), // E-154
               currentGraphicFormat: firstLine(field(gTop, "Current Graphic Format")) || field(gTop, "Current Graphic Format"),
               fineDetail: yesNo(field(gTop, "Fine Detail?")),
               specialtyThread: yes((THREAD_LINE.exec(gTop) || [])[1]),

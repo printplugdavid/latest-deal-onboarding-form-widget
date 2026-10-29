@@ -16,6 +16,7 @@ import {
 import ColorsUsedField from "./ColorsUsedField";
 import GraphicArt from "./GraphicArt";
 import ProductSkuRows from "./ProductSkuRows";
+import SqftCalculator from "./SqftCalculator";
 import FontsField from "./FontsField";
 import VendorsUsedField from "./VendorsUsedField";
 
@@ -315,6 +316,8 @@ const NonGarmentForm = ({ index }) => {
 
       {/* E-100: which Books product(s) this line is, picked or added through the New Product form. */}
       <ProductSkuRows basePath={`products.${index}.productSkus`} />
+      {/* E-156: square-foot items (decals, stencils, custom banner) get the calculator. */}
+      <SqftCalculator index={index} />
 
       <Controller
         control={control}

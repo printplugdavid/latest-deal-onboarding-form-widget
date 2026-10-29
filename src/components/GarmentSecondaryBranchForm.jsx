@@ -130,21 +130,56 @@ const GarmentSecondaryBranchForm = ({
         productIndex={index}
       />
 
-      <Box>
-        <Controller
-          name={`products.${index}.primaryBranches.${branchIndex}.secondaryBranches.${secBranchIndex}.isGraphicPrintReady`}
-          control={control}
-          defaultValue={false} // Set the default value of the checkbox
-          render={({ field }) => (
-            <FormGroup>
-              <FormControlLabel
-                control={<Checkbox {...field} checked={!!field.value} />}
+      {/* E-154 (David 10-29): a required Yes / No (it was a tick box, left unticked on most orders, and the art fees now follow it).
+          Older orders saved true / false: true shows as Yes; false shows blank and must be answered when the graphic is edited. */}
+      <Controller
+        name={`products.${index}.primaryBranches.${branchIndex}.secondaryBranches.${secBranchIndex}.isGraphicPrintReady`}
+        control={control}
+        defaultValue=""
+        rules={{ validate: (v) => v === true || v === "Yes" || v === "No" || "Required" }}
+        render={({ field, fieldState }) => (
+          <Autocomplete
+            size="small"
+            options={["Yes", "No"]}
+            value={field.value === true ? "Yes" : field.value === "Yes" || field.value === "No" ? field.value : null}
+            onChange={(_, v) => field.onChange(v || "")}
+            renderInput={(params) => (
+              <TextField
+                {...params}
                 label="Is Graphic Print Ready?"
+                error={!!fieldState.error}
+                helperText={fieldState.error ? "Required" : "No adds the design half hour on screen print, DTF, DTG and heat transfer"}
+                sx={{ mb: "0.8rem", mt: "5px" }}
               />
-            </FormGroup>
+            )}
+          />
+        )}
+      />
+
+      {/* E-154 (David 10-29): the art fees follow these answers -- No adds the fee to the draft on its own (the rep can switch it off). */}
+      {(productName === "Screen Printing" || productName === "Embroidery") && (
+        <Controller
+          control={control}
+          name={`products.${index}.primaryBranches.${branchIndex}.secondaryBranches.${secBranchIndex}.${productName === "Screen Printing" ? "hasPrintReadyVector" : "hasDigitizedFile"}`}
+          defaultValue=""
+          render={({ field }) => (
+            <Autocomplete
+              size="small"
+              options={["Yes", "No"]}
+              value={field.value || null}
+              onChange={(_, v) => field.onChange(v || "")}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  label={productName === "Screen Printing" ? "Do They Have A Print-Ready Vector File?" : "Do They Have A Digitized File (DST)?"}
+                  helperText={productName === "Screen Printing" ? "No adds the Vector Fee" : "No adds the Digitizing Fee"}
+                  sx={{ mb: "0.8rem", mt: "5px" }}
+                />
+              )}
+            />
           )}
         />
-      </Box>
+      )}
 
       <Controller
         control={control}

@@ -1,5 +1,5 @@
 {
- "_source": "built by tools/invoice/build-grid.py from pull-2026-10-23a.jsonl + added-since-pull.json (Books thread, read-only) -- never hand-edit",
+ "_source": "built by tools/invoice/build-grid.py from pull-2026-10-27b.jsonl + added-since-pull.json (Books thread, read-only) -- never hand-edit",
  "grids": {
   "screen": [
    {
@@ -1115,6 +1115,159 @@
      null
     ]
    }
+  ],
+  "decalSingle": [
+   {
+    "sku": "PPSCD",
+    "count": [
+     1,
+     10
+    ]
+   },
+   {
+    "sku": "PPSCD2",
+    "count": [
+     11,
+     19
+    ]
+   },
+   {
+    "sku": "PPSCD3",
+    "count": [
+     20,
+     29
+    ]
+   },
+   {
+    "sku": "PPSCD4",
+    "count": [
+     30,
+     39
+    ]
+   },
+   {
+    "sku": "PPSCD5",
+    "count": [
+     40,
+     49
+    ]
+   },
+   {
+    "sku": "PPSCD6",
+    "count": [
+     50,
+     75
+    ]
+   },
+   {
+    "sku": "PPSCD7",
+    "count": [
+     76,
+     100
+    ]
+   },
+   {
+    "sku": "PPSCD8",
+    "count": [
+     101,
+     null
+    ]
+   }
+  ],
+  "decalMulti": [
+   {
+    "sku": "PPMCD",
+    "count": [
+     1,
+     10
+    ]
+   },
+   {
+    "sku": "PPMCD2",
+    "count": [
+     11,
+     19
+    ]
+   },
+   {
+    "sku": "PPMCD3",
+    "count": [
+     20,
+     29
+    ]
+   },
+   {
+    "sku": "PPMCD4",
+    "count": [
+     30,
+     39
+    ]
+   },
+   {
+    "sku": "PPMCD5",
+    "count": [
+     40,
+     49
+    ]
+   },
+   {
+    "sku": "PPMCD6",
+    "count": [
+     50,
+     75
+    ]
+   },
+   {
+    "sku": "PPMCD7",
+    "count": [
+     76,
+     100
+    ]
+   },
+   {
+    "sku": "PPMCD8",
+    "count": [
+     101,
+     null
+    ]
+   }
+  ],
+  "stencil": [
+   {
+    "sku": "PPVS",
+    "feet": [
+     0,
+     9
+    ]
+   },
+   {
+    "sku": "PPVS1",
+    "feet": [
+     10,
+     14
+    ]
+   },
+   {
+    "sku": "PPVS2",
+    "feet": [
+     15,
+     19
+    ]
+   },
+   {
+    "sku": "PPVS3",
+    "feet": [
+     20,
+     29
+    ]
+   },
+   {
+    "sku": "PPVS4",
+    "feet": [
+     30,
+     null
+    ]
+   }
   ]
  },
  "extras": {
@@ -1137,6 +1290,9 @@
    "PPFEE6"
   ],
   "clientOwned": "PPCO"
+ },
+ "sqft": {
+  "bannerCustom": "PRIVB"
  },
  "otherCharges": [
   {
@@ -1661,6 +1817,86 @@
    "rate": 22,
    "unit": "Quantity"
   },
+  "PPMCD": {
+   "name": "Multi Color Decals - 1-10",
+   "rate": 22,
+   "unit": "Square Feet"
+  },
+  "PPMCD2": {
+   "name": "Multi Color Decals - 11-19",
+   "rate": 21,
+   "unit": "Square Feet"
+  },
+  "PPMCD3": {
+   "name": "Multi Color Decals - 20-29",
+   "rate": 20,
+   "unit": "Square Feet"
+  },
+  "PPMCD4": {
+   "name": "Multi Color Decals - 30-39",
+   "rate": 19,
+   "unit": "Square Feet"
+  },
+  "PPMCD5": {
+   "name": "Multi Color Decals - 40-49",
+   "rate": 18,
+   "unit": "Square Feet"
+  },
+  "PPMCD6": {
+   "name": "Multi Color Decals - 50-75",
+   "rate": 17,
+   "unit": "Square Feet"
+  },
+  "PPMCD7": {
+   "name": "Multi Color Decals - 76-100",
+   "rate": 16,
+   "unit": "Square Feet"
+  },
+  "PPMCD8": {
+   "name": "Multi Color Decals - 101+",
+   "rate": 15,
+   "unit": "Square Feet"
+  },
+  "PPSCD": {
+   "name": "Single Color Decals - 1-10",
+   "rate": 20,
+   "unit": "Square Feet"
+  },
+  "PPSCD2": {
+   "name": "Single Color Decals - 11-19",
+   "rate": 19,
+   "unit": "Square Feet"
+  },
+  "PPSCD3": {
+   "name": "Single Color Decals - 20-29",
+   "rate": 18,
+   "unit": "Square Feet"
+  },
+  "PPSCD4": {
+   "name": "Single Color Decals - 30-39",
+   "rate": 17,
+   "unit": "Square Feet"
+  },
+  "PPSCD5": {
+   "name": "Single Color Decals - 40-49",
+   "rate": 16,
+   "unit": "Square Feet"
+  },
+  "PPSCD6": {
+   "name": "Single Color Decals - 50-75",
+   "rate": 15,
+   "unit": "Square Feet"
+  },
+  "PPSCD7": {
+   "name": "Single Color Decals - 76-100",
+   "rate": 14,
+   "unit": "Square Feet"
+  },
+  "PPSCD8": {
+   "name": "Single Color Decals - 101+",
+   "rate": 13,
+   "unit": "Square Feet"
+  },
   "PPSP1": {
    "name": "Screen Print - 1 Color - 12-23 Garments",
    "rate": 17,
@@ -2055,6 +2291,36 @@
    "name": "Tag / Logo Change Fee",
    "rate": 4,
    "unit": "Each"
+  },
+  "PPVS": {
+   "name": "Vinyl Stencil - Under 1 ft - 9 ft",
+   "rate": 10,
+   "unit": "Square Feet"
+  },
+  "PPVS1": {
+   "name": "Vinyl Stencil - 10 ft - 14 ft",
+   "rate": 9,
+   "unit": "Square Feet"
+  },
+  "PPVS2": {
+   "name": "Vinyl Stencil - 15 ft - 19 ft",
+   "rate": 7.33,
+   "unit": "Square Feet"
+  },
+  "PPVS3": {
+   "name": "Vinyl Stencil - 20 ft - 29 ft",
+   "rate": 6.5,
+   "unit": "Square Feet"
+  },
+  "PPVS4": {
+   "name": "Vinyl Stencil - 30 ft +",
+   "rate": 6,
+   "unit": "Square Feet"
+  },
+  "PRIVB": {
+   "name": "Vinyl Banner",
+   "rate": 5,
+   "unit": "Square Feet"
   }
  }
 }

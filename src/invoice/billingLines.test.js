@@ -17,7 +17,8 @@ const sku = (s, name, productSource = "books") => ({ sku: s, productId: "", prod
 const place = (pick, extra = {}) => ({ placementPick: pick, ...extra });
 const garment = (productName, branches, extra = {}) => ({ productName, productType: "garment", primaryBranches: branches, ...extra });
 const branch = (o) => ({ everyGraphicOnEveryGarment: "Yes", isUsedInOtherAppTypes: "No", ...o });
-const order = (products, extra = {}) => ({ billingDocument: "Invoice", payingByCard: "No", hardDueDate: "No", products, ...extra });
+// E-154: these tests are about decoration pricing, so the automatic art fees are switched off here (artFees has its own tests).
+const order = (products, extra = {}) => ({ billingDocument: "Invoice", payingByCard: "No", hardDueDate: "No", artFeesOff: ["PPGD1", "PPFEE3", "PPEDF"], products, ...extra });
 
 const IND = "Independent Trading Co. - Heavyweight Hooded Pullover";
 const treasureValley = () =>
