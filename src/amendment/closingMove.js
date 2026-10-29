@@ -20,8 +20,24 @@ import { PRE_PRODUCTION_STAGES } from "../rushOrder";
 
 export const MOVE_FUNCTION = "WIDGET_Move_Closing_Date";
 
-/* Stages where production tasks exist and may be moved (stage names measured by COQL 2026-10-29). */
-export const IN_PRODUCTION_STAGES = ["Mock-Up Approved / In Production", "Online Purchase / In Production"];
+/*
+ * Stages where the form calls the move: from In Production until the order has left (David 10-29: "at any stage, including after In
+ * Production"; Deluge docs/51 §8: open produce tasks can still exist at revisions / corrections / QC, and at Production Complete their
+ * save with workflow lets "Needs Pickup" follow the new date). Stage names from the CRM (COQL 2026-10-29) and the revision form.
+ * Not here, so the date is left alone and the rep told: shipped, picked up, closed, lost, deferred, refunds, SCHOOL: / ADVERTISER:
+ * Deals, "Online Purchase / Needs Review" and "Test Garment Approved".
+ */
+export const IN_PRODUCTION_STAGES = [
+  "Mock-Up Approved / In Production",
+  "Online Purchase / In Production",
+  "Order Needs Revisions",
+  "Order Needs Corrections",
+  "Quality Check",
+  "Failed Quality Check",
+  "Production Complete - Remainder Due",
+  "Production Complete - No Remainder",
+  "Products Need Shipping",
+];
 
 export const amendmentDatesOn = () => TURNAROUND_CONFIG.writeOnSubmit === true && TURNAROUND_CONFIG.amendmentDates === true;
 export const moveInProductionOn = () => amendmentDatesOn() && TURNAROUND_CONFIG.moveInProduction === true;
@@ -83,7 +99,7 @@ export function amendmentDatePlan(deal, data, { moveOn = moveInProductionOn(), t
         "its date and production tasks from this form is not switched on yet. The Closing Date was not changed. Tell the " +
         "production manager. The rest of the amendment is being saved as normal."
       : `Closing Date: your answers say ${closingDate} (it is ${from || "blank"}), but the Deal is at "${stage || "(no stage)"}", ` +
-        "past production, so the form did not change it. Tell the production manager. The rest of the amendment is being saved " +
+        "where the form does not move dates (finished, closed, or not a regular order), so it did not change it. Tell the production manager. The rest of the amendment is being saved " +
         "as normal.",
   };
 }

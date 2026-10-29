@@ -73,14 +73,20 @@ describe("E-150 amendmentDatePlan", () => {
     expect(p.kind).toBe("blocked");
     expect(p.message).toMatch(/not after today/);
   });
-  test("past production: nothing written, the rep is told", () => {
-    const deal = { Stage: "Quality Check", Turnaround: "Standard", Closing_Date: "2026-11-16" };
+  test("finished or closed: nothing written, the rep is told", () => {
+    const deal = { Stage: "Products Shipped", Turnaround: "Standard", Closing_Date: "2026-11-16" };
     const p = amendmentDatePlan(deal, hard("2026-11-23"), { moveOn: true, today: TODAY });
     expect(p).toMatchObject({ kind: "blocked", fields: {} });
-    expect(p.message).toMatch(/past production/);
+    expect(p.message).toMatch(/does not move dates/);
   });
-  test("the in-production list holds only stages measured in the CRM", () => {
-    expect(IN_PRODUCTION_STAGES).toEqual(["Mock-Up Approved / In Production", "Online Purchase / In Production"]);
+  test("the move runs from In Production until the order has left (David: any stage), on stage names the CRM uses", () => {
+    expect(IN_PRODUCTION_STAGES).toHaveLength(9);
+    for (const stage of ["Order Needs Corrections", "Quality Check", "Failed Quality Check", "Production Complete - No Remainder"]) {
+      expect(amendmentDatePlan({ Stage: stage, Turnaround: "Hard Due Date", Closing_Date: "2026-11-16" }, hard("2026-11-23"), { moveOn: true, today: TODAY }).kind).toBe("move");
+    }
+    for (const stage of ["Needs Pickup", "Remarketing, Social Proof Done / Deal Closed", "ADVERTISER: Mock-Up Approved", "Online Purchase / Needs Review"]) {
+      expect(amendmentDatePlan({ Stage: stage, Turnaround: "Hard Due Date", Closing_Date: "2026-11-16" }, hard("2026-11-23"), { moveOn: true, today: TODAY }).kind).toBe("blocked");
+    }
   });
 });
 
