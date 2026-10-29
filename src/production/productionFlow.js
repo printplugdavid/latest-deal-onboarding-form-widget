@@ -78,7 +78,9 @@ export const openDeptTasks = (tasks, dept) => (tasks || []).filter((t) => isOpen
  * PATCHES: "), holds the move to Quality Check too, but is the Account Manager's job, so it is never closed from a card. The Account
  * Manager's parallel "ACCOUNT MANAGER: OUTSOURCED: Order Outsourced Product" is NOT counted (a duplicate, E-165).
  */
-export const isOrderProductsTask = (subject) => /^OUTSOURCED: (PATCHES: )?ORDER PRODUCTS$/.test(englishHalf(subject));
+/* E-165 (Deluge 10-29, David approved there): the order task is being renamed role-first, "ACCOUNT MANAGER: OUTSOURCED: Order Products";
+   old-name tasks stay open for a while, so both names match. "...: Order Outsourced Product" (the old duplicate) never does. */
+export const isOrderProductsTask = (subject) => /^(ACCOUNT MANAGER: )?OUTSOURCED: (PATCHES: )?ORDER PRODUCTS$/.test(englishHalf(subject));
 export const openOrderTasks = (tasks) => (tasks || []).filter((t) => isOpen(t) && isOrderProductsTask(t.Subject));
 /*
  * The Outsourced tab must exist whenever outsourced work is open, even when the order has no Outsourced card (measured 10-29: 5 of 21

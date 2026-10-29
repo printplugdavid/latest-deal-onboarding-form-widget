@@ -201,6 +201,10 @@ test("E-164: the real outsourced subjects (COQL 10-29): Package is the Outsource
   expect(isOrderProductsTask(AM)).toBe(false);
   expect(isOrderProductsTask(DESIGN)).toBe(false);
   expect(isOrderProductsTask("Order Outsourced product")).toBe(false);
+  // E-165: the role-first names (Deluge 10-29) match too; old names stay matched while old tasks are open
+  expect(isOrderProductsTask("ACCOUNT MANAGER: OUTSOURCED: Order Products / GERENTE DE CUENTAS: TERCERIZADA: Ordenar Productos")).toBe(true);
+  expect(isOrderProductsTask("RUSH: ACCOUNT MANAGER: OUTSOURCED: Order Products / CORRER: GERENTE DE CUENTAS: TERCERIZADA: Ordenar Productos")).toBe(true);
+  expect(deptOfTask("ACCOUNT MANAGER: OUTSOURCED: Order Products / x")).toBe(null);
   expect(deptOfTask(AM)).toBe(null);
   expect(deptOfTask(DESIGN)).toBe(null);
   const tasks = [T("1", ORDER), T("2", PACKAGE), T("3", AM), T("4", DESIGN), T("5", ORDER_RUSH, "Completed"), T("6", "EMBROIDERY: Produce Order / x")];
