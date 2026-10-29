@@ -2,6 +2,7 @@ import {
   countsOf,
   pairKey,
   billingDiff,
+  netSwaps,
   newHandItems,
   priceBeforeAfter,
   amendArgs,
@@ -213,4 +214,27 @@ test("a real call that does not answer: unknown, check Books before submitting a
   expect(dry.message).toMatch(/Nothing was changed/);
   const missing = readAmendAnswer({ status: "unavailable", reason: "missing", message: "x" }, { dryRun: false });
   expect(missing.unknown).toBe(false);
+});
+
+test("paid invoice: a same-price color swap cancels out; a real increase stays", () => {
+  const d = billingDiff(
+    [L("PC54", 6, "Black\n\n6 Medium", "garment", 4), L("PC54", 6, "Navy\n\n6 Large", "garment", 4)],
+    [L("PC54", 9, "Black\n\n9 Medium", "garment", 4), L("PC54", 3, "Navy\n\n3 Large", "garment", 4)]
+  );
+  const n = netSwaps(d);
+  expect(n.netted).toBe(3);
+  expect(n.add).toEqual([]);
+  expect(n.lower).toEqual([]);
+  // 3 Navy off, 5 Black on -> only 2 Black are charged
+  const d2 = billingDiff(
+    [L("PC54", 6, "Black\n\n6 Medium", "garment", 4), L("PC54", 6, "Navy\n\n6 Large", "garment", 4)],
+    [L("PC54", 11, "Black\n\n11 Medium", "garment", 4), L("PC54", 3, "Navy\n\n3 Large", "garment", 4)]
+  );
+  const n2 = netSwaps(d2);
+  expect(n2.netted).toBe(3);
+  expect(n2.lower).toEqual([]);
+  expect(n2.add.map((x) => [x.line.quantity, x.amount])).toEqual([[2, 8]]);
+  // different prices never cancel
+  const d3 = billingDiff([L("PC54", 3, "Navy\n\n3 Large", "garment", 4)], [L("PC61", 3, "Navy\n\n3 Large", "garment", 6)]);
+  expect(netSwaps(d3).netted).toBe(0);
 });

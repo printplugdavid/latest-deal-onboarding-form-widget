@@ -10,7 +10,7 @@
  */
 import React, { useState } from "react";
 import { Alert, Box, Button, Checkbox, CircularProgress, FormControlLabel, Radio, RadioGroup, Typography } from "@mui/material";
-import { AMEND_FUNCTION, NOTHING_TO_SEND, amendArgs, billingDiff, newHandItems, priceBeforeAfter, readAmendAnswer } from "../invoice/amendBilling";
+import { AMEND_FUNCTION, NOTHING_TO_SEND, amendArgs, billingDiff, netSwaps, newHandItems, priceBeforeAfter, readAmendAnswer } from "../invoice/amendBilling";
 import { call as callFunction, searchBooks } from "../products/booksItems";
 
 const money = (n) => (n < 0 ? "-$" : "+$") + Math.abs(Number(n) || 0).toFixed(2);
@@ -49,6 +49,7 @@ const AmendBilling = ({ dealId, original, saved, signature, reason, submittedBy,
     const d = sendable ? "send" : "leave";
     setDecision(d);
     publish({ decision: d, ...pick, flags: w.flags, signature: w.signature, answer: read });
+    return read;
   };
 
   const workOut = async () => {
@@ -66,7 +67,22 @@ const AmendBilling = ({ dealId, original, saved, signature, reason, submittedBy,
       publish({ decision: "none", add: [], lower: [], flags: p.flags, signature });
       return;
     }
-    await dryRun(w, ids);
+    const read = await dryRun(w, ids);
+    // Paid / part paid: the same item at the same price added and taken off (a color swap) cancels out -- ask Books again without it.
+    if (read && read.ok && ["paid", "part_paid"].includes(read.state)) {
+      const n = netSwaps(diff);
+      if (n.netted) {
+        const w2 = { ...w, diff: { ...diff, add: n.add, lower: n.lower }, netted: n.netted };
+        const ids2 = [...n.lower, ...n.add].map((x) => x.id);
+        setWork(w2);
+        setTicked(ids2);
+        if (!ids2.length) {
+          setAnswer(null);
+          setDecision("none");
+          publish({ decision: "none", add: [], lower: [], flags: p.flags, signature });
+        } else await dryRun(w2, ids2);
+      }
+    }
   };
 
   const toggle = (id) => {
@@ -110,6 +126,12 @@ const AmendBilling = ({ dealId, original, saved, signature, reason, submittedBy,
           {work.lookup && (
             <Alert severity="warning" sx={{ mb: 1 }}>
               {work.lookup} The amounts below use the price list saved with the form.
+            </Alert>
+          )}
+          {work.netted > 0 && (
+            <Alert severity="info" sx={{ mb: 1 }}>
+              This invoice is already paid, so {work.netted} piece(s) swapped for the same item at the same price cancel out: they are
+              neither charged nor credited.
             </Alert>
           )}
           {!all.length && <Alert severity="info">This amendment does not change the price. The invoice stays as it is.</Alert>}

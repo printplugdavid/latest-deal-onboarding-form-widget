@@ -140,7 +140,45 @@ export function billingDiff(beforeLines, afterLines) {
     }
     // same quantity (sizes may have moved inside a line): same SKU, same rate -> no money change, nothing sent
   });
+  [...add, ...lower].forEach((x) => (x.rate = Number((x.line.quantity && Math.abs(x.amount) / x.line.quantity) || 0)));
   return { add, lower, money: round2([...add, ...lower].reduce((s, x) => s + x.amount, 0)) };
+}
+
+/*
+ * Paid / part-paid invoices: an add and a lower of the SAME item at the SAME price cancel out (3 Navy swapped for 3 Black would
+ * otherwise make a new draft invoice AND a credit note for the same money). Returns { add, lower, netted } -- netted = how many
+ * pieces cancelled. On an unpaid invoice the lines are sent as they are (the invoice's text then shows the new colors).
+ */
+export function netSwaps({ add, lower }) {
+  const key = (x) => `${x.line.sku}|${x.rate}`;
+  const addQ = new Map();
+  const lowQ = new Map();
+  add.forEach((x) => addQ.set(key(x), (addQ.get(key(x)) || 0) + x.line.quantity));
+  lower.forEach((x) => lowQ.set(key(x), (lowQ.get(key(x)) || 0) + x.line.quantity));
+  let netted = 0;
+  const cancel = new Map();
+  addQ.forEach((q, k) => {
+    const c = Math.min(q, lowQ.get(k) || 0);
+    if (c > 0) {
+      cancel.set(k, c);
+      netted += c;
+    }
+  });
+  if (!netted) return { add, lower, netted: 0 };
+  const trim = (list) => {
+    const budget = new Map(cancel);
+    return list
+      .map((x) => {
+        const b = budget.get(key(x)) || 0;
+        if (!b) return x;
+        const take = Math.min(b, x.line.quantity);
+        budget.set(key(x), b - take);
+        const q = round2(x.line.quantity - take);
+        return q > 0 ? { ...x, id: x.id + ":net", line: { ...x.line, quantity: q }, amount: round2((x.amount / x.line.quantity) * q) } : null;
+      })
+      .filter(Boolean);
+  };
+  return { add: trim(add), lower: trim(lower), netted };
 }
 
 /* Hand-list items (no Books price) the amendment ADDED: the rep adds these in Books by hand. */
