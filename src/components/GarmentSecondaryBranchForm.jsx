@@ -146,6 +146,31 @@ const GarmentSecondaryBranchForm = ({
         />
       </Box>
 
+      {/* E-154 (David 10-29): the art fees follow these answers -- No adds the fee to the draft on its own (the rep can switch it off). */}
+      {(productName === "Screen Printing" || productName === "Embroidery") && (
+        <Controller
+          control={control}
+          name={`products.${index}.primaryBranches.${branchIndex}.secondaryBranches.${secBranchIndex}.${productName === "Screen Printing" ? "hasPrintReadyVector" : "hasDigitizedFile"}`}
+          defaultValue=""
+          render={({ field }) => (
+            <Autocomplete
+              size="small"
+              options={["Yes", "No"]}
+              value={field.value || null}
+              onChange={(_, v) => field.onChange(v || "")}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  label={productName === "Screen Printing" ? "Do They Have A Print-Ready Vector File?" : "Do They Have A Digitized File (DST)?"}
+                  helperText={productName === "Screen Printing" ? "No adds the Vector Fee" : "No adds the Digitizing Fee"}
+                  sx={{ mb: "0.8rem", mt: "5px" }}
+                />
+              )}
+            />
+          )}
+        />
+      )}
+
       <Controller
         control={control}
         name={`products.${index}.primaryBranches.${branchIndex}.secondaryBranches.${secBranchIndex}.currentGraphicFormat`}

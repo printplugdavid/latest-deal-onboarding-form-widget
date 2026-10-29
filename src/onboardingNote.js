@@ -13,6 +13,7 @@
  * Hard rule 7: the print-count calculation stays at the TOP; everything below reads its locals.
  */
 import { CLIENT_OWNED, isClientOwnedGarment } from "./products/clientOwned";
+import { sqftCalc } from "./invoice/sqft";
 import { formatSizeVariants } from "./sizeVariants";
 import { computePrints } from "./printMath";
 import { gangSheetPrints } from "./gangSheet";
@@ -247,6 +248,9 @@ export function buildOnboardingNote(data) {
                     yn(subBranch?.isGraphicPrintReady) +
                     newLine +
                     newLine +
+                    // E-154: only when answered, so older and online notes read as before.
+                    (subBranch?.hasPrintReadyVector ? "Print-Ready Vector File?: " + subBranch.hasPrintReadyVector + newLine + newLine : "") +
+                    (subBranch?.hasDigitizedFile ? "Digitized File (DST)?: " + subBranch.hasDigitizedFile + newLine + newLine : "") +
                     "Current Graphic Format: " +
                     subBranch?.currentGraphicFormat +
                     newLine +
@@ -454,6 +458,8 @@ export function buildOnboardingNote(data) {
           product?.dimensions +
           newLine +
           newLine +
+          // E-156: the square-foot calculator's answer, only when the size was entered.
+          (sqftNoteLine(product) ? "Square Feet: " + sqftNoteLine(product) + newLine + newLine : "") +
           "# Of Sides: " +
           product?.numberOfSides +
           newLine +
@@ -993,3 +999,13 @@ export function buildOnboardingNote(data) {
 
     return { content, printFields, cardCounts };
 }
+
+/* E-156: "8 x 12" x 18" = 1.5 sq ft each, 12 sq ft in all -> Single Color Decals - 1-10 (PPSCD) x 12 sq ft", or "". */
+function sqftNoteLine(product) {
+  const p = product || {};
+  if (!p.sqftWidthIn && !p.sqftHeightIn) return "";
+  const skus = (p.productSkus || []).map((r) => r && r.sku).filter(Boolean);
+  const c = sqftCalc({ skus, count: p.quantityOrdered, widthIn: p.sqftWidthIn, heightIn: p.sqftHeightIn });
+  return c.summary || "";
+}
+

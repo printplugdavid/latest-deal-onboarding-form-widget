@@ -21,6 +21,8 @@ import { canonicalKind, locationText, parseInches } from "../placements";
 import RULES from "../products/newProductRules.json";
 import CONFIG from "./billingConfig.json";
 import { takesExtraWeekDiscount } from "../turnaround";
+import { sqftCalc } from "./sqft";
+import { artFees } from "./otherCharges";
 
 const str = (v) => (v == null ? "" : String(v));
 const int = (v) => {
@@ -466,6 +468,14 @@ function productLines(products, handList) {
     if (p.productType === "nongarment") {
       const qty = int(p.quantityOrdered);
       const skus = (p.productSkus || []).map((r) => str(r && r.sku).trim().toUpperCase()).filter(Boolean);
+      // E-156: a product Books prices per square foot (decals, stencils, custom banner) is billed by the calculator: the right tier
+      // x the total square feet, never "x pieces".
+      const sq = sqftCalc({ skus, count: p.quantityOrdered, widthIn: p.sqftWidthIn, heightIn: p.sqftHeightIn });
+      if (sq.family) {
+        if (sq.line) lines.push({ ...sq.line, description: `${name} - ${sq.line.description}` });
+        else handList.push({ what: name, quantity: qty, reason: `square-foot item: ${sq.why}` });
+        return;
+      }
       if (!qty) return;
       if (skus.length === 1) lines.push({ sku: skus[0], quantity: qty, description: name, group: "product", clientQty: 0 });
       else handList.push({ what: name, quantity: qty, reason: skus.length ? "several SKUs: the form does not say how many of each" : "no Books SKU picked" });
@@ -519,8 +529,10 @@ export function buildBillingLines(data) {
       group: "other",
       clientQty: 0,
     }));
+  // E-154: art fees from each graphic's answers, added on their own (the rep can switch one off; a fee the rep added by hand wins).
+  const art = artFees(d).filter((f) => f.on).map((f) => ({ sku: f.sku, quantity: f.quantity, description: f.description, group: "fee", clientQty: 0 }));
   const fees = yes(d.roundUpForCharity) ? [{ sku: GRID.fees.roundUp, quantity: 1, description: "Faces Of Hope Round-Up Donation", group: "fee", clientQty: 0 }] : [];
-  const lines = merge([...garments, ...deco, ...productLines(products, handList), ...other, ...fees]).filter(
+  const lines = merge([...garments, ...deco, ...productLines(products, handList), ...other, ...art, ...fees]).filter(
     (l) => !GRID.fees.addedByZoho.includes(l.sku) // Zoho adds rush, extended turnaround and the card fee itself
   );
   // E-109 (10-23): warnings the rep sees in the preview, on Submit and on the result -- they never stop the draft.
