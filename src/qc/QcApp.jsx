@@ -892,7 +892,7 @@ const QcApp = () => {
               Chosen for you: {json?.doProductsNeedShipped === "Yes" ? "the onboarding form says this order needs shipping" : "this Deal has a ship-to address"}. Pick another result if it is being picked up.
             </Alert>
           )}
-          {result && result !== RESULTS.FAILED && !approved && (
+          {result && result !== RESULTS.FAILED && result !== RESULTS.PART && !approved && (
             <Alert severity="warning" sx={{ mb: 2 }}>An approval was un-ticked. Tick them all again, or choose Failed.</Alert>
           )}
 
