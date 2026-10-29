@@ -85,6 +85,8 @@ import { RUSH_FIELD, rushBoxPlan } from "../rushOrder";
 import { call as callFunction } from "../products/booksItems";
 import { parseNoteToForm, toPlainText } from "./noteToForm";
 import AmendBilling from "./AmendBilling";
+import { pantoneCodeFields, writePantonesOn } from "../production/productionFlow";
+import PRODUCTION_CONFIG from "../production/productionConfig.json";
 import { AMEND_FUNCTION, amendArgs, amendBillingOn, amendmentIdOf, outcomeLine, readAmendAnswer } from "../invoice/amendBilling";
 import { countFieldForTask, planTaskRestamp } from "./taskRestamp";
 import {
@@ -743,6 +745,17 @@ const AmendmentApp = () => {
           const APIData = { id: recordId, ...(cat.changed ? { Lead_Category: cat.value } : {}), ...(out.changed ? out.fields : {}) };
           const r = await ZOHO.CRM.API.updateRecord({ Entity: entity, APIData, Trigger: [] });
           if (!ok(r)) throw new Error("deal category / outsourcing: " + JSON.stringify(r?.data?.[0] || r));
+        });
+      }
+    }
+
+    // E-159: the amended order's screen print Pantone codes onto the Deal's PANTONE 1-8 (code only, never blanked; Trigger []).
+    if (writePantonesOn(PRODUCTION_CONFIG)) {
+      const pf = pantoneCodeFields(loaded.deal, saved);
+      if (Object.keys(pf).length) {
+        await step("Pantone codes on the Deal (" + Object.values(pf).join(", ") + ")", async () => {
+          const r = await ZOHO.CRM.API.updateRecord({ Entity: entity, APIData: { id: recordId, ...pf }, Trigger: [] });
+          if (!ok(r)) throw new Error("pantones: " + JSON.stringify(r?.data?.[0] || r));
         });
       }
     }

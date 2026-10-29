@@ -16,6 +16,8 @@ import {
   startNote,
   closeNote,
   deptStarted,
+  pantoneCodeFields,
+  writePantonesOn,
   BLOCK_TEXT,
   FLOW_NOTE_TITLE,
 } from "./productionFlow";
@@ -165,4 +167,13 @@ test("notes: what was answered and done, and how a reopened card knows a departm
   expect(deptStarted([n("2026-10-29T10:00:00-06:00", s)], "screen")).toBe(true);
   expect(deptStarted([n("2026-10-29T10:00:00-06:00", s), n("2026-10-29T12:00:00-06:00", c)], "screen")).toBe(false);
   expect(deptStarted([n("2026-10-29T10:00:00-06:00", s)], "embroidery")).toBe(false);
+});
+
+test("E-159: the order's Pantone codes onto the Deal, only what changes, never blanked; off unless switched on", () => {
+  const data = screenOrder("Pantone 186 C", "Pantone 286 C");
+  expect(pantoneCodeFields({}, data)).toEqual({ PANTONE_1: "186 C", PANTONE_2: "286 C" });
+  expect(pantoneCodeFields({ PANTONE_1: "186 C", PANTONE_2: "Black 6 C" }, data)).toEqual({ PANTONE_3: "286 C" });
+  expect(pantoneCodeFields({ PANTONE_1: "186 C", PANTONE_2: "286 C" }, data)).toEqual({});
+  expect(writePantonesOn({ writePantones: false })).toBe(false);
+  expect(writePantonesOn({ writePantones: true })).toBe(true);
 });

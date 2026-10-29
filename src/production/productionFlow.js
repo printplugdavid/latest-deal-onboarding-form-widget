@@ -170,6 +170,19 @@ export function pantoneSlots(deal, pantones) {
   }));
 }
 
+/*
+ * E-159 (David 10-29): onboarding / the Amendment Form put the order's screen print Pantone codes on the Deal (code only). A code
+ * already in a slot keeps it, new ones take empty slots, nothing is ever blanked. Returns only the fields that change.
+ */
+export function pantoneCodeFields(deal, data) {
+  const fields = {};
+  pantoneSlots(deal, pantonesOf(data)).forEach((r) => {
+    if (r.slot && str((deal || {})[slotField(r.slot)]).trim() !== r.code) fields[slotField(r.slot)] = r.code;
+  });
+  return fields;
+}
+export const writePantonesOn = (config) => !!config && config.writePantones === true;
+
 /* Grams typed by the agent: a number 0 or more, or null when blank / not a number. */
 export const grams = (v) => {
   const t = str(v).trim().replace(/,/g, "").replace(/\s*g$/i, "");

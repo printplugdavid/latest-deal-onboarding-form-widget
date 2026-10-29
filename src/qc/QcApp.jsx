@@ -53,6 +53,7 @@ import {
   STAGES,
   allApproved,
   buildPlan,
+  salesOwnerId,
   criticalNotes,
   dealIdentity,
   invoiceLine,
@@ -67,6 +68,8 @@ import {
   startPartialLines,
 } from "./qcRules";
 import { LABEL_KINDS, MAX_BOXES, boxCount, buildLabelHtml } from "./qcLabel";
+import PickupBlock from "./PickupBlock";
+import PRODUCTION_CONFIG from "../production/productionConfig.json";
 import logoFile from "./logo.png";
 import qrFile from "./review-qr.png";
 
@@ -252,6 +255,8 @@ const QcApp = () => {
   const [partialLines, setPartialLines] = useState([]);
   const [partialNotes, setPartialNotes] = useState("");
   const [notes, setNotes] = useState("");
+  const [mode, setMode] = useState("qc"); // E-82: "qc" | "pickup" (record what the customer picked up)
+  const partOn = PRODUCTION_CONFIG.qcPartOn === true;
 
   const [confirming, setConfirming] = useState(false);
   const [labelOpen, setLabelOpen] = useState(false);
@@ -361,7 +366,7 @@ const QcApp = () => {
   const accountName = deal.Account_Name?.name || json?.contactInfo?.Account_Name || "";
   const phone = contact?.Phone || contact?.Mobile || json?.contactInfo?.Contact_Phone || "";
   const labelBoxes = boxCount(boxes);
-  const labelKind = shipOnly || result === RESULTS.SHIP ? LABEL_KINDS.SHIP : result === RESULTS.FAILED ? LABEL_KINDS.PARTIAL : LABEL_KINDS.PICKUP;
+  const labelKind = shipOnly || result === RESULTS.SHIP ? LABEL_KINDS.SHIP : result === RESULTS.FAILED || result === RESULTS.PART ? LABEL_KINDS.PARTIAL : LABEL_KINDS.PICKUP;
   const labelHtml = labelOpen
     ? buildLabelHtml({
         kind: labelKind,
@@ -449,6 +454,38 @@ const QcApp = () => {
       if (closed) done.push(closed === 1 ? "Quality Check task completed" : closed + " Quality Check tasks completed");
     }
 
+    // E-82: part ready -> a task for the Deal's Sales Person (the stage does not move, so no stage automation tells them).
+    if (p.salesTask) {
+      try {
+        let users = [];
+        try {
+          const u = await ZOHO.CRM.API.getAllUsers({ Type: "ActiveUsers" });
+          users = u?.users || [];
+        } catch (e) {
+          users = [];
+        }
+        const owner = salesOwnerId(deal, users);
+        const r = await ZOHO.CRM.API.insertRecord({
+          Entity: "Tasks",
+          APIData: {
+            Subject: p.salesTask.subject,
+            Description: p.salesTask.description,
+            What_Id: recordId,
+            $se_module: entity,
+            Priority: "High",
+            Due_Date: todayStamp(),
+            ...(owner ? { Owner: { id: owner } } : {}),
+          },
+          Trigger: [],
+        });
+        if (!ok(r)) throw new Error(why(r));
+        done.push("Task made for the Sales Person: tell the customer what is ready");
+      } catch (e) {
+        console.log("QC: sales task not made:", e);
+        failed.push("The task for the Sales Person was not made - tell them yourself");
+      }
+    }
+
     // 4. the stage, LAST, with the workflow trigger -- its automations read what was written above.
     if (p.stage.move) {
       try {
@@ -503,6 +540,82 @@ const QcApp = () => {
     </Button>
   );
 
+  // What is ready now: shared by "Failed, part ready" and E-82's "Part ready" result.
+  const linesBox = (
+    <Box sx={{ p: 1.5, bgcolor: "#f6f8fb", border: "1px solid #dfe4ea", borderRadius: 1 }}>
+                    <Typography sx={{ fontSize: 13, color: "#444", mb: 1 }}>
+                      Everything starts as ready. Un-tick a line that is being held, or lower its ready quantity.
+                    </Typography>
+                    {partialLines.length === 0 && <Typography sx={{ fontSize: 13, color: "#8a5300", mb: 1 }}>No order lines to choose from — describe what is ready in the box below.</Typography>}
+                    {partialLines.map((l, i) => (
+                      <Box key={l.key} sx={{ display: "flex", alignItems: "center", gap: 1, mb: 0.5 }}>
+                        <Checkbox
+                          checked={l.ready}
+                          disabled={locked}
+                          onChange={(e) => setPartialLines((rows) => rows.map((r, j) => (j === i ? { ...r, ready: e.target.checked, readyQty: e.target.checked ? r.qty : 0 } : r)))}
+                        />
+                        <Typography sx={{ flexGrow: 1, fontSize: 14 }}>{l.label}</Typography>
+                        {l.qty != null && (
+                          <>
+                            <TextField
+                              size="small"
+                              type="number"
+                              value={l.ready ? l.readyQty ?? "" : 0}
+                              disabled={locked || !l.ready}
+                              onChange={(e) => setPartialLines((rows) => rows.map((r, j) => (j === i ? { ...r, readyQty: e.target.value } : r)))}
+                              inputProps={{ min: 0, max: l.qty, style: { width: 64, textAlign: "right" } }}
+                            />
+                            <Typography sx={{ fontSize: 14, width: 70 }}>of {l.qty} ready</Typography>
+                          </>
+                        )}
+                      </Box>
+                    ))}
+                    <TextField
+                      fullWidth
+                      multiline
+                      minRows={2}
+                      size="small"
+                      sx={{ mt: 1, bgcolor: "#fff" }}
+                      label="Specifics (for example: all but the 2XLs)"
+                      value={partialNotes}
+                      disabled={locked}
+                      onChange={(e) => setPartialNotes(e.target.value)}
+                    />
+                  </Box>
+  );
+
+  // E-82: something released earlier is waiting for pickup -> the form can record what the customer took.
+  const pickupAvailable = partOn && !shipOnly && deal.Partial_Pick_Up_Ready === true;
+  const modeSwitch = pickupAvailable ? (
+    <Box sx={{ bgcolor: "#fff", border: "1px solid #d5d8dd", borderRadius: 1, p: 2, mb: 2 }}>
+      <Typography sx={{ fontWeight: 700, mb: 1 }}>Part of this order is waiting for pickup. What are you doing?</Typography>
+      <ToggleButtonGroup exclusive value={mode} disabled={saving || !!outcome} onChange={(_, v) => v && setMode(v)}>
+        <ToggleButton value="qc" sx={{ px: 3 }}>Quality check</ToggleButton>
+        <ToggleButton value="pickup" sx={{ px: 3 }}>Record what the customer picked up</ToggleButton>
+      </ToggleButtonGroup>
+    </Box>
+  ) : null;
+
+  if (pickupAvailable && mode === "pickup") {
+    return (
+      <Box sx={{ bgcolor: "#eef0f3", color: "#1a1a1a", minHeight: "100vh", p: 2, fontFamily: "Roboto, sans-serif" }}>
+        <Box sx={{ bgcolor: "#fff", border: "1px solid #d5d8dd", borderRadius: 1, p: 2, mb: 2 }}>
+          <Typography sx={{ fontSize: 18, fontWeight: 700 }}>{deal.Deal_Name}</Typography>
+          {ident.big && <Typography sx={{ fontSize: 14, color: "#444" }}>{ident.bigLabel}: {ident.big}</Typography>}
+        </Box>
+        {modeSwitch}
+        <PickupBlock
+          entity={ctx.current.entity}
+          recordId={ctx.current.recordId}
+          deal={deal}
+          startLines={startPartialLines(lines)}
+          who={who}
+          dateStr={todayStamp()}
+        />
+      </Box>
+    );
+  }
+
   return (
     <Box sx={{ bgcolor: "#eef0f3", color: "#1a1a1a", minHeight: "100vh", p: 2, fontFamily: "Roboto, sans-serif" }}>
       {/* ---- the header: what to look for on the shelf ---- */}
@@ -554,6 +667,8 @@ const QcApp = () => {
           This Deal is in “{stage || "(no stage)"}”, not “{STAGES.QC}”. You can still record a check here — make sure this is the right Deal first.
         </Alert>
       )}
+
+      {modeSwitch}
 
       {/* ---- 1. overview, read-only: the order snapshot (E-54) ---- */}
       <Section title="1 · What this order should have">
@@ -770,6 +885,7 @@ const QcApp = () => {
             <ToggleButton value={RESULTS.PICKUP} disabled={!approved} color="success">Passed — pickup</ToggleButton>
             <ToggleButton value={RESULTS.SHIP} disabled={!approved} color="success">Passed — needs shipping</ToggleButton>
             <ToggleButton value={RESULTS.FAILED} color="error">Failed</ToggleButton>
+            {partOn && <ToggleButton value={RESULTS.PART} color="info">Part ready - rest still in production</ToggleButton>}
           </ToggleButtonGroup>
           {resultAuto && result === RESULTS.SHIP && (
             <Alert severity="info" sx={{ mb: 2 }}>
@@ -812,48 +928,17 @@ const QcApp = () => {
                 <ToggleButton value="no" sx={{ px: 3 }}>No</ToggleButton>
                 <ToggleButton value="yes" sx={{ px: 3 }}>Yes — part can be picked up</ToggleButton>
               </ToggleButtonGroup>
-              {partial === "yes" && (
-                <Box sx={{ p: 1.5, bgcolor: "#f6f8fb", border: "1px solid #dfe4ea", borderRadius: 1 }}>
-                  <Typography sx={{ fontSize: 13, color: "#444", mb: 1 }}>
-                    Everything starts as ready. Un-tick a line that is being held, or lower its ready quantity.
-                  </Typography>
-                  {partialLines.length === 0 && <Typography sx={{ fontSize: 13, color: "#8a5300", mb: 1 }}>No order lines to choose from — describe what is ready in the box below.</Typography>}
-                  {partialLines.map((l, i) => (
-                    <Box key={l.key} sx={{ display: "flex", alignItems: "center", gap: 1, mb: 0.5 }}>
-                      <Checkbox
-                        checked={l.ready}
-                        disabled={locked}
-                        onChange={(e) => setPartialLines((rows) => rows.map((r, j) => (j === i ? { ...r, ready: e.target.checked, readyQty: e.target.checked ? r.qty : 0 } : r)))}
-                      />
-                      <Typography sx={{ flexGrow: 1, fontSize: 14 }}>{l.label}</Typography>
-                      {l.qty != null && (
-                        <>
-                          <TextField
-                            size="small"
-                            type="number"
-                            value={l.ready ? l.readyQty ?? "" : 0}
-                            disabled={locked || !l.ready}
-                            onChange={(e) => setPartialLines((rows) => rows.map((r, j) => (j === i ? { ...r, readyQty: e.target.value } : r)))}
-                            inputProps={{ min: 0, max: l.qty, style: { width: 64, textAlign: "right" } }}
-                          />
-                          <Typography sx={{ fontSize: 14, width: 70 }}>of {l.qty} ready</Typography>
-                        </>
-                      )}
-                    </Box>
-                  ))}
-                  <TextField
-                    fullWidth
-                    multiline
-                    minRows={2}
-                    size="small"
-                    sx={{ mt: 1, bgcolor: "#fff" }}
-                    label="Specifics (for example: all but the 2XLs)"
-                    value={partialNotes}
-                    disabled={locked}
-                    onChange={(e) => setPartialNotes(e.target.value)}
-                  />
-                </Box>
-              )}
+              {partial === "yes" && linesBox}
+            </Box>
+          )}
+
+          {result === RESULTS.PART && (
+            <Box sx={{ mb: 2 }}>
+              <Alert severity="info" sx={{ mb: 1.5 }}>
+                Nothing is marked as failed. The Deal stays in Quality Check, its Quality Check task stays open for the rest, and the Sales
+                Person gets a task to tell the customer what is ready.
+              </Alert>
+              {linesBox}
             </Box>
           )}
 
@@ -947,7 +1032,7 @@ const QcApp = () => {
       {/* ---- confirm ---- */}
       <Dialog open={confirming} onClose={() => setConfirming(false)} maxWidth="sm" fullWidth>
         <DialogTitle>
-          {plan?.shipOnly ? "Save the tracking and mark this order shipped?" : plan?.result === RESULTS.FAILED ? "Fail this quality check?" : "Pass this quality check?"}
+          {plan?.shipOnly ? "Save the tracking and mark this order shipped?" : plan?.result === RESULTS.FAILED ? "Fail this quality check?" : plan?.result === RESULTS.PART ? "Release the ready part of this order?" : "Pass this quality check?"}
         </DialogTitle>
         <DialogContent>
           <Box component="ol" sx={{ m: 0, pl: 2.5 }}>

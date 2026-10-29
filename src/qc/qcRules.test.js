@@ -21,6 +21,9 @@ import {
   splitAddress,
   startPartialLines,
   targetStage,
+  buildPickupPlan,
+  salesOwnerId,
+  PART_TASK_SUBJECT,
 } from "./qcRules";
 import { LABEL_KINDS, MAX_BOXES, boxCount, buildLabelHtml } from "./qcLabel";
 
@@ -615,5 +618,55 @@ describe("E-54 the order snapshot", () => {
     expect(all).toEqual(["Embroidery — other information", "Banners — special instructions", "DTF Gang Sheet — other information", "Graphic Design — special instructions"]);
     expect(rest).toEqual(["Graphic Design — special instructions"]); // a design-only product has no line to sit on
     expect(criticalNotes(DECAL, {}, "", { skipPlaced: true }).map((n) => [n.title, n.text])).toEqual([["Supplies / materials needed", "Printable vinyl"]]);
+  });
+});
+
+describe("E-82 part of the order ready - nothing failed, stays in Quality Check", () => {
+  const lines = [
+    { key: "a", label: "Hoodies", qty: 24, ready: true, readyQty: 20 },
+    { key: "b", label: "Hats", qty: 6, ready: false, readyQty: 0 },
+  ];
+  test("needs something marked ready and the boxes; approvals are not asked", () => {
+    expect(problems({ result: RESULTS.PART, partialLines: lines.map((l) => ({ ...l, ready: false })), boxes: "" }, ctx())).toEqual([
+      "Mark what is ready now.",
+      "Enter how many boxes.",
+    ]);
+    expect(problems({ result: RESULTS.PART, partialLines: lines, boxes: "1" }, ctx())).toEqual([]);
+  });
+  test("writes the partial fields, leaves the QC task open, never moves the stage, and makes the sales task", () => {
+    const p = buildPlan({ result: RESULTS.PART, partialLines: lines, boxes: "1" }, ctx());
+    expect(p.fields.Partial_Pick_Up_Ready).toBe(true);
+    expect(p.fields.Partial_Ready_Details).toBe("[2026-10-12] READY: Hoodies 20 of 24. HELD: Hoodies 4 · Hats 6.");
+    expect(p.closeTasks).toEqual([]);
+    expect(p.stage).toEqual({ move: false, reason: "part" });
+    expect(p.salesTask.subject).toBe(PART_TASK_SUBJECT);
+    expect(p.salesTask.description).toMatch(/READY: Hoodies 20 of 24/);
+    expect(p.note).toMatch(/Result: PART READY - the rest is still in production/);
+    expect(p.note).toMatch(/Stage left in Quality Check/);
+    expect(targetStage({ result: RESULTS.PART, currentStage: "Quality Check" })).toEqual({ move: false, reason: "part" });
+  });
+  test("the sales task goes to the Sales Person's user, else the Deal owner", () => {
+    const users = [{ id: "u1", full_name: "Korie Byrd" }];
+    expect(salesOwnerId({ Sales_Person: "korie byrd ", Owner: { id: "o1" } }, users)).toBe("u1");
+    expect(salesOwnerId({ Sales_Person: "Ray Castaneda", Owner: { id: "o1" } }, users)).toBe("o1");
+  });
+});
+
+describe("E-82 recording what the customer picked up", () => {
+  const lines = [
+    { key: "a", label: "Hoodies", qty: 24, ready: true, readyQty: 20 },
+    { key: "b", label: "Hats", qty: 6, ready: false, readyQty: 0 },
+  ];
+  test("asks what was taken and whether anything still waits", () => {
+    expect(buildPickupPlan({ lines: lines.map((l) => ({ ...l, ready: false })), stillWaiting: "", deal: {}, dateStr: "d" }).problems).toHaveLength(2);
+  });
+  test("appends a dated PICKED UP line, ticks Partial Pick-Up, clears the Ready box only when nothing is left", () => {
+    const p = buildPickupPlan({ lines, notes: "", stillWaiting: "yes", deal: { Partial_Pick_Up_Details: "old" }, dateStr: "2026-10-29", who: "Ray" });
+    expect(p.problems).toEqual([]);
+    expect(p.entry).toBe("[2026-10-29] PICKED UP: Hoodies 20. (handed over by Ray)");
+    expect(p.fields).toEqual({ Partial_Pick_Up: true, Partial_Pick_Up_Details: "old\n\n[2026-10-29] PICKED UP: Hoodies 20. (handed over by Ray)" });
+    const done = buildPickupPlan({ lines, stillWaiting: "no", deal: {}, dateStr: "2026-10-29" });
+    expect(done.fields.Partial_Pick_Up_Ready).toBe(false);
+    expect(done.note).toMatch(/Still waiting for pickup: No/);
   });
 });

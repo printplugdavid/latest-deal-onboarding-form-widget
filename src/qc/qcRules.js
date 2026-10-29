@@ -34,7 +34,8 @@ export const STAGES = {
   SHIPPED: "Products Shipped",
 };
 
-export const RESULTS = { PICKUP: "pickup", SHIP: "ship", FAILED: "failed" };
+// E-82 (David 10-29): PART = "part of the order is ready, the rest is still in production" -- nothing failed, the Deal stays in QC.
+export const RESULTS = { PICKUP: "pickup", SHIP: "ship", FAILED: "failed", PART: "part" };
 export const DEFAULT_TRACKING_URL = "https://tools.usps.com/tracking/"; // what every shipped deal carries today
 export const QC_NOTE_TITLE = "QUALITY CHECK FORM";
 
@@ -385,6 +386,7 @@ export function appendDated(existing, entry) {
 export function targetStage({ result, remainderDue, hasTracking, currentStage }) {
   const cur = str(currentStage);
   let stage = null;
+  if (result === RESULTS.PART) return { move: false, reason: "part" };
   if (result === RESULTS.FAILED) stage = STAGES.FAILED;
   else if (result === RESULTS.SHIP) stage = hasTracking ? STAGES.SHIPPED : STAGES.NEED_SHIP;
   else if (result === RESULTS.PICKUP) {
@@ -461,6 +463,11 @@ export function problems(state, ctx) {
     return out;
   }
   if (!state.result) return ["Choose the result."];
+  if (state.result === RESULTS.PART) {
+    if (!partialHasSomethingReady({ lines: state.partialLines, notes: state.partialNotes })) out.push("Mark what is ready now.");
+    if (!(int(state.boxes) >= 1)) out.push("Enter how many boxes.");
+    return out;
+  }
   const passed = state.result !== RESULTS.FAILED;
   if (passed && !allApproved(state.approvals)) out.push("Tick all the approvals — or choose Failed.");
   if (state.result === RESULTS.PICKUP && state.remainderDue !== true && state.remainderDue !== false)
@@ -510,7 +517,7 @@ export function buildPlan(state, ctx) {
   }
 
   let partialEntry = "";
-  if (result === RESULTS.FAILED && state.partial === "yes") {
+  if ((result === RESULTS.FAILED && state.partial === "yes") || result === RESULTS.PART) {
     partialEntry = buildPartialEntry({ lines: state.partialLines, notes: state.partialNotes, dateStr: ctx.dateStr });
     fields.Partial_Pick_Up_Ready = true;
     fields.Partial_Ready_Details = appendDated(deal.Partial_Ready_Details, partialEntry);
@@ -521,7 +528,7 @@ export function buildPlan(state, ctx) {
   // Deluge thread, 2026-10-12 (zoho-deluge/docs/16): the failed-QC sales task reads this box, so a
   // tick left over from an earlier check must not survive a check that releases nothing new. The
   // Details and the Date stay -- they are the record (quality-check/04 section 2b).
-  const releasing = result === RESULTS.FAILED && state.partial === "yes";
+  const releasing = (result === RESULTS.FAILED && state.partial === "yes") || result === RESULTS.PART;
   const settled = result === RESULTS.PICKUP || result === RESULTS.SHIP || (result === RESULTS.FAILED && state.partial === "no");
   if (!shipOnly && !releasing && settled && deal.Partial_Pick_Up_Ready === true) {
     fields.Partial_Pick_Up_Ready = false;
@@ -532,8 +539,10 @@ export function buildPlan(state, ctx) {
 
   // A check was done whatever its result, so its task is closed on Failed too -- left open, the
   // Deal collects a second one when it comes back to Quality Check (seen on real deals).
-  const closeTasks = shipOnly ? [] : openQcTasks(ctx?.tasks);
-  if (!shipOnly) {
+  const closeTasks = shipOnly || result === RESULTS.PART ? [] : openQcTasks(ctx?.tasks);
+  if (result === RESULTS.PART) {
+    summary.push("Leave the Quality Check task open: the rest of the order still comes back here.");
+  } else if (!shipOnly) {
     summary.push(
       closeTasks.length
         ? "Complete the open Quality Check task" + (closeTasks.length > 1 ? "s (" + closeTasks.length + ")" : "") + "."
@@ -547,18 +556,61 @@ export function buildPlan(state, ctx) {
     summary.push("This is a school / advertiser deal (stage “" + str(deal.Stage) + "”). The form will NOT move the stage — move it by hand after saving.");
   else if (stage.reason === "already")
     summary.push("The Deal is already in “" + stage.stage + "”, so the stage is not moved and CRM's stage automations do not run again.");
+  else if (stage.reason === "part") summary.push("The Deal stays in Quality Check. Nothing is marked as failed.");
+
+  // E-82: the sales person is told what is ready (the stage does not move, so no stage automation would do it).
+  const salesTask =
+    result === RESULTS.PART
+      ? {
+          subject: PART_TASK_SUBJECT,
+          description: "Part of this order is ready for the customer: " + partialEntry + (has(ctx?.who) ? " (checked by " + str(ctx.who) + ")" : ""),
+        }
+      : null;
+  if (salesTask) summary.push("Make a task for the Deal's Sales Person to tell the customer what is ready.");
 
   if (result === RESULTS.FAILED)
     summary.push("Then: mark the issues with the red stickers, and file the Revision / Correction form from the Deal — it records what failed and moves the Deal on.");
 
   const note = buildQcNote(state, ctx, { result, shipOnly, stage, partialEntry, closeTasks });
-  return { result, shipOnly, fields, closeTasks, stage, note, summary, partialEntry };
+  return { result, shipOnly, fields, closeTasks, stage, note, summary, partialEntry, salesTask };
+}
+
+export const PART_TASK_SUBJECT = "SALES: Partial Pick-Up Ready / VENTAS: Recogida parcial lista";
+/* The task's owner: the Deal's Sales Person when that name is an active user, else the Deal owner (as Deluge's sales tasks do). */
+export function salesOwnerId(deal, users) {
+  const name = str(deal?.Sales_Person).trim().toLowerCase();
+  const u = name ? (users || []).find((x) => str(x.full_name).trim().toLowerCase() === name) : null;
+  return u ? str(u.id) : str(deal?.Owner?.id);
+}
+
+/*
+ * E-82 (David 10-29): recording what the customer picked up, by whoever hands it over. Lines = startPartialLines-style rows where
+ * `ready` / `readyQty` mean "picked up". Appends a dated PICKED UP line to Partial_Pick_Up_Details, ticks Partial_Pick_Up, and clears
+ * Partial_Pick_Up_Ready when nothing is left waiting. Returns { problems, fields, entry, note }.
+ */
+export function buildPickupPlan({ lines, notes, stillWaiting, deal, dateStr, who }) {
+  const picked = [];
+  (lines || []).forEach((l) => {
+    const r = clampReady(l);
+    if (l.qty == null ? l.ready : r > 0) picked.push(l.qty == null ? l.label : l.label + " " + r);
+  });
+  const problems = [];
+  if (!picked.length && !has(notes)) problems.push("Tick what the customer took (or describe it).");
+  if (stillWaiting !== "yes" && stillWaiting !== "no") problems.push("Answer: is anything from this order still waiting for pickup?");
+  let entry = "[" + dateStr + "] PICKED UP: " + (picked.length ? picked.join(" · ") : "see notes") + ".";
+  if (has(notes)) entry += " Notes: " + str(notes);
+  if (has(who)) entry += " (handed over by " + str(who) + ")";
+  const fields = { Partial_Pick_Up: true, Partial_Pick_Up_Details: appendDated(deal?.Partial_Pick_Up_Details, entry) };
+  if (stillWaiting === "no") fields.Partial_Pick_Up_Ready = false;
+  const note = ["Result: PARTIAL PICK-UP RECORDED", "Recorded: " + dateStr + (has(who) ? " by " + str(who) : ""), "", entry, "", "Still waiting for pickup: " + (stillWaiting === "yes" ? "Yes" : "No")].join(NL);
+  return { problems, fields, entry, note };
 }
 
 const RESULT_WORDS = {
   [RESULTS.PICKUP]: "PASSED — pickup",
   [RESULTS.SHIP]: "PASSED — needs shipping",
   [RESULTS.FAILED]: "FAILED",
+  [RESULTS.PART]: "PART READY - the rest is still in production",
 };
 
 /* The Deal note: the only place that records WHO checked, what they ticked and how many boxes. */
@@ -585,7 +637,7 @@ export function buildQcNote(state, ctx, plan) {
           : " (answered by the agent" + (inv?.decided ? "; the invoice read: " + facts : inv?.reason ? "; " + inv.reason : "") + ")")
     );
   }
-  if (int(state.boxes) >= 1 && (plan.result !== RESULTS.FAILED || state.partial === "yes")) extra.push("Boxes: " + int(state.boxes));
+  if (int(state.boxes) >= 1 && (plan.result !== RESULTS.FAILED || state.partial === "yes")) extra.push("Boxes: " + int(state.boxes) + (plan.result === RESULTS.PART ? " (the ready part)" : ""));
   if (plan.result === RESULTS.SHIP) {
     if (has(state.addressee)) extra.push("Ship to: " + str(state.addressee));
     extra.push(has(state.trackingNumber) ? "Tracking: " + str(state.trackingNumber) : "Tracking: not entered yet");
@@ -598,5 +650,6 @@ export function buildQcNote(state, ctx, plan) {
   if (plan.stage.move) L.push("Stage the form then moves the Deal to: " + plan.stage.stage + " (from " + str(ctx.deal?.Stage) + ")");
   else if (plan.stage.reason === "family") L.push("Stage NOT moved by the form (school / advertiser deal) — to be moved by hand.");
   else if (plan.stage.reason === "already") L.push("Stage left as it was: " + plan.stage.stage);
+  else if (plan.stage.reason === "part") L.push("Stage left in Quality Check: the rest of the order is still in production.");
   return L.join(NL);
 }

@@ -1,3 +1,5 @@
+import { pantoneCodeFields, writePantonesOn } from "./production/productionFlow";
+import PRODUCTION_CONFIG from "./production/productionConfig.json";
 import { loadDealVendors } from "./products/dealVendorsLive";
 import { mergeDealVendors } from "./products/vendors";
 import { ASKED_TYPES, categoryWriteOn, mergeCategories, outsourcingFields } from "./dealCategory";
@@ -380,6 +382,16 @@ function App() {
       if (shipTo.message) turnaroundNotices.push(shipTo.message);
     } catch (err) {
       console.log("Addressee not set - skipping:", err);
+    }
+    // E-159 (David 10-29): the order's screen print Pantone codes onto the Deal's PANTONE 1-8 (code only, never blanked) -- the
+    // production flow's ink boxes read them. Own call, no workflow trigger (nothing reacts to them; Deluge 10-29 scan). Behind a switch.
+    if (writePantonesOn(PRODUCTION_CONFIG)) {
+      try {
+        const pf = pantoneCodeFields(recordData, data);
+        if (Object.keys(pf).length) await ZOHO.CRM.API.updateRecord({ Entity: entity, APIData: { id: entityId, ...pf }, Trigger: [] });
+      } catch (err) {
+        console.log("Pantone codes not set - skipping:", err);
+      }
     }
     if (turnaroundNotices.length) window.alert(turnaroundNotices.join("\n\n"));
 
