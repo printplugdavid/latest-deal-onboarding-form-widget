@@ -98,7 +98,7 @@ export const START_STEPS = [
   {
     key: "artwork",
     question:
-      "Print-ready artwork and placement verified with the mock-up and the original art, with a critical eye (no errors, no drift from the original)?",
+      "Print-ready artwork and placement verified with the mock-up, the notes and the original art, with a critical eye (no errors, no drift from the original)?",
     stop: "Stop and talk to the sales person before you go on. Use \"Call Client\" below to flag it if the client needs to be asked.",
   },
   {
@@ -108,12 +108,12 @@ export const START_STEPS = [
   },
 ];
 
-/* David's Close Task questions, word for word (10-29). Each must be Yes. */
+/* David's Close Task questions, word for word (10-29; "notes" added by David the same evening). Each must be Yes. */
 export const CLOSE_QUESTIONS = [
   { key: "sorted", question: "Garments counted and sorted by size?" },
   {
     key: "standards",
-    question: "Job completed according to mock-up and standards, ensuring no drift from original artwork unless approved by client?",
+    question: "Job completed according to mock-up, notes and standards, ensuring no drift from original artwork unless approved by client?",
   },
   { key: "clean", question: "Work space cleaned up and ready for next job?" },
   { key: "stocked", question: "Products stocked, with any needs recorded for Inventory Ordering?" },
@@ -123,13 +123,27 @@ export const DEPT_CLOSE_QUESTIONS = {
   embroidery: [],
   vinyl: [],
 };
-/* E-164: David's two questions for the Outsourced tab, word for word (10-29, "Only those two for now"). They replace the four. */
+/*
+ * E-164: the Outsourced tab has two steps, each closing its own task (David 10-29: "Order task and Package task have to be closed out
+ * separately"). Word for word; they replace the four.
+ *   "order"   -> closes "OUTSOURCED: Order Products" (with workflow: Zoho's rule makes the Package task); never moves the Deal.
+ *   "package" -> closes "Package Outsourced Products"; the Deal moves to Quality Check when nothing is left open.
+ */
+export const ORDER_CLOSE_QUESTIONS = [
+  { key: "mockup", question: "Mock-up verified against notes and client-provided artwork?" },
+  { key: "ordered", question: "Double-checked total count and variables of products ordered?" },
+];
 export const OUTSOURCED_CLOSE_QUESTIONS = [
-  { key: "verified", question: "Products counted and verified against mock-up and original artwork?" },
+  { key: "verified", question: "Products counted and verified against mock-up, notes and original artwork?" },
   { key: "boxed", question: "Products removed from supplier boxes and put into Print Plug / unbranded boxes?" },
 ];
-export const closeQuestionsFor = (dept) =>
-  dept === "outsourced" ? [...OUTSOURCED_CLOSE_QUESTIONS] : [...CLOSE_QUESTIONS, ...(DEPT_CLOSE_QUESTIONS[dept] || [])];
+export const closeQuestionsFor = (dept, step) =>
+  dept === "outsourced"
+    ? [...(step === "order" ? ORDER_CLOSE_QUESTIONS : OUTSOURCED_CLOSE_QUESTIONS)]
+    : [...CLOSE_QUESTIONS, ...(DEPT_CLOSE_QUESTIONS[dept] || [])];
+/* The note's label for a close: "Outsourced order" / "Outsourced packing" for the two outsourced steps. */
+export const closeLabel = (dept, step) =>
+  dept === "outsourced" ? (step === "order" ? "Outsourced order" : "Outsourced packing") : (DEPARTMENTS[dept] || {}).label || dept;
 export const hasStartSteps = (dept) => !!DEPARTMENTS[dept] && DEPARTMENTS[dept].start !== false;
 
 export const MISSING_REASONS = [
@@ -287,9 +301,10 @@ export const QC_STAGE = "Quality Check";
  * What Close does: { problems[], close[] (task ids), stage: { move, to, reason }, fields }.
  * answers = { questionKey: "yes" | "no" }; closing = ids of the department's tasks the agent is closing; inkLeft = grams typed per row.
  */
-export function closePlan({ dept, tasks, closing, answers, rows, inkLeft, stage, withOutsourced = false }) {
+export function closePlan({ dept, step, tasks, closing, answers, rows, inkLeft, stage, withOutsourced = false }) {
   const problems = [];
-  closeQuestionsFor(dept).forEach((q) => {
+  const isOrder = dept === "outsourced" && step === "order";
+  closeQuestionsFor(dept, step).forEach((q) => {
     const a = str(answers && answers[q.key]);
     if (a === "no") problems.push(`${q.question} - ${BLOCK_TEXT}`);
     else if (a !== "yes") problems.push(`Answer: ${q.question}`);
@@ -304,13 +319,15 @@ export function closePlan({ dept, tasks, closing, answers, rows, inkLeft, stage,
   const outsourcedOpen = stillOpen.some((t) => deptOfTask(t.Subject) === "outsourced" || isOrderProductsTask(t.Subject));
   const cur = str(stage);
   let move = { move: false, to: QC_STAGE, reason: "" };
-  if (stillOpen.length)
+  if (isOrder) move.reason = "the Package Outsourced Products task comes next";
+  else if (stillOpen.length)
     move.reason = `${stillOpen.length} ${outsourcedOpen ? "production or outsourced" : "production"} task(s) still open: ${stillOpen.map(taskTitle).join("; ")}`;
   else if (cur === QC_STAGE) move.reason = "already in Quality Check";
   else if (!PRODUCTION_STAGES.includes(cur)) move.reason = `the Deal is at "${cur}", not a production stage - the stage is left as it is`;
   else move = { move: true, to: QC_STAGE, reason: "" };
   const fields = DEPARTMENTS[dept] && DEPARTMENTS[dept].inks ? pantoneFields(rows, "Left", inkLeft) : {};
-  return { problems, close: ids, stage: move, fields, stillOpen };
+  /* Closing the order task fires workflow so Zoho's rule makes the Package task; every other close is Trigger [] as before. */
+  return { problems, close: ids, stage: move, fields, stillOpen, workflowOnClose: isOrder };
 }
 
 /* ---------- the note ---------- */
@@ -334,17 +351,16 @@ export function startNote({ dept, who, when, answers, rows, inkMixed }) {
 }
 
 /* "Screen Print · CLOSED" note: tasks closed, the answers, grams left, feedback per task, what happened to the stage. */
-export function closeNote({ dept, who, when, tasks, closing, answers, rows, inkLeft, feedback, stage }) {
-  const d = DEPARTMENTS[dept];
+export function closeNote({ dept, step, who, when, tasks, closing, answers, rows, inkLeft, feedback, stage }) {
   const byId = new Map((tasks || []).map((t) => [str(t.id), t]));
-  const lines = [`${d ? d.label : dept} - CLOSED - ${str(when)}${who ? " - " + str(who) : ""}`];
+  const lines = [`${closeLabel(dept, step)} - CLOSED - ${str(when)}${who ? " - " + str(who) : ""}`];
   (closing || []).forEach((id) => {
     const t = byId.get(str(id));
     lines.push(`Closed: ${t ? taskTitle(t) : id}${t && ownerOf(t).name ? " (" + ownerOf(t).name + ")" : ""}`);
     const f = str(feedback && feedback[id]).trim();
     if (f) lines.push(`  Feedback: ${f}`);
   });
-  closeQuestionsFor(dept).forEach((q) => lines.push(`${q.question} ${yn(answers && answers[q.key])}`));
+  closeQuestionsFor(dept, step).forEach((q) => lines.push(`${q.question} ${yn(answers && answers[q.key])}`));
   const ink = inkLines(rows, inkLeft, "left");
   if (ink.length) lines.push("Ink left:", ...ink);
   if (stage) lines.push(stage.move ? `Deal moved to ${stage.to}.` : `Stage not moved: ${stage.reason}.`);

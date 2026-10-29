@@ -73,6 +73,114 @@ const Section = ({ title, children }) => (
   </Box>
 );
 
+const inkRow = (r, i, list, setList, word, busy) => (
+  <Box key={r.code} sx={{ display: "flex", gap: 1, alignItems: "center", mb: 1 }}>
+    <Typography sx={{ minWidth: 150 }}>Pantone {r.code}</Typography>
+    <TextField
+      size="small"
+      label={`Grams ${word}`}
+      value={list[i] || ""}
+      onChange={(e) => setList(list.map((v, j) => (j === i ? e.target.value : v)))}
+      error={!!list[i] && grams(list[i]) == null}
+      sx={{ width: 150 }}
+      InputProps={{ endAdornment: <span>g</span> }}
+      disabled={!!busy}
+    />
+    {!r.slot && <Typography variant="body2" color="text.secondary">No free PANTONE slot on the Deal: recorded on the note only.</Typography>}
+  </Box>
+);
+
+/* One "close" block: the tasks to tick, the questions (all Yes), grams left (screen print), feedback; then the tasks closed, the note,
+   and the stage moved last. The Outsourced tab shows it twice: step "order" and step "package" (E-164). */
+const CloseTask = ({ dept, step, title, list, tasks, deal, rows, withOutsourced, busy, run, write, note, who, userId }) => {
+  const d = DEPARTMENTS[dept];
+  const [answers, setAnswers] = useState({});
+  const [inkLeft, setInkLeft] = useState(() => rows.map((r) => (r.left != null ? String(r.left) : "")));
+  const [mineOnly, setMineOnly] = useState(true);
+  const [closing, setClosing] = useState([]);
+  const [feedback, setFeedback] = useState({});
+  const mine = list.filter((t) => ownerOf(t).id && ownerOf(t).id === userId);
+  const shown = mineOnly && mine.length ? mine : list;
+  const plan = closePlan({ dept, step, tasks, closing, answers, rows, inkLeft, stage: deal.Stage, withOutsourced });
+  const doClose = () =>
+    run("Closing the task(s)", async () => {
+      if (Object.keys(plan.fields).length) await write(plan.fields, false);
+      for (const id of plan.close) {
+        const r = await ZOHO.CRM.API.updateRecord({ Entity: "Tasks", APIData: { id, Status: "Completed" }, Trigger: plan.workflowOnClose ? ["workflow"] : [] });
+        if (!ok(r)) throw new Error("task " + id + ": " + JSON.stringify(r?.data?.[0] || r));
+      }
+      await note(closeNote({ dept, step, who, when: stamp(), tasks, closing: plan.close, answers, rows, inkLeft, feedback, stage: plan.stage }));
+      if (plan.stage.move) await write({ Stage: plan.stage.to }, true);
+      setClosing([]);
+      setAnswers({});
+      if (plan.workflowOnClose)
+        return `${plan.close.length} order task(s) closed. Zoho makes the Package Outsourced Products task in a few seconds; reopen the cards if it does not show yet.`;
+      return `${plan.close.length} task(s) closed.` + (plan.stage.move ? " Every production task is done: the Deal moved to Quality Check." : ` ${plan.stage.reason}.`);
+    });
+
+  return (
+    <Section title={title}>
+      {mine.length > 0 && mine.length < list.length && (
+        <FormControlLabel control={<Checkbox size="small" checked={mineOnly} onChange={(e) => setMineOnly(e.target.checked)} />} label="Only my tasks" />
+      )}
+      {shown.map((t) => (
+        <Box key={t.id} sx={{ mb: 1 }}>
+          <FormControlLabel
+            control={
+              <Checkbox
+                size="small"
+                checked={closing.includes(t.id)}
+                disabled={!!busy}
+                onChange={(e) => setClosing(e.target.checked ? [...closing, t.id] : closing.filter((x) => x !== t.id))}
+              />
+            }
+            label={`${taskTitle(t)}${ownerOf(t).name ? " - " + ownerOf(t).name : ""}${t.Due_Date ? " - due " + t.Due_Date : ""}`}
+          />
+          {closing.includes(t.id) && (
+            <TextField
+              size="small"
+              fullWidth
+              label="Feedback on this job (optional): anything to watch for next time"
+              value={feedback[t.id] || ""}
+              onChange={(e) => setFeedback({ ...feedback, [t.id]: e.target.value })}
+              sx={{ ml: 4, maxWidth: "calc(100% - 32px)" }}
+            />
+          )}
+        </Box>
+      ))}
+      <Divider sx={{ my: 1 }} />
+      {closeQuestionsFor(dept, step).map((q) => (
+        <Box key={q.key}>
+          <Typography variant="body2">{q.question}</Typography>
+          <YesNo value={answers[q.key]} disabled={!!busy} onChange={(v) => setAnswers({ ...answers, [q.key]: v })} />
+          {answers[q.key] === "no" && <Alert severity="warning" sx={{ mb: 1 }}>Please ensure that step is completed before closing the task.</Alert>}
+        </Box>
+      ))}
+      {d.inks && rows.length > 0 && (
+        <Box sx={{ mt: 1 }}>
+          <Typography variant="body2" sx={{ mb: 1 }}>
+            Ink left over (grams), per Pantone:
+          </Typography>
+          {rows.map((r, i) => inkRow(r, i, inkLeft, setInkLeft, "left", busy))}
+        </Box>
+      )}
+      <Button variant="contained" size="small" disabled={!!plan.problems.length || !!busy} onClick={doClose} sx={{ mt: 1 }}>
+        Close {closing.length > 1 ? `${closing.length} tasks` : "task"}
+      </Button>
+      {plan.problems.length > 0 && closing.length > 0 && (
+        <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+          Before closing: {plan.problems.join(" · ")}
+        </Typography>
+      )}
+      {closing.length > 0 && (
+        <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+          {plan.stage.move ? "Closing this finishes production: the Deal will move to Quality Check." : step === "order" ? "Closing the order makes the Package Outsourced Products task (the Deal stays where it is)." : `The Deal stays where it is (${plan.stage.reason}).`}
+        </Typography>
+      )}
+    </Section>
+  );
+};
+
 const ProductionFlow = ({ dept, ctx, refresh }) => {
   const d = DEPARTMENTS[dept];
   const { entity, recordId, deal = {}, data, tasks = [], notes = [], user = {} } = ctx || {};
@@ -86,19 +194,12 @@ const ProductionFlow = ({ dept, ctx, refresh }) => {
 
   const [start, setStart] = useState({});
   const [inkMixed, setInkMixed] = useState(() => rows.map((r) => (r.mixed != null ? String(r.mixed) : "")));
-  const [answers, setAnswers] = useState({});
-  const [inkLeft, setInkLeft] = useState(() => rows.map((r) => (r.left != null ? String(r.left) : "")));
-  const [mineOnly, setMineOnly] = useState(true);
-  const [closing, setClosing] = useState([]);
-  const [feedback, setFeedback] = useState({});
   const [missing, setMissing] = useState(null); // the open "missing garments" form
   const [callNotes, setCallNotes] = useState(null); // the open Call Client form
   const [busy, setBusy] = useState("");
   const [result, setResult] = useState(null); // { severity, text }
 
   const who = user.name || "";
-  const mine = myTasks.filter((t) => ownerOf(t).id && ownerOf(t).id === user.id);
-  const shown = mineOnly && mine.length ? mine : myTasks;
 
   const write = async (fields, workflow) => {
     const r = await ZOHO.CRM.API.updateRecord({ Entity: entity, APIData: { id: recordId, ...fields }, Trigger: workflow ? ["workflow"] : [] });
@@ -157,53 +258,16 @@ const ProductionFlow = ({ dept, ctx, refresh }) => {
       return "Call Client flagged: the Sales Person gets a \"Call Client\" task with your notes on the Deal.";
     });
 
-  /* ---------- close ---------- */
-  const plan = closePlan({ dept, tasks, closing, answers, rows, inkLeft, stage: deal.Stage, withOutsourced });
-  const doClose = () =>
-    run("Closing the task(s)", async () => {
-      if (Object.keys(plan.fields).length) await write(plan.fields, false);
-      for (const id of plan.close) {
-        const r = await ZOHO.CRM.API.updateRecord({ Entity: "Tasks", APIData: { id, Status: "Completed" }, Trigger: [] });
-        if (!ok(r)) throw new Error("task " + id + ": " + JSON.stringify(r?.data?.[0] || r));
-      }
-      await note(closeNote({ dept, who, when: stamp(), tasks, closing: plan.close, answers, rows, inkLeft, feedback, stage: plan.stage }));
-      if (plan.stage.move) await write({ Stage: plan.stage.to }, true);
-      setClosing([]);
-      setAnswers({});
-      return `${plan.close.length} task(s) closed.` + (plan.stage.move ? " Every production task is done: the Deal moved to Quality Check." : ` ${plan.stage.reason}.`);
-    });
-
-  const inkRow = (r, i, list, setList, word) => (
-    <Box key={r.code} sx={{ display: "flex", gap: 1, alignItems: "center", mb: 1 }}>
-      <Typography sx={{ minWidth: 150 }}>Pantone {r.code}</Typography>
-      <TextField
-        size="small"
-        label={`Grams ${word}`}
-        value={list[i] || ""}
-        onChange={(e) => setList(list.map((v, j) => (j === i ? e.target.value : v)))}
-        error={!!list[i] && grams(list[i]) == null}
-        sx={{ width: 150 }}
-        InputProps={{ endAdornment: <span>g</span> }}
-        disabled={!!busy}
-      />
-      {!r.slot && <Typography variant="body2" color="text.secondary">No free PANTONE slot on the Deal: recorded on the note only.</Typography>}
-    </Box>
-  );
+  const common = { dept, tasks, deal, rows, withOutsourced, busy, run, write, note, who, userId: user.id };
 
   return (
     <Box sx={{ p: 2, bgcolor: "#fff", borderBottom: 2, borderColor: "#1a1a1a" }}>
       <Typography variant="h6" fontWeight="bold">
         {d.label} production flow
       </Typography>
-      {!myTasks.length && orderOpen.length > 0 && (
-        <Alert severity="info" sx={{ mt: 1 }}>
-          Waiting: the order hasn't been placed yet ({orderOpen.map((t) => taskTitle(t) + (ownerOf(t).name ? " - " + ownerOf(t).name : "")).join("; ")}).
-          The Package Outsourced Products task appears here once the order task is marked done.
-        </Alert>
-      )}
       {!myTasks.length && !orderOpen.length && (
         <Alert severity="info" sx={{ mt: 1 }}>
-          No open {dept === "outsourced" ? "Package Outsourced Products" : d.label + " production"} task on this Deal. You can still report
+          No open {dept === "outsourced" ? "outsourced (order or packing)" : d.label + " production"} task on this Deal. You can still report
           missing garments or flag Call Client below.
         </Alert>
       )}
@@ -228,7 +292,7 @@ const ProductionFlow = ({ dept, ctx, refresh }) => {
               <Typography variant="body2" sx={{ mb: 1 }}>
                 4. Ink mixed for this job (grams), per Pantone:
               </Typography>
-              {rows.map((r, i) => inkRow(r, i, inkMixed, setInkMixed, "mixed"))}
+              {rows.map((r, i) => inkRow(r, i, inkMixed, setInkMixed, "mixed", busy))}
             </Box>
           )}
           <Button variant="contained" size="small" disabled={!startReady || !!busy} onClick={doStart} sx={{ mt: 1 }}>
@@ -317,66 +381,17 @@ const ProductionFlow = ({ dept, ctx, refresh }) => {
       )}
 
       {/* 3. CLOSE */}
-      {started && myTasks.length > 0 && (
-        <Section title="Close task">
-          {mine.length > 0 && mine.length < myTasks.length && (
-            <FormControlLabel control={<Checkbox size="small" checked={mineOnly} onChange={(e) => setMineOnly(e.target.checked)} />} label="Only my tasks" />
-          )}
-          {shown.map((t) => (
-            <Box key={t.id} sx={{ mb: 1 }}>
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    size="small"
-                    checked={closing.includes(t.id)}
-                    disabled={!!busy}
-                    onChange={(e) => setClosing(e.target.checked ? [...closing, t.id] : closing.filter((x) => x !== t.id))}
-                  />
-                }
-                label={`${taskTitle(t)}${ownerOf(t).name ? " - " + ownerOf(t).name : ""}${t.Due_Date ? " - due " + t.Due_Date : ""}`}
-              />
-              {closing.includes(t.id) && (
-                <TextField
-                  size="small"
-                  fullWidth
-                  label="Feedback on this job (optional): anything to watch for next time"
-                  value={feedback[t.id] || ""}
-                  onChange={(e) => setFeedback({ ...feedback, [t.id]: e.target.value })}
-                  sx={{ ml: 4, maxWidth: "calc(100% - 32px)" }}
-                />
-              )}
-            </Box>
-          ))}
-          <Divider sx={{ my: 1 }} />
-          {closeQuestionsFor(dept).map((q) => (
-            <Box key={q.key}>
-              <Typography variant="body2">{q.question}</Typography>
-              <YesNo value={answers[q.key]} disabled={!!busy} onChange={(v) => setAnswers({ ...answers, [q.key]: v })} />
-              {answers[q.key] === "no" && <Alert severity="warning" sx={{ mb: 1 }}>Please ensure that step is completed before closing the task.</Alert>}
-            </Box>
-          ))}
-          {d.inks && rows.length > 0 && (
-            <Box sx={{ mt: 1 }}>
-              <Typography variant="body2" sx={{ mb: 1 }}>
-                Ink left over (grams), per Pantone:
-              </Typography>
-              {rows.map((r, i) => inkRow(r, i, inkLeft, setInkLeft, "left"))}
-            </Box>
-          )}
-          <Button variant="contained" size="small" disabled={!!plan.problems.length || !!busy} onClick={doClose} sx={{ mt: 1 }}>
-            Close {closing.length > 1 ? `${closing.length} tasks` : "task"}
-          </Button>
-          {plan.problems.length > 0 && closing.length > 0 && (
-            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-              Before closing: {plan.problems.join(" · ")}
-            </Typography>
-          )}
-          {closing.length > 0 && (
-            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-              {plan.stage.move ? "Closing this finishes production: the Deal will move to Quality Check." : `The Deal stays where it is (${plan.stage.reason}).`}
-            </Typography>
-          )}
-        </Section>
+      {dept !== "outsourced" && started && myTasks.length > 0 && <CloseTask key="work" step="work" title="Close task" list={myTasks} {...common} />}
+      {dept === "outsourced" && orderOpen.length > 0 && (
+        <CloseTask key="order" step="order" title="1. Order: close the order task" list={orderOpen} {...common} />
+      )}
+      {dept === "outsourced" && myTasks.length > 0 && (
+        <CloseTask key="package" step="package" title="2. Package: close the packing task" list={myTasks} {...common} />
+      )}
+      {dept === "outsourced" && !myTasks.length && orderOpen.length > 0 && (
+        <Alert severity="info" sx={{ mt: 2 }}>
+          2. Package: the Package Outsourced Products task appears here once the order task is closed.
+        </Alert>
       )}
 
       {busy && (
