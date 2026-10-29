@@ -20,6 +20,14 @@ import { PRE_PRODUCTION_STAGES } from "../rushOrder";
 
 export const MOVE_FUNCTION = "WIDGET_Move_Closing_Date";
 
+/* The call's arguments, all text as the function takes them (Deluge PENDING 23a3e74a: anything but dry_run "false" is a dry run). */
+export const moveArgs = (dealId, plan, dryRun) => ({
+  deal_id: String(dealId),
+  new_date: String(plan.to || ""),
+  turnaround: String(plan.turnaround || ""),
+  dry_run: dryRun ? "true" : "false",
+});
+
 /*
  * Stages where the form calls the move: from In Production until the order has left (David 10-29: "at any stage, including after In
  * Production"; Deluge docs/51 §8: open produce tasks can still exist at revisions / corrections / QC, and at Production Complete their
@@ -105,7 +113,7 @@ export function amendmentDatePlan(deal, data, { moveOn = moveInProductionOn(), t
 }
 
 /*
- * The Deluge answer (their docs/51 §1: { ok, closing_before, closing_after, shift_days, moved, skipped, reason }). `ok: true` or a
+ * The Deluge answer (their docs/51 §8-9: { status, ok, result, message, reason, closing_before, closing_after, shift_days, moved, skipped }). `ok: true` or a
  * status of "ok" both count; anything else (not installed, refused, failed) is not ok and nothing is claimed as moved.
  */
 const taskLine = (t) => ({
@@ -119,7 +127,8 @@ export function readMove(answer) {
   const moved = Array.isArray(a.moved) ? a.moved : [];
   const skipped = Array.isArray(a.skipped) ? a.skipped : [];
   return {
-    ok: a.ok === true || a.status === "ok",
+    // Deluge sends both `status` and `ok`; `ok` decides when it is there (a refusal is ok: false).
+    ok: typeof a.ok === "boolean" ? a.ok : a.status === "ok",
     message: String(a.message || a.reason || ""),
     skipped: skipped.map(taskLine),
     shiftDays: Number(a.shift_days) || 0,

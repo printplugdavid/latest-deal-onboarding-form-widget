@@ -1,5 +1,5 @@
 import dayjs from "dayjs";
-import { IN_PRODUCTION_STAGES, amendmentDatePlan, amendmentDatesOn, datesChanged, describeMove, moveInProductionOn, newDateProblem, readMove } from "./closingMove";
+import { IN_PRODUCTION_STAGES, amendmentDatePlan, amendmentDatesOn, datesChanged, describeMove, moveArgs, moveInProductionOn, newDateProblem, readMove } from "./closingMove";
 
 const TODAY = "2026-10-29";
 
@@ -137,5 +137,16 @@ describe("E-150 the Deluge answer", () => {
     const no = readMove({ ok: false, reason: "new_date is before tomorrow" });
     expect(no.ok).toBe(false);
     expect(no.message).toBe("new_date is before tomorrow");
+  });
+  test("a refusal that still says status ok is NOT ok (ok decides); the arguments go as text", () => {
+    expect(readMove({ status: "ok", ok: false, result: "refused", reason: "stage not accepted" }).ok).toBe(false);
+    expect(readMove({ status: "ok", ok: true, result: "moved", moved: [], skipped: [] }).ok).toBe(true);
+    expect(moveArgs(5249739000087561441n, { to: "2026-11-23", turnaround: "Hard Due Date" }, false)).toEqual({
+      deal_id: "5249739000087561441",
+      new_date: "2026-11-23",
+      turnaround: "Hard Due Date",
+      dry_run: "false",
+    });
+    expect(moveArgs("1", { to: "2026-11-23" }, true).dry_run).toBe("true");
   });
 });

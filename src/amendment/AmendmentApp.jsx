@@ -80,7 +80,7 @@ import {
 import { buildColorMatches } from "../colorMatch";
 import { newestFirst, readFileText } from "../zohoFiles";
 import { AmendContact, AmendDates } from "./AmendSections";
-import { MOVE_FUNCTION, amendmentDatePlan, amendmentDatesOn, datesChanged, describeMove, readMove } from "./closingMove";
+import { MOVE_FUNCTION, moveArgs, amendmentDatePlan, amendmentDatesOn, datesChanged, describeMove, readMove } from "./closingMove";
 import { RUSH_FIELD, rushBoxPlan } from "../rushOrder";
 import { call as callFunction } from "../products/booksItems";
 import { parseNoteToForm, toPlainText } from "./noteToForm";
@@ -510,7 +510,7 @@ const AmendmentApp = () => {
     if (datePlan.kind === "move") {
       setSaving(true);
       const preview = readMove(
-        await callFunction(MOVE_FUNCTION, { deal_id: String(ctx.current.recordId), new_date: datePlan.to, turnaround: datePlan.turnaround, dry_run: true })
+        await callFunction(MOVE_FUNCTION, moveArgs(ctx.current.recordId, datePlan, true))
       );
       setSaving(false);
       if (preview.ok) {
@@ -743,7 +743,7 @@ const AmendmentApp = () => {
       if (datePlan.kind === "move" && moveAllowed) {
         let label = "moving the Closing Date and production tasks";
         const moved = await step(label, async () => {
-          const m = readMove(await callFunction(MOVE_FUNCTION, { deal_id: String(recordId), new_date: datePlan.to, turnaround: datePlan.turnaround, dry_run: false }));
+          const m = readMove(await callFunction(MOVE_FUNCTION, moveArgs(recordId, datePlan, false)));
           if (!m.ok) throw new Error(m.message || "no answer");
           label = describeMove(m);
         });
