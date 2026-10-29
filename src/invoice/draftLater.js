@@ -74,7 +74,8 @@ export function canRetry(answer) {
 export const DRAFTING_FIELD = "Invoice_Drafting";
 export const REQUEST_FILE = "billing-draft-request.json";
 export const BACKGROUND_MESSAGE =
-  "Books is slow, so your draft will be made in the background. It will show under the Deal's Finance section in a few minutes. You can close this.";
+  "Books is slow, so your draft will be made in the background. It will show under the Deal's Finance section in a few minutes. " +
+  "If Books is still too slow, you will get a task to make it in Books instead. You can close this.";
 
 export function requestFile(dealId, payload, { submittedBy = "", firstAnswer = {}, now = new Date() } = {}) {
   return JSON.stringify({

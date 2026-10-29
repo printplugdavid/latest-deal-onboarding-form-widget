@@ -150,3 +150,10 @@ describe("E-158 draftOrBackground", () => {
     expect(canRetry({ result: "background" })).toBe(false);
   });
 });
+
+describe("E-158 switch", () => {
+  test("the background fallback is on (David 10-29, after Deluge's read-back on Deal 2 - TEST)", () => {
+    const { backgroundOn } = require("./billingDraft");
+    expect(backgroundOn()).toBe(true);
+  });
+});

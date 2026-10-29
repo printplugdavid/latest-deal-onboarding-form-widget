@@ -5,6 +5,6 @@
   "pilotDeals": [],
   "_screenPrintMinimum": "E-109 / D-53 (David, 10-22, revised 10-23): screen print is a minimum of 12 pieces per order (all garments under Screen Printing). Below it = a rare exception: priced with the Under-12 rows, flagged in the preview, a confirm on Submit, flagged on the result. Never blocked.",
   "screenPrintMinimum": 12,
-  "_backgroundDraft": "E-158 (David 10-29, our docs/84): when the instant draft fails (Books slow / no answer in time), the form attaches billing-draft-request.json and ticks the hidden Deal checkbox Invoice_Drafting with workflow on; Deluge's rule + function make the draft in the background (30 s), a sweep retries, a task only if it never works. false = the form behaves as before (Try again). Turn on only after Deluge's rule + function are live and read back.",
-  "backgroundDraft": false
+  "_backgroundDraft": "E-158 (David 10-29, our docs/84): when the instant draft fails (Books slow / no answer in time), the form attaches billing-draft-request.json and ticks the hidden Deal checkbox Invoice_Drafting with workflow on; Deluge's rule + function make the draft in the background (30 s), one background try (David: no retry schedule); if it does not make the draft, Deluge makes a task for the Deal owner and unticks. false = the form behaves as before (Try again). Turn on only after Deluge's rule + function are live and read back. ON since David's yes 10-29 (Deluge live + read back on Deal 2 - TEST 11:23).",
+  "backgroundDraft": true
 }

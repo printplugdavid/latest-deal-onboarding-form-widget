@@ -69,8 +69,8 @@ export default function AlreadyOnboarded({ dealId, found, offer: given, submitte
       {offer.why && <Alert severity="info">{offer.why}</Alert>}
       {drafting && (
         <Alert severity="info">
-          This Deal's draft is being made in the background (Books was slow). It will show under the Deal's Finance section; nothing
-          to do here.
+          This Deal's draft is being made in the background (Books was slow). It will show under the Deal's Finance section, or you
+          will get a task to make it in Books. Nothing to do here.
         </Alert>
       )}
       {offer.can && check && check.busy && (
