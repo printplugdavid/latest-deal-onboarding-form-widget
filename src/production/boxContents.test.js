@@ -160,6 +160,9 @@ describe("E-172 sorting boxes by department", () => {
   test("item text for the card", () => {
     expect(itemText(parseContents(LINE)[0])).toBe("1717 Granite: S 5, M 10 (15)");
     expect(itemText(parseContents(LINE)[2])).toBe("18000: 24 pcs");
+    // the dry run's real order (10-30): notice order -> shop order; an unknown size keeps its place at the end
+    expect(itemText(parseContents("Contents (box 1 of 1): 1717 Granite: S 5, XL 5, L 10, M 10, 2XL 5")[0])).toBe("1717 Granite: S 5, M 10, L 10, XL 5, 2XL 5 (35)");
+    expect(itemText(parseContents("Contents: 112Y Heather Grey/ White: Adjustable 5, OSFA 1")[0])).toBe("112Y Heather Grey/ White: OSFA 1, Adjustable 5 (6)");
   });
 });
 
