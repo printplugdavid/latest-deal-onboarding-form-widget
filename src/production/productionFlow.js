@@ -19,6 +19,7 @@ import { colorModeFor, readInkText } from "../colorLibrary";
 import { parseSizeText } from "../sizeRows";
 import { cardRouteOf } from "../productionCards";
 import { deptOfDesignTask, graphicFlowOn, hasUploadFor, isDesignTask } from "./graphicUpload";
+import { noteText } from "./noteText";
 
 const str = (v) => (v == null ? "" : String(v));
 
@@ -518,7 +519,7 @@ export function flowHistory(notes, dept) {
   const label = (DEPARTMENTS[dept] || {}).label || dept;
   return (notes || [])
     .filter((n) => n && n.Note_Title === FLOW_NOTE_TITLE)
-    .map((n) => ({ t: str(n.Created_Time), all: str(n.Note_Content).replace(/<br\s*\/?>/gi, "\n").split("\n").map((l) => l.trim()).filter(Boolean) }))
+    .map((n) => ({ t: str(n.Created_Time), all: noteText(n).split("\n").map((l) => l.trim()).filter(Boolean) }))
     .filter((n) => n.all.length && n.all[0].startsWith(label + " - "))
     .sort((a, b) => (a.t < b.t ? -1 : a.t > b.t ? 1 : 0))
     .map((n) => ({ when: n.t, head: n.all[0], lines: n.all.slice(1) }));
@@ -532,7 +533,7 @@ export function deptStarted(notes, dept) {
   const label = (DEPARTMENTS[dept] || {}).label || dept;
   const mine = (notes || [])
     .filter((n) => n && n.Note_Title === FLOW_NOTE_TITLE)
-    .map((n) => ({ t: str(n.Created_Time), first: str(n.Note_Content).split("\n")[0] }))
+    .map((n) => ({ t: str(n.Created_Time), first: noteText(n).split("\n")[0] }))
     .filter((n) => n.first.startsWith(label + " - STARTED") || n.first.startsWith(label + " - CLOSED"))
     .sort((a, b) => (a.t < b.t ? 1 : a.t > b.t ? -1 : 0));
   return !!mine.length && mine[0].first.startsWith(label + " - STARTED");

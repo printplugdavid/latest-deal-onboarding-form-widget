@@ -138,3 +138,15 @@ describe("E-176 the flow's history stays visible", () => {
     expect(h[1].lines).toEqual(["Closed: EMBROIDERY: Produce Order", "Deal moved to Quality Check."]);
   });
 });
+
+describe("E-181 notes come back from Zoho with & as &amp;", () => {
+  const { decodeEntities, noteText } = require("./noteText");
+  const { proofStatus: ps } = require("./proofs");
+  it("decodes before matching (David Balls Deal 1: six approvals that never counted)", () => {
+    const data = { products: [{ productType: "garment", productName: "Direct-to-Film", primaryBranches: [{ garmentType: "Port & Company - Tall Core Fleece Pullover Hooded Sweatshirt (PC78HT)", secondaryBranches: [{ tartiaryBranches: [{ placementLocation: "Full Front" }] }] }] }] };
+    const asZohoReturnsIt = { Note_Title: "PRODUCTION FLOW", Created_Time: "2026-10-30T15:36:45-06:00", Note_Content: "Vinyl - PROOF APPROVED - 10/30/26, 3:36 PM - Desi Mastin\nApproved: Port &amp; Company - Tall Core Fleece Pullover Hooded Sweatshirt (PC78HT) (Full Front)" };
+    expect(ps(data, [asZohoReturnsIt], "vinyl")).toMatchObject({ done: true, left: [] });
+    expect(decodeEntities("A &amp; B &lt;x&gt; &quot;q&quot; &#39;s")).toBe("A & B <x> \"q\" 's");
+    expect(noteText({ Note_Content: "a<br>b &amp; c" })).toBe("a\nb & c");
+  });
+});
