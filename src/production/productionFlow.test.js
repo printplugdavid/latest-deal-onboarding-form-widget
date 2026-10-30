@@ -417,3 +417,34 @@ test("E-167 / D-76: the cards' Revision / Correction button is switched on, and 
   expect(typeof require("../revision/RevisionApp").default).toBe("function");
 });
 
+/* ---------- E-162: the Graphic Design tab ---------- */
+test("E-162: design tasks are the Graphic Design tab's own; they never hold Quality Check; the tab needs its switch", () => {
+  const DES = "GRAPHIC DESIGN: EMBROIDERY: Artwork & Mock-Up / DISEÑO GRÁFICO: BORDADO: Arte y Maqueta";
+  const tasks = [T("1", DES), T("2", "EMBROIDERY: Produce Order / x"), T("3", "RUSH: GRAPHIC DESIGN: Finalize Graphics & Artwork / x")];
+  expect(openDeptTasks(tasks, "graphicdesign").map((t) => t.id)).toEqual(["1", "3"]);
+  expect(openHoldTasks(tasks, true).map((t) => t.id)).toEqual(["2"]);
+  expect(flowDeptFor("production-card-graphicdesign.html", { graphicFlowOn: true }).key).toBe("graphicdesign");
+  expect(flowDeptFor("production-card-graphicdesign.html", {})).toBe(null);
+  expect(closeQuestionsFor("graphicdesign").map((q) => q.question)).toEqual([
+    "Artwork verified against the client's original art, the notes and the mock-up?",
+    "Every file for this job uploaded through the upload step (named and filed)?",
+  ]);
+});
+
+test("E-162: a design task closes only after an upload for its department; it never moves the Deal", () => {
+  const DES = "GRAPHIC DESIGN: EMBROIDERY: Artwork & Mock-Up / x";
+  const FIN = "GRAPHIC DESIGN: Finalize Graphics & Artwork / x";
+  const tasks = [T("1", DES), T("3", FIN)];
+  const yes = { artcheck: "yes", uploaded: "yes" };
+  const note = (names) => [{ Note_Title: "GRAPHIC UPLOAD", Note_Content: ["Graphic upload - w", ...names.map((n) => n + " -> Graphic Design")].join("\n") }];
+  let p = closePlan({ dept: "graphicdesign", tasks, closing: ["1"], answers: yes, stage: "Mock-Up Approved / In Production", notes: [] });
+  expect(p.problems).toEqual(["Upload at least one Embroidery file through the upload step before closing GRAPHIC DESIGN: EMBROIDERY: Artwork & Mock-Up."]);
+  p = closePlan({ dept: "graphicdesign", tasks, closing: ["1"], answers: yes, stage: "x", notes: note(["4523_SP_ALL_Full-Back_PNG_v1.png"]) });
+  expect(p.problems).toHaveLength(1); // a Screen Print file does not count for Embroidery
+  p = closePlan({ dept: "graphicdesign", tasks, closing: ["1", "3"], answers: yes, stage: "Mock-Up Approved / In Production", notes: note(["4523_EMB_K500-Navy_Left-Chest_DST_v1.dst"]) });
+  expect(p.problems).toEqual([]);
+  expect(p.stage).toEqual({ move: false, to: "Quality Check", reason: "graphic design tasks do not move the Deal" });
+  p = closePlan({ dept: "graphicdesign", tasks, closing: ["3"], answers: { artcheck: "yes", uploaded: "no" }, stage: "x", notes: note(["4523_EMB_K500-Navy_Left-Chest_DST_v1.dst"]) });
+  expect(p.problems).toEqual([`Every file for this job uploaded through the upload step (named and filed)? - ${BLOCK_TEXT}`]);
+});
+

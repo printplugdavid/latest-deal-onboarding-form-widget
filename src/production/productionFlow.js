@@ -18,6 +18,7 @@
 import { colorModeFor, readInkText } from "../colorLibrary";
 import { parseSizeText } from "../sizeRows";
 import { cardRouteOf } from "../productionCards";
+import { deptOfDesignTask, graphicFlowOn, hasUploadFor, isDesignTask } from "./graphicUpload";
 
 const str = (v) => (v == null ? "" : String(v));
 
@@ -31,13 +32,17 @@ export const DEPARTMENTS = {
   vinyl: { key: "vinyl", label: "Vinyl", card: "production-card-vinyl.html", inks: false },
   /* E-164 (D-75): the Production Manager's packing step for outsourced products. No start steps; David's two close questions only. */
   outsourced: { key: "outsourced", label: "Outsourced", card: "production-card-outsourced.html", inks: false, start: false },
+  /* E-162 (D-77): graphic design uploads every file through the naming step and closes its design tasks here. */
+  graphicdesign: { key: "graphicdesign", label: "Graphic Design", card: "production-card-graphicdesign.html", inks: false, start: false },
 };
 export const deptForCard = (cardName) => Object.values(DEPARTMENTS).find((d) => d.card === str(cardName).toLowerCase()) || null;
 /* The card tab's flow, if any: the Outsourced tab only while its switch is on (productionConfig.json outsourcedOn). */
 export const outsourcedOn = (config) => !!config && config.outsourcedOn === true;
 export const flowDeptFor = (cardName, config) => {
   const d = deptForCard(cardName);
-  return d && d.key === "outsourced" && !outsourcedOn(config) ? null : d;
+  if (d && d.key === "outsourced" && !outsourcedOn(config)) return null;
+  if (d && d.key === "graphicdesign" && !graphicFlowOn(config)) return null;
+  return d;
 };
 
 /* The English half of a bilingual subject, upper-cased, without "RUSH: ". */
@@ -72,7 +77,9 @@ export const openWorkTasks = (tasks, withOutsourced = false) =>
     const d = isOpen(t) && deptOfTask(t.Subject);
     return !!d && (withOutsourced || d !== "outsourced");
   });
-export const openDeptTasks = (tasks, dept) => (tasks || []).filter((t) => isOpen(t) && deptOfTask(t.Subject) === dept);
+/* Graphic Design tasks are this tab's own, but never production work: they do not hold Quality Check (they come before production). */
+export const openDeptTasks = (tasks, dept) =>
+  (tasks || []).filter((t) => isOpen(t) && (dept === "graphicdesign" ? isDesignTask(t.Subject) : deptOfTask(t.Subject) === dept));
 
 /*
  * E-164 / D-75 (David 10-29, "Order + Package"): the outsourced ORDER task, "OUTSOURCED: Order Products" (+ "RUSH: ", + "OUTSOURCED:
@@ -147,13 +154,22 @@ export const OUTSOURCED_CLOSE_QUESTIONS = [
   { key: "verified", question: "Products counted and verified against mock-up, notes and original artwork?" },
   { key: "boxed", question: "Products removed from supplier boxes and put into Print Plug / unbranded boxes?" },
 ];
+/* E-162 (David 10-29: "Keep 1. Keep 2."): the Graphic Design tab's close questions. */
+export const DESIGN_CLOSE_QUESTIONS = [
+  { key: "artcheck", question: "Artwork verified against the client's original art, the notes and the mock-up?" },
+  { key: "uploaded", question: "Every file for this job uploaded through the upload step (named and filed)?" },
+];
 export const closeQuestionsFor = (dept, step) =>
-  dept === "outsourced"
+  dept === "graphicdesign"
+    ? [...DESIGN_CLOSE_QUESTIONS]
+    : dept === "outsourced"
     ? [...(step === "order" ? ORDER_CLOSE_QUESTIONS : OUTSOURCED_CLOSE_QUESTIONS)]
     : [...CLOSE_QUESTIONS, ...(DEPT_CLOSE_QUESTIONS[dept] || [])];
 /* The note's label for a close: "Outsourced order" / "Outsourced packing" for the two outsourced steps. */
 export const closeLabel = (dept, step) =>
   dept === "outsourced" ? (step === "order" ? "Outsourced order" : "Outsourced packing") : (DEPARTMENTS[dept] || {}).label || dept;
+/* The department label for an upload code (the Close check's message). */
+const UPLOAD_DEPT_LABEL = { SP: "Screen Print", EMB: "Embroidery", VIN: "Vinyl", OUT: "Outsourced" };
 export const hasStartSteps = (dept) => !!DEPARTMENTS[dept] && DEPARTMENTS[dept].start !== false;
 
 export const MISSING_REASONS = [
@@ -394,9 +410,10 @@ export const QC_STAGE = "Quality Check";
  * What Close does: { problems[], close[] (task ids), stage: { move, to, reason }, fields }.
  * answers = { questionKey: "yes" | "no" }; closing = ids of the department's tasks the agent is closing; inkLeft = grams typed per row.
  */
-export function closePlan({ dept, step, tasks, closing, answers, rows, inkLeft, stage, withOutsourced = false }) {
+export function closePlan({ dept, step, tasks, closing, answers, rows, inkLeft, stage, withOutsourced = false, notes }) {
   const problems = [];
   const isOrder = dept === "outsourced" && step === "order";
+  const isDesign = dept === "graphicdesign";
   closeQuestionsFor(dept, step).forEach((q) => {
     const a = str(answers && answers[q.key]);
     if (a === "no") problems.push(`${q.question} - ${BLOCK_TEXT}`);
@@ -404,6 +421,14 @@ export function closePlan({ dept, step, tasks, closing, answers, rows, inkLeft, 
   });
   const ids = (closing || []).map(str);
   if (!ids.length) problems.push("Tick the task(s) you are closing.");
+  /* E-162: a design task closes only once something was uploaded for its department (any department for a general task). */
+  if (isDesign)
+    ids.forEach((id) => {
+      const t = (tasks || []).find((x) => str(x.id) === id);
+      const code = t ? deptOfDesignTask(t.Subject) : "";
+      if (t && !hasUploadFor(notes, code))
+        problems.push(`Upload at least one ${code ? UPLOAD_DEPT_LABEL[code] + " " : ""}file through the upload step before closing ${taskTitle(t)}.`);
+    });
   if (DEPARTMENTS[dept] && DEPARTMENTS[dept].inks)
     (rows || []).forEach((r, i) => {
       if (grams(inkLeft && inkLeft[i]) == null) problems.push(`Grams of ink left for Pantone ${r.code}.`);
@@ -413,6 +438,7 @@ export function closePlan({ dept, step, tasks, closing, answers, rows, inkLeft, 
   const cur = str(stage);
   let move = { move: false, to: QC_STAGE, reason: "" };
   if (isOrder) move.reason = "the Package Outsourced Products task comes next";
+  else if (isDesign) move.reason = "graphic design tasks do not move the Deal";
   else if (stillOpen.length)
     move.reason = `${stillOpen.length} ${outsourcedOpen ? "production or outsourced" : "production"} task(s) still open: ${stillOpen.map(taskTitle).join("; ")}`;
   else if (cur === QC_STAGE) move.reason = "already in Quality Check";

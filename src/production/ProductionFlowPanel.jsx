@@ -57,6 +57,8 @@ import {
   taskTitle,
 } from "./productionFlow";
 import PRODUCTION_CONFIG from "./productionConfig.json";
+import GraphicUpload from "./GraphicUploadPanel";
+import { deptOfDesignTask, filingOn, uploadsOn } from "./graphicUpload";
 
 const ZOHO = window.ZOHO;
 const ok = (r) => r?.data?.[0]?.code === "SUCCESS";
@@ -136,7 +138,7 @@ const inkRow = (r, i, list, setList, word, busy) => (
 
 /* One "close" block: the tasks to tick, the questions (all Yes), grams left (screen print), feedback; then the tasks closed, the note,
    and the stage moved last. The Outsourced tab shows it twice: step "order" and step "package" (E-164). */
-const CloseTask = ({ dept, step, title, list, tasks, deal, rows, withOutsourced, busy, run, write, note, who, userId, expected }) => {
+const CloseTask = ({ dept, step, title, list, tasks, deal, rows, withOutsourced, busy, run, write, note, who, userId, expected, notes }) => {
   const d = DEPARTMENTS[dept];
   const [answers, setAnswers] = useState({});
   const [inkLeft, setInkLeft] = useState(() => rows.map((r) => (r.left != null ? String(r.left) : "")));
@@ -145,7 +147,7 @@ const CloseTask = ({ dept, step, title, list, tasks, deal, rows, withOutsourced,
   const [feedback, setFeedback] = useState({});
   const mine = list.filter((t) => ownerOf(t).id && ownerOf(t).id === userId);
   const shown = mineOnly && mine.length ? mine : list;
-  const plan = closePlan({ dept, step, tasks, closing, answers, rows, inkLeft, stage: deal.Stage, withOutsourced });
+  const plan = closePlan({ dept, step, tasks, closing, answers, rows, inkLeft, stage: deal.Stage, withOutsourced, notes });
   const doClose = () =>
     run("Closing the task(s)", async () => {
       if (Object.keys(plan.fields).length) await write(plan.fields, false);
@@ -305,7 +307,7 @@ const ProductionFlow = ({ dept, ctx, refresh }) => {
       return "Call Client flagged: the Sales Person gets a \"Call Client\" task with your notes on the Deal.";
     });
 
-  const common = { dept, tasks, deal, rows, withOutsourced, busy, run, write, note, who, userId: user.id, expected };
+  const common = { dept, tasks, deal, rows, withOutsourced, busy, run, write, note, who, userId: user.id, expected, notes };
 
   return (
     <Box sx={{ p: 2, bgcolor: "#fff", borderBottom: 2, borderColor: "#1a1a1a" }}>
@@ -324,7 +326,7 @@ const ProductionFlow = ({ dept, ctx, refresh }) => {
       )}
       {!myTasks.length && !orderOpen.length && (
         <Alert severity="info" sx={{ mt: 1 }}>
-          No open {dept === "outsourced" ? "outsourced (order or packing)" : d.label + " production"} task on this Deal. You can still report
+          No open {dept === "outsourced" ? "outsourced (order or packing)" : dept === "graphicdesign" ? "Graphic Design" : d.label + " production"} task on this Deal. You can still report
           missing garments or flag Call Client below.
         </Alert>
       )}
@@ -359,6 +361,22 @@ const ProductionFlow = ({ dept, ctx, refresh }) => {
         </Section>
       )}
       {hasStart && started && myTasks.length > 0 && <Alert severity="success" sx={{ mt: 1 }}>Job started (count, artwork and tools checked).</Alert>}
+
+      {/* E-162: the upload step (Graphic Design tab) */}
+      {dept === "graphicdesign" && (
+        <GraphicUpload
+          entity={entity}
+          recordId={recordId}
+          deal={deal}
+          data={data}
+          who={who}
+          notes={notes}
+          defaultDept={myTasks.map((t) => deptOfDesignTask(t.Subject)).find(Boolean) || ""}
+          uploadsOn={uploadsOn(PRODUCTION_CONFIG)}
+          startFiling={filingOn(PRODUCTION_CONFIG)}
+          refresh={refresh}
+        />
+      )}
 
       {/* 2. ACTIONS */}
       {artworkOk && (
