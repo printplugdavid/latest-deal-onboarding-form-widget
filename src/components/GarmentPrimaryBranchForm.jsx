@@ -141,6 +141,7 @@ const GarmentPrimaryBranchForm = ({
     fields: garmentSkus,
     append: appendSku,
     remove: removeSku,
+    replace: replaceSku,
   } = useFieldArray({
     control,
     name: `products.${index}.primaryBranches.${branchIndex}.garmentSkus`,
@@ -207,7 +208,15 @@ const GarmentPrimaryBranchForm = ({
       )}
 
       {/* E-104: start from the Books product -- fills type, kind and the size-band SKUs. */}
-      <GarmentProductPick index={index} branchIndex={branchIndex} />
+      <GarmentProductPick
+        index={index}
+        branchIndex={branchIndex}
+        // E-179: the whole SKU list through the field array, so every SKU box shows what is really saved
+        setSkus={(rows) => {
+          replaceSku(rows);
+          setValue(`products.${index}.primaryBranches.${branchIndex}.numberOfSkus`, String(rows.length));
+        }}
+      />
 
       <FormControlLabel
         control={
@@ -312,7 +321,8 @@ const GarmentPrimaryBranchForm = ({
       {/* E-100: each SKU is picked from the real Books / CRM products, or added through the New Product form. */}
       {garmentSkus?.map((_, skuIndex) => (
         <ProductSkuField
-          key={`${index}-${branchIndex}-sku-${skuIndex}`}
+          // E-179: keyed by the saved code too, so a row whose code was replaced from outside shows the new code (it showed the old one)
+          key={`${index}-${branchIndex}-sku-${skuIndex}-${String((garmentSkuValues && garmentSkuValues[skuIndex] && garmentSkuValues[skuIndex].sku) || "")}`}
           rowPath={`products.${index}.primaryBranches.${branchIndex}.garmentSkus.${skuIndex}`}
           label={`SKU ${skuIndex + 1}`}
           garmentKind={garmentKindValue}
