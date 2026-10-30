@@ -27,8 +27,17 @@ const colorKey = (c) => str(c).toLowerCase().replace(/grey/g, "gray").replace(/[
 
 /*
  * The order's garments, each with its card: [{ card, name, styles: [..], colors: [colorKey..] }]. Styles = the garment's SKU rows plus a
- * code in brackets at the end of its Garment Type, like the E-146 run reads them. routeOf(product) -> { card } (productionCards' pcRoute).
+ * code in brackets at the end of ANY line of its Garment Type, like the E-146 run reads them. One garment line often holds several styles
+ * (real orders 10-30: "Comfort Colors ... (1717)" + "Men's Pregame Long Sleeve T-Shirt (AT104)" in one garment), each with its own
+ * section in the sizes ("... (AT104):" or "nl6211:" then its colors): each such section is also an entry of its own, so its colors
+ * stay with its style. routeOf(product) -> { card } (productionCards' pcRoute).
  */
+const codeOf = (label) => {
+  const t = str(label).trim();
+  const br = /\(([^()]+)\)\s*$/.exec(t) || /\[([^[\]]+)\]\s*$/.exec(t);
+  const c = cleanStyle(br ? br[1] : t);
+  return /^[A-Z0-9]{3,}$/.test(c) && /\d/.test(c) ? c : "";
+};
 export function orderGarments(data, routeOf) {
   const out = [];
   ((data && data.products) || []).forEach((p) => {
@@ -38,20 +47,27 @@ export function orderGarments(data, routeOf) {
     (p.primaryBranches || []).forEach((b) => {
       if (!b) return;
       const styles = [];
-      const add = (s) => {
+      const add = (list, s) => {
         const c = cleanStyle(s);
-        if (c && /^[A-Z0-9]+$/.test(c) && !styles.includes(c)) styles.push(c);
+        if (c && /^[A-Z0-9]+$/.test(c) && !list.includes(c)) list.push(c);
       };
-      (b.garmentSkus || []).forEach((r) => add(r && r.sku));
-      const type = str(b.garmentType).split(/\r?\n/)[0].trim();
-      const br = /\(([^()]+)\)\s*$/.exec(type) || /\[([^[\]]+)\]\s*$/.exec(type);
-      if (br && /\d/.test(br[1]) && cleanStyle(br[1]).length >= 3) add(br[1]);
-      const colors = [];
+      (b.garmentSkus || []).forEach((r) => add(styles, r && r.sku));
+      const typeLines = str(b.garmentType).split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+      typeLines.forEach((l) => add(styles, codeOf(/\)\s*$|\]\s*$/.test(l) ? l : "")));
+      const branchColors = [];
+      const sections = new Map(); // style code -> colors
       parseSizeText(b.countColorSize).rows.forEach((r) => {
         const k = colorKey(r.color);
-        if (k && !colors.includes(k)) colors.push(k);
+        const code = codeOf(r.group);
+        if (code) {
+          add(styles, code);
+          if (!sections.has(code)) sections.set(code, []);
+          if (k && !sections.get(code).includes(k)) sections.get(code).push(k);
+        } else if (k && !branchColors.includes(k)) branchColors.push(k);
       });
-      out.push({ card: route.card, name: type || str(p.productName), styles, colors });
+      const name = typeLines[0] || str(p.productName);
+      out.push({ card: route.card, name, styles, colors: branchColors });
+      sections.forEach((colors, code) => out.push({ card: route.card, name, styles: [code], colors }));
     });
   });
   return out;

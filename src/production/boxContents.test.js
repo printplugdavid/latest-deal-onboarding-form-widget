@@ -88,6 +88,34 @@ describe("E-172 sorting boxes by department", () => {
     ]);
   });
 
+  test("one garment line with several styles: every style is read, and each section keeps its own colors", () => {
+    const multi = {
+      products: [
+        {
+          productName: "Screen Printing",
+          productType: "garment",
+          primaryBranches: [
+            {
+              garmentType: "Comfort Colors - Heavyweight Ring Spun Tee (1717)\nMen's Pregame Long Sleeve T-Shirt (AT104)",
+              garmentSkus: [{ sku: "1717" }, { sku: "17171" }],
+              countColorSize: "Comfort Colors - Heavyweight Ring Spun Tee (1717):\nGranite\n5- S\n\nMen's Pregame Long Sleeve T-Shirt (AT104):\nMedium Grey Heather/ Black\n4- L\n\nnl6211:\nRoyal\n2- S",
+            },
+          ],
+        },
+      ],
+    };
+    const g = orderGarments(multi, cardRouteOf);
+    expect(g[0].styles).toEqual(["1717", "17171", "AT104", "NL6211"]);
+    expect(g.slice(1).map((x) => [x.styles, x.colors])).toEqual([
+      [["1717"], ["granite"]],
+      [["AT104"], ["mediumgrayheatherblack"]],
+      [["NL6211"], ["royal"]],
+    ]);
+    // S&S writes the maker's style ("6211", from styleName); our SKU carries the brand letters: NL6211.
+    expect(cardsForItem({ style: "6211", color: "Royal" }, g)).toEqual(["screenprint"]);
+    expect(cardsForItem({ style: "AT104", color: "Medium Grey Heather/ Black" }, g)).toEqual(["screenprint"]);
+  });
+
   test("an item goes to the department(s) by style, narrowed by color", () => {
     expect(cardsForItem({ style: "1717", color: "Granite" }, garments)).toEqual(["screenprint"]);
     expect(cardsForItem({ style: "1717", color: "Black" }, garments)).toEqual(["screenprint", "embroidery"]);
