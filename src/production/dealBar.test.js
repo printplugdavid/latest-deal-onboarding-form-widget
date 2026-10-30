@@ -100,6 +100,8 @@ describe("E-173 cards: Color Change + the designer's details under each artwork 
     expect(gd).toMatch(/Color Change/);
     expect(gd).toMatch(/Placement/);
     expect(gd).toMatch(/Center Chest/);
+    expect(gd).toMatch(/Garment Colors<\/span><span class="val">Navy, White</);
+    expect(gd).toMatch(/Print Ready\?<\/span><span class="val">Yes</); // older orders saved true / false
   });
   it("a plain No adds nothing", () => {
     const data = JSON.parse(JSON.stringify(ORDER));
