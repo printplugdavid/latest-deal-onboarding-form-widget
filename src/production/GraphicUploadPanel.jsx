@@ -2,7 +2,7 @@
  * GraphicUploadPanel.jsx -- E-162 / E-170 (D-77, D-78): the Graphic Design card tab's graphics, each with its files and its own Upload.
  *
  * Every graphic of the order is listed (Garment 1 - Graphic 2, its description and placements) with the files uploaded for it -- from
- * the GRAPHIC UPLOAD notes ("filing in a few minutes" until the CRM retitles the note "GRAPHIC UPLOAD - FILED"; a "Not filed" line shows
+ * the GRAPHIC UPLOAD notes ("being filed" until the CRM retitles the note "GRAPHIC UPLOAD - FILED"; a "Not filed" line shows
  * its reason) and, for older orders, the art attached at onboarding. "Upload a file" names it from that graphic (Format picked;
  * department / garment / placement changeable) and runs the one upload routine (graphicUploader.js). "Other file" is for files that
  * belong to no single graphic.
@@ -70,7 +70,7 @@ const FileRow = ({ file, start, garments, placementsFor, po, busy, onUpload, onC
   );
 };
 
-const statusOf = (f) => (f.notFiled ? `not filed: ${f.notFiled}` : f.filed ? "filed" : "filing in a few minutes");
+const statusOf = (f) => (f.notFiled ? `not filed: ${f.notFiled}` : f.filed ? "filed" : "being filed (reopen the cards in a moment to see it filed)");
 
 const GraphicUpload = ({ entity, recordId, deal, data, notes, who, defaultDept, uploadsOn, startFiling, refresh }) => {
   const graphics = useMemo(() => graphicsOf(data), [data]);
@@ -97,7 +97,7 @@ const GraphicUpload = ({ entity, recordId, deal, data, notes, who, defaultDept, 
       setPicked(null);
       setResult({
         severity: "success",
-        text: `${res.name}: attached${res.filingStarted ? "; it is filed into " + (FOLDER_LABELS[res.folder] || "WorkDrive") + " in a few minutes" : " (filing switch off: it stays on the note for now)"}.`,
+        text: `${res.name}: attached${res.filingStarted ? "; it is being filed into " + (FOLDER_LABELS[res.folder] || "WorkDrive") + " now" : " (filing switch off: it stays on the note for now)"}.`,
       });
       if (refresh) await refresh();
     } catch (e) {
@@ -125,7 +125,7 @@ const GraphicUpload = ({ entity, recordId, deal, data, notes, who, defaultDept, 
     <Box sx={{ mt: 2 }}>
       <Typography fontWeight="bold">Graphics on this order</Typography>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-        Each file is renamed {po}_DEPARTMENT_GARMENT_PLACEMENT_FORMAT_vN and filed in the Deal's folder a few minutes after upload. A newer
+        Each file is renamed {po}_DEPARTMENT_GARMENT_PLACEMENT_FORMAT_vN and filed in the Deal's folder right after upload. A newer
         version moves the older one to Rejected.
       </Typography>
       {!uploadsOn && <Alert severity="info">Uploads are switched off.</Alert>}

@@ -4,7 +4,7 @@
  *   1. Deluge's dry run (folders only, fast) -> the next version -> the final name;
  *   2. a "GRAPHIC UPLOAD" note (people's lines + the FILING JSON line) with the renamed file attached;
  *   3. the hidden Deal box Graphics_Filing unticked (Trigger []), then ticked with workflow -> Deluge's rule files everything
- *      on the Deal's GRAPHIC UPLOAD notes ~5 minutes later and retitles the note "GRAPHIC UPLOAD - FILED" (their docs/58).
+ *      on the Deal's GRAPHIC UPLOAD notes right away (instant rule, docs/58 §11) and retitles the note "GRAPHIC UPLOAD - FILED" (their docs/58).
  * The only ZOHO-calling part of the upload; the naming rules are in graphicUpload.js.
  */
 import {

@@ -196,7 +196,7 @@ export function versionFrom(answer, stem) {
   };
 }
 
-/* Deluge docs/58 §6 (10-30): the form keeps ONLY the dry run; filing (and its retries) runs in the background ~5 minutes later. */
+/* Deluge docs/58 §6 (10-30): the form keeps ONLY the dry run; filing (and its retries) runs in the CRM right after (instant rule, docs/58 §11). */
 export const FILING_FIELD = "Graphics_Filing";
 export const filingOn = (config) => !!config && config.graphicFilingOn === true;
 

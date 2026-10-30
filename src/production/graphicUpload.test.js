@@ -187,11 +187,12 @@ test("E-170: graphics of the order, their permanent ids, and what an upload for 
   expect(deptForProduct({ productName: "Business Cards", productType: "nongarment" })).toBe("OUT");
 });
 
-test("E-162: every switch is OFF until David says go (and the filing field + rule exist)", () => {
+test("E-162: the three switches are ON for the go-live (Deluge's field, rule and functions are in Zoho, 10-30)", () => {
   const cfg = require("./productionConfig.json");
-  expect(graphicFlowOn(cfg)).toBe(false);
-  expect(uploadsOn(cfg)).toBe(false);
-  expect(filingOn(cfg)).toBe(false);
+  expect(graphicFlowOn(cfg)).toBe(true);
+  expect(uploadsOn(cfg)).toBe(true);
+  expect(filingOn(cfg)).toBe(true);
+  expect(graphicFlowOn({})).toBe(false);
   expect(FILING_FIELD).toBe("Graphics_Filing");
   expect(graphicFlowOn({ graphicFlowOn: true })).toBe(true);
 });

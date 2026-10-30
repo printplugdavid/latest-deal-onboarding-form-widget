@@ -9,7 +9,7 @@
  *
  * E-162 / E-170 (D-77, D-78, David 10-30: "Replace it."): when the store carries an `uploader` (onboarding, switch graphicUploadsOn),
  * each file gets a Format pick and its own Upload: it is renamed PO_DEPT_GARMENT_PLACEMENT_FORMAT_vN at once (department, garment and
- * placement from this graphic, changeable), attached to a GRAPHIC UPLOAD note and filed into WorkDrive ~5 minutes later by the CRM.
+ * placement from this graphic, changeable), attached to a GRAPHIC UPLOAD note and filed into WorkDrive right after by the CRM (instant rule).
  * Its entry then reads { name: <final>, original, uploaded: true, folder } and Submit does not attach it again. The graphic gets a
  * permanent `graphicId` so the Graphic Design card can show its files (client original -> final).
  */
@@ -122,7 +122,7 @@ const GraphicArt = ({ base, productName: givenName, productIndex }) => {
               <span style={{ color: "#777" }}>{mb(a.size || 0)} MB</span>
               {a.uploaded && (
                 <span style={{ color: "#2e7d32" }}>
-                  uploaded{a.original && a.original !== a.name ? ` (was ${a.original})` : ""}: filing into {FOLDER_LABELS[a.folder] || "WorkDrive"} in a few minutes
+                  uploaded{a.original && a.original !== a.name ? ` (was ${a.original})` : ""}: being filed into {FOLDER_LABELS[a.folder] || "WorkDrive"} now
                 </span>
               )}
               {store && store.get(a.key) && isPicture(a.name) && (
