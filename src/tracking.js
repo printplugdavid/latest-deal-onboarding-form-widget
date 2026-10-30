@@ -106,9 +106,13 @@ export function parseTracking(text) {
     const line = raw.trim();
     if (!line) continue;
     // E-172: "Contents: ..." under a box (written by the supplier run) belongs to the box above it; it never holds a tracking number.
-    if (line.toLowerCase().startsWith(CONTENTS_PREFIX.toLowerCase())) {
+    if (isContentsLine(line)) {
       const last = boxes[boxes.length - 1];
-      if (last) last.contents = (last.contents || []).concat(parseContents(line));
+      if (last) {
+        last.contents = (last.contents || []).concat(parseContents(line));
+        const bo = parseBoxOf(line);
+        if (bo) last.boxOf = bo;
+      }
       continue;
     }
     if (isUrl(line)) {
@@ -130,6 +134,7 @@ export function parseTracking(text) {
   return boxes.map((b) => {
     const box = { number: b.number, link: linkFor(b.number) || b.link, carrier: b.carrier };
     if (b.contents && b.contents.length) box.contents = b.contents;
+    if (b.boxOf) box.boxOf = b.boxOf;
     return box;
   });
 }
@@ -148,12 +153,16 @@ export function formatTracking(boxes) {
 
 // ---- E-172: the "Contents:" line under a box (format and reader; boxContents.js sorts boxes by department) ----
 export const CONTENTS_PREFIX = "Contents:";
+export const isContentsLine = (line) => /^contents\s*(\(\s*box\s+\d+\s+of\s+\d+\s*\))?\s*:/i.test(str(line).trim());
 
 // "pc-78 h" -> "PC78H": the same cleaning as the E-146 run (styles in notes and notices).
 export const cleanStyle = (s) => str(s).toUpperCase().replace(/[\s-]/g, "");
 
 /* items -> the Contents line. items: [{ style, color, sizes: [{ size, count }], count }] (count used when sizes is empty). */
-export function formatContents(items) {
+// E-172 (David 10-30: "don't multiple boxes share tracking numbers? That's the reason for the box number need"): S&S's GLS boxes of one
+// order differ only in the last digits (...002001, ...002002), so the line may start "Contents (box 2 of 5):" -- the box's place in its
+// supplier order. box = { n, of } (optional).
+export function formatContents(items, box) {
   const parts = (items || [])
     .map((it) => {
       const style = cleanStyle(it.style);
@@ -167,15 +176,29 @@ export function formatContents(items) {
       return `${head}: ${tail}`;
     })
     .filter(Boolean);
-  return parts.length ? `${CONTENTS_PREFIX} ${parts.join(" | ")}` : "";
+  if (!parts.length) return "";
+  const n = Number(box && box.n);
+  const of = Number(box && box.of);
+  const label = n > 0 && of >= n ? `Contents (box ${n} of ${of}):` : CONTENTS_PREFIX;
+  return `${label} ${parts.join(" | ")}`;
 }
 
 /* The Contents line -> items (the reverse of formatContents). Anything unreadable is skipped, never guessed. */
+const BOX_OF = /^contents\s*\(\s*box\s+(\d+)\s+of\s+(\d+)\s*\)\s*:/i;
+const contentsBody = (t) => {
+  const m = BOX_OF.exec(t);
+  return m ? t.slice(m[0].length) : t.slice(CONTENTS_PREFIX.length);
+};
+// "Contents (box 2 of 5): ..." -> { n: 2, of: 5 }; no box part -> null.
+export function parseBoxOf(line) {
+  const m = BOX_OF.exec(str(line).trim());
+  return m && Number(m[1]) > 0 && Number(m[2]) >= Number(m[1]) ? { n: Number(m[1]), of: Number(m[2]) } : null;
+}
 export function parseContents(line) {
   const t = str(line).trim();
-  if (!t.toLowerCase().startsWith(CONTENTS_PREFIX.toLowerCase())) return [];
+  if (!isContentsLine(t)) return [];
   const items = [];
-  for (const raw of t.slice(CONTENTS_PREFIX.length).split("|")) {
+  for (const raw of contentsBody(t).split("|")) {
     const part = raw.trim();
     const colon = part.lastIndexOf(":");
     if (colon <= 0) continue;

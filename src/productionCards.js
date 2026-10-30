@@ -176,6 +176,9 @@ function buildProductionCards(data, counts, dealInfo) {
   const garmentsOnOrder = dealInfo?.boxContents ? orderGarments(data, pcRoute) : [];
   const deptName = (c) => (PC_META[c] ? PC_META[c].dept : c);
   const boxLink = (b) => { const href = pcLink(b.link); const num = pcEsc(String(b.number)); return (href ? `<a href="${pcAttr(href)}" target="_blank" rel="noopener noreferrer">${num}</a>` : num) + (pcHas(b.carrier) ? ` <span class="omute">${pcEsc(b.carrier)}</span>` : ""); };
+  // E-172 (David 10-30): boxes of one S&S order differ only in the last digits, so each box says where it sits in its supplier order
+  // (when the run wrote it) and the label's last 4 in bold, to match the sticker at a glance.
+  const boxHead = (b) => { const n = String(b.number); const tail = n.length > 4 ? n.slice(-4) : n; return `${b.boxOf ? `<b>Box ${b.boxOf.n} of ${b.boxOf.of}</b> &middot; ` : ""}label ends <b style="font-size:16px">${pcEsc(tail)}</b> &middot; ${boxLink(b)}`; };
   const sumPcs = (list) => list.reduce((n, it) => n + (Number(it.count) || 0), 0);
   const othersList = (others, unmatched) => others.map((o) => `<div style="margin:2px 0 2px 12px">${pcEsc(itemText(o.item))} &rarr; <b>${pcEsc(o.cards.map(deptName).join(" or "))}</b></div>`).join("") + (unmatched || []).map((it) => `<div style="margin:2px 0 2px 12px">${pcEsc(itemText(it))} &rarr; <b>not on this order</b> (another Deal's garments?)</div>`).join("");
   const boxesFor = (list, label, colors, cardKey) => {
@@ -186,9 +189,9 @@ function buildProductionCards(data, counts, dealInfo) {
       const shared = items.filter((it) => it.sharedWith.length).map((it) => ` <span class="omute">(also used by ${pcEsc(it.sharedWith.map(deptName).join(", "))})</span>`);
       const flagN = sumPcs(others.map((o) => o.item)) + sumPcs(unmatched);
       const flag = flagN ? `<details style="margin:3px 0 0 12px"><summary style="cursor:pointer;color:#a61e4d;font-weight:600">Also in this box: ${flagN} pcs that are not for this card</summary>${othersList(others, unmatched)}</details>` : "";
-      return `<div style="margin:5px 0">${boxLink(box)}<div style="margin:2px 0 0 12px">${items.map((it) => pcEsc(itemText(it))).join("<br>")}${shared.join("")}</div>${flag}</div>`;
+      return `<div style="margin:5px 0">${boxHead(box)}<div style="margin:2px 0 0 12px">${items.map((it) => pcEsc(itemText(it))).join("<br>")}${shared.join("")}</div>${flag}</div>`;
     }).join("");
-    const elsewhere = sorted.elsewhere.length ? `<details style="margin:5px 0"><summary style="cursor:pointer">${sorted.elsewhere.length} other box${sorted.elsewhere.length === 1 ? " has" : "es have"} none of this card's garments</summary>${sorted.elsewhere.map(({ box, others, unmatched }) => `<div style="margin:4px 0">${boxLink(box)}${othersList(others, unmatched)}</div>`).join("")}</details>` : "";
+    const elsewhere = sorted.elsewhere.length ? `<details style="margin:5px 0"><summary style="cursor:pointer">${sorted.elsewhere.length} other box${sorted.elsewhere.length === 1 ? " has" : "es have"} none of this card's garments</summary>${sorted.elsewhere.map(({ box, others, unmatched }) => `<div style="margin:4px 0">${boxHead(box)}${othersList(others, unmatched)}</div>`).join("")}</details>` : "";
     const unknown = sorted.unknown.length ? `<div style="margin:5px 0"><span class="omute">Contents not listed:</span> ${sorted.unknown.map(boxLink).join(" &middot; ")}</div>` : "";
     const head = sorted.mine.length ? `<b>${label} -- boxes with this card's garments:</b>` : `<b>${label}:</b> <span class="omute">no box lists this card's garments yet</span>`;
     return `<div class="gsummary" style="${colors}">${head}${rows}${elsewhere}${unknown}</div>`;

@@ -1,7 +1,7 @@
 import { CONTENTS_PREFIX, cardsForItem, formatContents, itemText, orderGarments, parseContents, sortBoxesForCard } from "./boxContents";
 import { buildProductionCards, cardRouteOf } from "../productionCards";
 import { buildCardsFromData } from "../cardBuild";
-import { parseTracking } from "../tracking";
+import { parseBoxOf, parseTracking } from "../tracking";
 
 const ITEMS = [
   { style: "1717", color: "Granite", sizes: [{ size: "S", count: 5 }, { size: "M", count: 10 }] },
@@ -30,6 +30,18 @@ describe("E-172 Contents line (format owned here; the Deluge twin must write exa
       { style: "18000", color: "", sizes: [], count: 24 },
     ]);
     expect(parseContents(formatContents(parseContents(LINE)))).toEqual(parseContents(LINE));
+  });
+
+  test("the box's place in its supplier order (S&S GLS boxes differ only in the last digits)", () => {
+    const line = formatContents(ITEMS.slice(0, 1), { n: 2, of: 5 });
+    expect(line).toBe("Contents (box 2 of 5): 1717 Granite: S 5, M 10");
+    expect(parseBoxOf(line)).toEqual({ n: 2, of: 5 });
+    expect(parseContents(line)).toEqual(parseContents("Contents: 1717 Granite: S 5, M 10"));
+    expect(parseBoxOf("Contents: 1717 Granite: S 5")).toBeNull();
+    expect(formatContents(ITEMS.slice(0, 1), { n: 3, of: 2 })).toBe("Contents: 1717 Granite: S 5, M 10"); // nonsense: left out
+    const boxes = parseTracking("G172906104222002002\nContents (box 2 of 5): 1717 Granite: S 5");
+    expect(boxes[0].boxOf).toEqual({ n: 2, of: 5 });
+    expect(boxes[0].contents).toHaveLength(1);
   });
 
   test("anything unreadable is skipped, never guessed", () => {
@@ -175,6 +187,7 @@ describe("E-172 on the cards (switch boxContentsOn)", () => {
     const sp = cards.get("production-card-screenprint.html");
     expect(sp).toContain("boxes with this card's garments");
     expect(sp).toContain("1717 Granite: S 5, M 10 (15)");
+    expect(sp).toContain('label ends <b style="font-size:16px">0001</b>');
     expect(sp).toContain("Also in this box: 5 pcs that are not for this card");
     expect(sp).toContain("112Y Heather Grey: OSFA 5 (5) &rarr; <b>Embroidery</b>");
     expect(sp).toContain("1 other box has none of this card's garments");
@@ -183,6 +196,12 @@ describe("E-172 on the cards (switch boxContentsOn)", () => {
     expect(em).toContain("112Y Heather Grey: OSFA 5 (5)");
     expect(em).toContain("&rarr; <b>Screen Print</b>");
     expect(em).not.toContain("none of this card's garments");
+  });
+
+  test("on: a box with its place in the supplier order says Box 2 of 5", () => {
+    const info = { shipments: parseTracking("G172906104222002002\nContents (box 2 of 5): 1717 Granite: S 5"), boxContents: true };
+    const sp = new Map(buildProductionCards(ORDER, {}, info).map((c) => [c.name, c.html])).get("production-card-screenprint.html");
+    expect(sp).toContain('<b>Box 2 of 5</b> &middot; label ends <b style="font-size:16px">2002</b>');
   });
 
   test("on, but no box lists contents: the plain line, as before", () => {
