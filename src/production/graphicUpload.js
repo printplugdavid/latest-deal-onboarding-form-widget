@@ -15,6 +15,7 @@
 import { locationsFor, OTHER } from "../placements";
 import { parseSizeText } from "../sizeRows";
 import { cardRouteOf } from "../productionCards";
+import PRODUCTION_CONFIG from "./productionConfig.json";
 
 const str = (v) => (v == null ? "" : String(v));
 
@@ -84,7 +85,7 @@ export const stemFor = ({ po, dept, garment, placement, format, artName }) =>
 export const artNameFor = (description, label) => {
   const words = str(description).replace(/[^A-Za-z0-9& ]+/g, " ").trim().split(/\s+/).filter(Boolean).slice(0, 4);
   if (words.length) return namePart(words.map((w) => w[0].toUpperCase() + w.slice(1)).join(" "));
-  const n = /Graphic (\d+)/.exec(str(label));
+  const n = /Graphic (\d+)$/.exec(str(label).trim()) || /Graphic (\d+)/.exec(str(label));
   return "Graphic-" + (n ? n[1] : "1");
 };
 export const fileName = (stem, version, ext) => `${stem}_v${Number(version) || 1}${ext ? "." + ext : ""}`;
@@ -233,6 +234,23 @@ export function deptForProduct(p) {
 }
 
 /* The products / garment / graphic a form path points at: "products.0.primaryBranches.1.secondaryBranches.2" or "products.3.branches.0". */
+/*
+ * A graphic's name on screen and on the upload notes. Small follow-up (David 10-30, "Yes, do that next"): it names the product and the
+ * garment ("Embroidery: Nike Polo NKDC1963 - Graphic 1"), because "Garment 1 - Graphic 1" repeated across products. Brackets and ";"
+ * are left out: the upload note's "(graphic KEY: label; ...)" part is read back up to the first ")". Switch graphicLabelsOn; off = as before.
+ */
+let namedLabels = PRODUCTION_CONFIG.graphicLabelsOn === true; // tests flip it with setNamedGraphicLabels
+export const setNamedGraphicLabels = (on) => {
+  namedLabels = on === true;
+};
+const labelSafe = (v) => str(v).replace(/[();]/g, " ").replace(/\s+/g, " ").trim();
+const shortName = (v, n) => (v.length > n ? v.slice(0, n - 1).trim() + "…" : v);
+export function graphicLabel(product, branch, gi, si) {
+  if (!namedLabels) return `Garment ${gi + 1} - Graphic ${si + 1}`;
+  const kind = labelSafe(product && product.productName);
+  const garment = shortName(labelSafe(str(branch && branch.garmentType).split("\n")[0]), 40) || `Garment ${gi + 1}`;
+  return `${kind ? kind + ": " : ""}${garment} - Graphic ${si + 1}`;
+}
 export function graphicAt(products, base) {
   const m = /^products\.(\d+)\.(?:primaryBranches\.(\d+)\.secondaryBranches\.(\d+)|branches\.(\d+))$/.exec(str(base));
   if (!m) return null;
@@ -244,11 +262,11 @@ export function graphicAt(products, base) {
     const si = Number(m[3]);
     const branch = (product.primaryBranches || [])[gi];
     const graphic = branch && (branch.secondaryBranches || [])[si];
-    return graphic ? { product, branch, graphic, label: `Garment ${gi + 1} - Graphic ${si + 1}`, position: `p${pi}-g${gi}-s${si}` } : null;
+    return graphic ? { product, branch, graphic, label: graphicLabel(product, branch, gi, si), position: `p${pi}-g${gi}-s${si}` } : null;
   }
   const bi = Number(m[4]);
   const graphic = (product.branches || [])[bi];
-  return graphic ? { product, branch: null, graphic, label: `${str(product.productName) || "Item"} - Graphic ${bi + 1}`, position: `p${pi}-b${bi}` } : null;
+  return graphic ? { product, branch: null, graphic, label: `${(namedLabels ? labelSafe(product.productName) : str(product.productName)) || "Item"} - Graphic ${bi + 1}`, position: `p${pi}-b${bi}` } : null;
 }
 /* The id the uploads of a graphic are filed under: its saved id, else (older orders) its position in the order. */
 export const graphicKey = (at) => (at ? str(at.graphic.graphicId).trim() || at.position : "");
