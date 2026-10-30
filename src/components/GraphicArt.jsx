@@ -217,7 +217,7 @@ const GraphicArt = ({ base, productName: givenName, productIndex }) => {
 
       <Typography sx={{ fontSize: "0.75rem", color: "#777", mt: "0.4rem" }}>
         {uploader
-          ? `Upload names each file ${"<PO>_<DEPARTMENT>_<GARMENT>_<PLACEMENT>_<FORMAT>_v<N>"} and files it in the Deal's WorkDrive; a file not uploaded goes on the onboarding note as before. Add buttons write the ${WHERE[mode]} into this graphic's Colors Used.`
+          ? `Upload names each file and files it in the Deal's WorkDrive: a client's file as <PO>_ORIGINAL_<art name>_v<N>, any other file as <PO>_<DEPARTMENT>_<GARMENT>_<PLACEMENT>_<FORMAT>_v<N>. A file not uploaded goes on the onboarding note as before. Add buttons write the ${WHERE[mode]} into this graphic's Colors Used.`
           : store
           ? `Attached art goes on the onboarding note and into the Deal's Art Assets. Add buttons write the ${WHERE[mode]} into this graphic's Colors Used.`
           : "A picture picked here is only read for its colors; it is not saved."}
