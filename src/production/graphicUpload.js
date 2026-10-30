@@ -410,6 +410,46 @@ export function uploadsByGraphic(notes) {
   return out;
 }
 
+/*
+ * Small follow-up (David 10-30): a reopened onboarding shows whether each uploaded file was filed. Map(file name -> { filed, notFiled,
+ * folder }) from the Deal's GRAPHIC UPLOAD notes (folder = the folder's name as written on the note). A file not on any note yet -> absent.
+ */
+export function filingByName(notes) {
+  const out = new Map();
+  Object.values(uploadsByGraphic(notes)).forEach((list) =>
+    list.forEach((f) => {
+      const had = out.get(f.name);
+      out.set(f.name, { filed: !!(f.filed || (had && had.filed)), notFiled: f.notFiled || (had && had.notFiled) || "", folder: f.folder });
+    })
+  );
+  return out;
+}
+
+/*
+ * Small follow-up (David 10-30, "Yes, build that"): an onboarding opened again before Submit starts blank, but files uploaded on the
+ * first visit are already on the Deal. Every uploaded file, oldest first: [{ name, folder, filed, notFiled, labels }] (labels = the
+ * graphics it was uploaded for, as written on its note). The form lists them and counts them in the "art name already used" warning.
+ */
+export function earlierUploads(notes) {
+  const status = filingByName(notes);
+  const out = [];
+  (notes || [])
+    .filter((n) => n && /^GRAPHIC UPLOAD/.test(str(n.Note_Title)))
+    .sort((a, b) => (str(a.Created_Time) < str(b.Created_Time) ? -1 : 1))
+    .forEach((n) =>
+      str(n.Note_Content)
+        .split(/\n|<br\s*\/?>/i)
+        .forEach((l) => {
+          const m = /^([^\s]+_v\d+(?:\.[A-Za-z0-9]+)?) -> (.+?)(?: \((graphic [^)]*)\))?(?: \(was: (.+)\))?$/.exec(l.trim());
+          if (!m || out.some((x) => x.name === m[1])) return;
+          const labels = m[3] ? m[3].split("; ").map((g) => (/^graphic [A-Za-z0-9-]+: (.+)$/.exec(g) || [])[1]).filter(Boolean) : [];
+          const st = status.get(m[1]) || {};
+          out.push({ name: m[1], folder: m[2], original: m[4] || "", filed: !!st.filed, notFiled: st.notFiled || "", labels });
+        })
+    );
+  return out;
+}
+
 /* Has anything been uploaded for this department ("" = any department)? Gates the Graphic Design Close Task. */
 export const hasUploadFor = (notes, dept) => uploadedNames(notes).some((n) => !dept || n.split("_")[1] === dept);
 

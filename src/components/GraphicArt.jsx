@@ -74,10 +74,13 @@ const GraphicArt = ({ base, productName: givenName, productIndex }) => {
   };
   /* The order's other graphics, for "Also used by"; and every file already uploaded on the order, for the art-name warning. */
   const otherGraphics = () => graphicsOf({ products: getValues("products") }).filter((g) => g.base !== base);
-  const uploadedOnOrder = () =>
-    graphicsOf({ products: getValues("products") }).flatMap((g) =>
+  const uploadedOnOrder = () => [
+    ...graphicsOf({ products: getValues("products") }).flatMap((g) =>
       g.artFiles.filter((x) => x && x.uploaded).map((x) => ({ name: x.name, key: g.key, label: g.label }))
-    );
+    ),
+    // small follow-up: files uploaded on an earlier visit (their graphics are not in this blank form)
+    ...((store && store.earlier) || []).map((f) => ({ name: f.name, key: "earlier:" + f.name, label: `a file uploaded earlier (${f.name})` })),
+  ];
   const takenBy = (key) => {
     const p = partsFor(key);
     if (p.format !== "ORIGINAL") return [];
@@ -165,12 +168,20 @@ const GraphicArt = ({ base, productName: givenName, productIndex }) => {
             <Box component="li" key={a.key} sx={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap", fontSize: "0.85rem", py: "2px" }}>
               <b>{a.name}</b>
               <span style={{ color: "#777" }}>{mb(a.size || 0)} MB</span>
-              {a.uploaded && !a.linkedFrom && (
+              {a.uploaded && !a.linkedFrom && (() => {
+                /* small follow-up (David 10-30): a reopened form says whether the file was filed, read from the Deal's upload notes */
+                const st = store && store.status ? store.status(a.name) : null;
+                const was = a.original && a.original !== a.name ? ` (was ${a.original})` : "";
+                if (st && st.notFiled) return <span style={{ color: "#b00020" }}>uploaded{was}: NOT filed ({st.notFiled}). Tell the Graphic Design lead.</span>;
+                if (st && st.filed) return <span style={{ color: "#2e7d32" }}>uploaded{was}: filed in {st.folder || FOLDER_LABELS[a.folder] || "WorkDrive"}</span>;
+                return <span style={{ color: "#2e7d32" }}>uploaded{was}: being filed into {FOLDER_LABELS[a.folder] || "WorkDrive"} now</span>;
+              })()}
+              {a.linkedFrom && (
                 <span style={{ color: "#2e7d32" }}>
-                  uploaded{a.original && a.original !== a.name ? ` (was ${a.original})` : ""}: being filed into {FOLDER_LABELS[a.folder] || "WorkDrive"} now
+                  the same file, uploaded on {a.linkedFrom}
+                  {store && store.status && store.status(a.name) && store.status(a.name).filed ? " (filed)" : ""}
                 </span>
               )}
-              {a.linkedFrom && <span style={{ color: "#2e7d32" }}>the same file, uploaded on {a.linkedFrom}</span>}
               {store && store.get(a.key) && isPicture(a.name) && (
                 <Button size="small" variant="outlined" onClick={() => setFinding(a.key)} sx={{ textTransform: "none", py: 0 }}>
                   Find colors in this file
