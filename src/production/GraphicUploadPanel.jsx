@@ -40,11 +40,11 @@ const Pick = ({ label, value, options, onChange, width, disabled }) => (
 );
 
 /* One file being uploaded: its four parts (filled from the graphic, changeable), the name it will get, and Upload. */
-const FileRow = ({ file, start, garments, placementsFor, po, takenFor, busy, onUpload, onCancel }) => {
-  const [p, setP] = useState(start);
+const FileRow = ({ file, start, garments, placementsFor, po, takenFor, others = [], busy, onUpload, onCancel }) => {
+  const [p, setP] = useState({ also: [], ...start });
   const set = (patch) => setP({ ...p, ...patch, confirm: false });
   const stem = partsReady(p) ? stemFor({ po, ...p }) : "";
-  const taken = stem && p.format === "ORIGINAL" ? takenFor(stem) : [];
+  const taken = stem && p.format === "ORIGINAL" ? takenFor(stem, p.also) : [];
   return (
     <Box sx={{ mt: 1, p: 1.5, border: "1px solid #ddd", bgcolor: "#fafafa" }}>
       <Typography variant="body2" sx={{ mb: 1 }}>
@@ -60,6 +60,27 @@ const FileRow = ({ file, start, garments, placementsFor, po, takenFor, busy, onU
           </>
         )}
       </Box>
+      {/* E-162 follow-up (D-79): a client's original can serve several graphics -- uploaded once, listed under each ticked one. */}
+      {p.format === "ORIGINAL" && others.length > 0 && (
+        <Box sx={{ mt: 1, display: "flex", flexWrap: "wrap", alignItems: "center", gap: "0.25rem" }}>
+          <span style={{ fontSize: "0.85rem", color: "#555" }}>Also used by:</span>
+          {others.map((g) => (
+            <FormControlLabel
+              key={g.key}
+              sx={{ mr: 1 }}
+              control={
+                <Checkbox
+                  size="small"
+                  checked={p.also.includes(g.key)}
+                  disabled={busy}
+                  onChange={(e) => set({ also: e.target.checked ? [...p.also, g.key] : p.also.filter((k) => k !== g.key) })}
+                />
+              }
+              label={<span style={{ fontSize: "0.85rem" }}>{g.label}{g.description ? ": " + g.description : ""}</span>}
+            />
+          ))}
+        </Box>
+      )}
       {taken.length > 0 && (
         <Box sx={{ mt: 1, color: "#8a4b00", fontSize: "0.85rem" }}>
           This art name is already used by {taken.join(", ")}. Uploading makes this a new version and moves that file to Rejected.
@@ -89,7 +110,7 @@ const FileRow = ({ file, start, garments, placementsFor, po, takenFor, busy, onU
 
 const statusOf = (f) => (f.notFiled ? `not filed: ${f.notFiled}` : f.filed ? "filed" : "being filed (reopen the cards in a moment to see it filed)");
 
-const GraphicUpload = ({ entity, recordId, deal, data, notes, who, defaultDept, uploadsOn, startFiling, refresh }) => {
+const GraphicUpload = ({ entity, recordId, deal, data, notes, who, defaultDept, uploadsOn, startFiling, alsoOn = false, refresh }) => {
   const graphics = useMemo(() => graphicsOf(data), [data]);
   const byGraphic = useMemo(() => uploadsByGraphic(notes), [notes]);
   const allGarments = useMemo(() => garmentOptions(data), [data]);
@@ -110,7 +131,10 @@ const GraphicUpload = ({ entity, recordId, deal, data, notes, who, defaultDept, 
     setBusy(true);
     setResult(null);
     try {
-      const res = await uploadGraphicFile(ZOHO, { entity, recordId, deal, who, source: "cards", file: picked.file, parts, graphic, startFiling });
+      // D-79: the graphic it is uploaded on first, then every graphic ticked under "Also used by" (client originals only)
+      const also = alsoOn && graphic && parts.format === "ORIGINAL" ? graphics.filter((g) => (parts.also || []).includes(g.key) && g.key !== graphic.key) : [];
+      const links = graphic ? [graphic, ...also.map((g) => ({ key: g.key, label: g.label }))] : undefined;
+      const res = await uploadGraphicFile(ZOHO, { entity, recordId, deal, who, source: "cards", file: picked.file, parts, graphic, links, startFiling });
       setPicked(null);
       setResult({
         severity: "success",
@@ -125,11 +149,11 @@ const GraphicUpload = ({ entity, recordId, deal, data, notes, who, defaultDept, 
 
   /* every file already uploaded on the Deal, with the graphic it belongs to (for the art-name warning) */
   const labelOf = (key) => (graphics.find((g) => g.key === key) || {}).label || "another upload";
-  const takenFor = (key) => (stem) =>
+  const takenFor = (key) => (stem, also) =>
     stemTakenBy(
       stem,
       Object.entries(byGraphic).flatMap(([k, list]) => list.map((f) => ({ name: f.name, key: k, label: labelOf(k) }))),
-      [key]
+      [key, ...(alsoOn ? also || [] : [])]
     );
   const fileRow = (where, start, garments, placementsFor, graphic) =>
     picked && picked.where === where ? (
@@ -141,6 +165,7 @@ const GraphicUpload = ({ entity, recordId, deal, data, notes, who, defaultDept, 
         placementsFor={placementsFor}
         po={po}
         takenFor={takenFor(where)}
+        others={alsoOn && graphic ? graphics.filter((x) => x.key !== where) : []}
         busy={busy}
         onUpload={(p) => doUpload(p, graphic)}
         onCancel={() => setPicked(null)}

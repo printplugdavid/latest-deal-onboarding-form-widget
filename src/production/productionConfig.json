@@ -30,5 +30,7 @@
   "_proofStepOn": "E-174 / E-176 (D-83, David 10-30): the test garment (proof print) step on the Screen Print / Embroidery / Vinyl tabs between Start and Close -- one approval per garment (non-garment items and gang sheets one each), saved on the PRODUCTION FLOW note; a department's labels go into Test_Garments_Approved when all its proofs pass; the Deal moves to Test Garment Approved (workflow) when every proof on the order passes, only from Mock-Up Approved / In Production or Online Purchase / In Production. Close waits for the card's proofs; on the last production task it says the Deal is going to Quality Check; past other departments' open production tasks it offers Send to Quality Check anyway; after the move it lists what is still open (card + note); the flow keeps a Done so far list. false = the flow works exactly as before.",
   "proofStepOn": true,
   "_revisionInFlowOn": "E-175 (David 10-30): on a tab with a production flow, the Order Revision / Correction button sits in the flow under Missing or damaged garments / Call Client instead of the top bar (tabs without a flow keep the top-bar button). Needs revisionInCardsOn. false = the top-bar button as before.",
-  "revisionInFlowOn": true
+  "revisionInFlowOn": true,
+  "_gdAlsoUsedByOn": "E-162 follow-up (D-79, David 10-30 \"Yes, start there\"): on the Graphic Design tab, a client's original file (Format Original) can be ticked \"Also used by\" other graphics on the order -- uploaded once, listed under each (one GRAPHIC UPLOAD note line, no copies), like onboarding. false = as before (one graphic per upload).",
+  "gdAlsoUsedByOn": false
 }

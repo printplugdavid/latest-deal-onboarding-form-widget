@@ -492,6 +492,7 @@ const ProductionFlow = ({ dept, ctx, refresh, onRevision }) => {
           defaultDept={myTasks.map((t) => deptOfDesignTask(t.Subject)).find(Boolean) || ""}
           uploadsOn={uploadsOn(PRODUCTION_CONFIG)}
           startFiling={filingOn(PRODUCTION_CONFIG)}
+          alsoOn={PRODUCTION_CONFIG.gdAlsoUsedByOn === true}
           refresh={refresh}
         />
       )}
