@@ -75,7 +75,10 @@ describe("E-173 Deal bar: the invoice, without money (David: \"Leave money off\"
 describe("E-173 Send Mockup answer", () => {
   it("dry run and sent are ok; anything else is not", () => {
     expect(readSendMockup(answer({ status: "ok", result: "dry_run", to: ["a@b.com"], contact: "Shani Hustad", subject: "Your mock-up" }))).toMatchObject({ ok: true, result: "dry_run", to: ["a@b.com"], contact: "Shani Hustad", stageAfter: "Design Mock-Up Sent" });
-    expect(readSendMockup(answer({ status: "ok", result: "sent", to: "a@b.com" }))).toMatchObject({ ok: true, to: ["a@b.com"] });
+    expect(readSendMockup(answer({ status: "ok", result: "sent", to: "a@b.com" }))).toMatchObject({ ok: true, to: ["a@b.com"], copies: [] });
+    // Deluge's live dry run on Deal 2 - TEST (10-30 13:21, WIDGET_Send_Mockup 946ff03f), same shape, addresses replaced
+    const live = '{"status":"ok","result":"dry_run","message":"Would send the mock-up email to test-contact@example.com and move the Deal to Design Mock-Up Sent.","to":["test-contact@example.com"],"contact":"Testy McTesterson","subject":"Please review your custom mock-up!","stage_after":"Design Mock-Up Sent","copies":["info@example.com","staff1@example.com","sales@example.com"]}';
+    expect(readSendMockup(answer(live))).toMatchObject({ ok: true, result: "dry_run", to: ["test-contact@example.com"], contact: "Testy McTesterson", subject: "Please review your custom mock-up!", stageAfter: "Design Mock-Up Sent", copies: ["info@example.com", "staff1@example.com", "sales@example.com"] });
     expect(readSendMockup(answer({ status: "ok", result: "no_link", message: "The Deal has no WorkDrive Link." }))).toMatchObject({ ok: false, result: "no_link", message: "The Deal has no WorkDrive Link." });
     expect(readSendMockup(answer("garbage")).ok).toBe(false);
     expect(readSendMockup(null).ok).toBe(false);
