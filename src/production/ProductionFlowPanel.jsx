@@ -372,7 +372,9 @@ const ProductionFlow = ({ dept, ctx, refresh }) => {
             </Button>
           </Box>
           <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-            Something printed wrong that must be redone: close this window and use the Revision / Correction button on the Deal.
+            {PRODUCTION_CONFIG.revisionInCardsOn === true
+              ? "Something printed wrong that must be redone: use the Revision / Correction button at the top of the cards."
+              : "Something printed wrong that must be redone: close this window and use the Revision / Correction button on the Deal."}
           </Typography>
           {missing && (
             <Box sx={{ mt: 1, p: 1.5, border: "1px solid #ddd", display: "flex", gap: 1, flexWrap: "wrap", alignItems: "center" }}>

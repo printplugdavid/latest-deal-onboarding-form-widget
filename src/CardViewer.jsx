@@ -19,7 +19,7 @@
  * TRAP: getFile needs "$file_id", NOT the attachment record id -- the record id returns an empty
  * Blob and throws nothing.
  */
-import React, { useEffect, useRef, useState } from "react";
+import React, { Suspense, lazy, useEffect, useRef, useState } from "react";
 import {
   Alert,
   Box,
@@ -36,6 +36,9 @@ import { LIVE_NOTE_TITLE } from "./amendment/amendmentDiff";
 import ProductionFlow from "./production/ProductionFlowPanel";
 import { DEPARTMENTS, dueFlagsOn, dueStatus, flowDeptFor, needsOutsourcedTab } from "./production/productionFlow";
 import PRODUCTION_CONFIG from "./production/productionConfig.json";
+
+/* E-167 / D-76: the Revision / Correction form, opened in place from the cards (loaded only when asked for). */
+const RevisionApp = lazy(() => import("./revision/RevisionApp"));
 
 const ZOHO = window.ZOHO;
 
@@ -157,6 +160,9 @@ const CardViewer = () => {
   const [state, setState] = useState({ status: "loading", cards: [], message: "", info: "" });
   const [tab, setTab] = useState(0);
   const [flow, setFlow] = useState(null); // E-70: { entity, recordId, deal, data, tasks, notes, user }
+  const [revisionOpen, setRevisionOpen] = useState(false); // E-167: the revision form in place of the cards
+  const pageDataRef = useRef(null); // Zoho's PageLoad data, handed to the revision form (it fires once per widget)
+  const revisionInCards = PRODUCTION_CONFIG.revisionInCardsOn === true;
   const frameRef = useRef(null);
   const keepOutsourcedTab = useRef(false); // E-164: once shown, the flow-only Outsourced tab stays for this visit
   const flowOn = PRODUCTION_CONFIG.flowOn === true;
@@ -176,6 +182,7 @@ const CardViewer = () => {
       return;
     }
     ZOHO.embeddedApp.on("PageLoad", async (data) => {
+      pageDataRef.current = data;
       try {
         ZOHO.CRM.UI.Resize({ height: "90%", width: "60%" });
       } catch (e) {
@@ -243,6 +250,21 @@ const CardViewer = () => {
     setTimeout(() => URL.revokeObjectURL(url), 5000);
   };
 
+  if (revisionOpen && pageDataRef.current) {
+    return (
+      <Box sx={{ bgcolor: "#fff", color: "#1a1a1a", minHeight: "100vh" }}>
+        <Box sx={{ px: 2, py: 1, borderBottom: 1, borderColor: "divider" }}>
+          <Button variant="outlined" size="small" onClick={() => setRevisionOpen(false)}>
+            Back to the production cards
+          </Button>
+        </Box>
+        <Suspense fallback={<Typography sx={{ p: 3 }}>Loading the Revision / Correction form…</Typography>}>
+          <RevisionApp pageData={pageDataRef.current} />
+        </Suspense>
+      </Box>
+    );
+  }
+
   if (state.status === "loading") {
     return (
       <Box sx={{ display: "flex", alignItems: "center", gap: 2, p: 4, bgcolor: "#fff", color: "#1a1a1a", minHeight: "100vh" }}>
@@ -298,6 +320,11 @@ const CardViewer = () => {
             <Tab key={c.name} label={tabLabel(c)} />
           ))}
         </Tabs>
+        {revisionInCards && pageDataRef.current && (
+          <Button variant="outlined" size="small" onClick={() => setRevisionOpen(true)}>
+            Revision / Correction
+          </Button>
+        )}
         {state.workDrive && (
           <Button variant="outlined" size="small" component="a" href={state.workDrive} target="_blank" rel="noopener noreferrer">
             {state.workDriveLabel || "WorkDrive folder"}
