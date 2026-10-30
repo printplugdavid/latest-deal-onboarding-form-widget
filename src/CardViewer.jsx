@@ -174,6 +174,13 @@ const CardViewer = () => {
   const cardInfoOn = PRODUCTION_CONFIG.cardInfoOn === true;
   const sendMockupOn = PRODUCTION_CONFIG.sendMockupOn === true;
   const [invoice, setInvoice] = useState(null);
+  /* E-178: the flow in a column left of the card when the window is wide enough */
+  const [wide, setWide] = useState(() => window.innerWidth >= 1100);
+  useEffect(() => {
+    const onResize = () => setWide(window.innerWidth >= 1100);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
   const recordIdRef = useRef(null);
   const refreshFlow = async () => {
     if (!flow) return;
@@ -193,7 +200,8 @@ const CardViewer = () => {
     ZOHO.embeddedApp.on("PageLoad", async (data) => {
       pageDataRef.current = data;
       try {
-        ZOHO.CRM.UI.Resize({ height: "90%", width: "60%" });
+        // E-178: the flow beside the card needs a wider window
+        ZOHO.CRM.UI.Resize({ height: "90%", width: PRODUCTION_CONFIG.cardsSideBySideOn === true && PRODUCTION_CONFIG.flowOn === true ? "90%" : "60%" });
       } catch (e) {
         /* resize is cosmetic */
       }
@@ -232,6 +240,8 @@ const CardViewer = () => {
       ? [...state.cards, { name: outsourcedCard, label: "Outsourced", flowOnly: true }]
       : state.cards;
   const current = cards[tab];
+  const sideBySide =
+    PRODUCTION_CONFIG.cardsSideBySideOn === true && wide && flowOn && !!flow && !!current && !!flowDeptFor(current.name, PRODUCTION_CONFIG) && !current.flowOnly;
   /* E-168: "(past due)" on a tab whose own open tasks are past their due date (Mountain time). */
   const todayMt = new Date().toLocaleDateString("en-CA", { timeZone: "America/Denver" });
   const tabLabel = (c) => {
@@ -377,6 +387,64 @@ const CardViewer = () => {
         </Alert>
       )}
 
+      {/* E-178: side by side -- the Deal bar on top, the flow (left) and the card (right) each scrolling on their own */}
+      {sideBySide ? (
+        <Box sx={{ flexGrow: 1, minHeight: 0, display: "flex", flexDirection: "column", background: "#e9eaec" }}>
+        {cardInfoOn && (flow?.deal || state.deal) && (
+            <DealBar
+              deal={flow?.deal || state.deal}
+              tasks={flow ? flow.tasks : null}
+              invoice={invoice}
+              today={todayMt}
+              showSendMockup={sendMockupOn && current?.name === "production-card-graphicdesign.html"}
+              recordId={recordIdRef.current}
+              user={flow?.user}
+              refresh={refreshFlow}
+            />
+          )}
+          <Box sx={{ flexGrow: 1, minHeight: 0, display: "flex" }}>
+            <Box sx={{ width: 440, flexShrink: 0, overflow: "auto", bgcolor: "#fff", borderRight: "2px solid #1a1a1a" }}>
+              {flowOn && flow && current && flowDeptFor(current.name, PRODUCTION_CONFIG) && (
+                <ProductionFlow
+                  key={"flow-" + current.name}
+                  dept={flowDeptFor(current.name, PRODUCTION_CONFIG).key}
+                  ctx={flow}
+                  refresh={refreshFlow}
+                  onRevision={revisionInFlow && pageDataRef.current ? () => setRevisionOpen(true) : undefined}
+                />
+              )}
+            </Box>
+            <Box sx={{ flexGrow: 1, minWidth: 0, overflow: "auto" }}>
+              {current?.flowOnly ? (
+                <Box sx={{ p: 3 }}>
+                  <Typography variant="body2" color="text.secondary">
+                    This order has no Outsourced card (its outsourced items are on another card). The outsourced steps are above.
+                  </Typography>
+                </Box>
+              ) : current?.error ? (
+                <Box sx={{ p: 3 }}>
+                  <Alert severity="error">
+                    Couldn't read the {current.label} card: {current.error}
+                  </Alert>
+                </Box>
+              ) : (
+                <iframe
+                  key={current.name}
+                  ref={frameRef}
+                  title={current.label}
+                  srcDoc={current.html}
+                  // No scripts run inside the card. allow-same-origin lets us size and print the frame;
+                  // allow-modals lets the print dialog open; the two popup flags let the card's own
+                  // "Open WorkDrive folder" link open a normal new tab (E-53).
+                  sandbox="allow-same-origin allow-modals allow-popups allow-popups-to-escape-sandbox"
+                  onLoad={fitFrame}
+                  style={{ width: "100%", border: 0, display: "block", minHeight: "60vh" }}
+                />
+              )}
+            </Box>
+          </Box>
+        </Box>
+      ) : (
       <Box sx={{ flexGrow: 1, overflow: "auto", background: "#e9eaec" }}>
         {cardInfoOn && (flow?.deal || state.deal) && (
           <DealBar
@@ -426,6 +494,7 @@ const CardViewer = () => {
           />
         )}
       </Box>
+      )}
     </Box>
   );
 };

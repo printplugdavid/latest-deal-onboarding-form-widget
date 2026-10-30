@@ -21,6 +21,7 @@ import {
   stemFor,
   uploadNote,
   versionFrom,
+  otherTyped,
 } from "./graphicUpload";
 import { requestDealFolders, shouldRequestFolders } from "../dealFolders";
 
@@ -53,7 +54,7 @@ export async function uploadGraphicFile(zoho, { entity, recordId, deal, who, sou
     Content: uploadNote({
       who,
       when: stamp(),
-      items: [{ name, stem, ext, folder, original: file.name, wouldMove, links: links && links.length ? links : graphic ? [graphic] : [] }],
+      items: [{ name, stem, ext, folder, original: file.name, wouldMove, links: links && links.length ? links : graphic ? [graphic] : [], other: parts.format === "OTHER" ? otherTyped(parts) : "" }],
     }),
   });
   if (!ok(n)) throw new Error("the GRAPHIC UPLOAD note was not saved");
