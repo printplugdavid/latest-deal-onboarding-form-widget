@@ -188,7 +188,7 @@ function buildProductionCards(data, counts, dealInfo) {
       const flag = flagN ? `<details style="margin:3px 0 0 12px"><summary style="cursor:pointer;color:#a61e4d;font-weight:600">Also in this box: ${flagN} pcs that are not for this card</summary>${othersList(others, unmatched)}</details>` : "";
       return `<div style="margin:5px 0">${boxLink(box)}<div style="margin:2px 0 0 12px">${items.map((it) => pcEsc(itemText(it))).join("<br>")}${shared.join("")}</div>${flag}</div>`;
     }).join("");
-    const elsewhere = sorted.elsewhere.length ? `<details style="margin:5px 0"><summary style="cursor:pointer">${sorted.elsewhere.length} other box${sorted.elsewhere.length === 1 ? " holds" : "es hold"} only other departments' garments</summary>${sorted.elsewhere.map(({ box, others, unmatched }) => `<div style="margin:4px 0">${boxLink(box)}${othersList(others, unmatched)}</div>`).join("")}</details>` : "";
+    const elsewhere = sorted.elsewhere.length ? `<details style="margin:5px 0"><summary style="cursor:pointer">${sorted.elsewhere.length} other box${sorted.elsewhere.length === 1 ? " has" : "es have"} none of this card's garments</summary>${sorted.elsewhere.map(({ box, others, unmatched }) => `<div style="margin:4px 0">${boxLink(box)}${othersList(others, unmatched)}</div>`).join("")}</details>` : "";
     const unknown = sorted.unknown.length ? `<div style="margin:5px 0"><span class="omute">Contents not listed:</span> ${sorted.unknown.map(boxLink).join(" &middot; ")}</div>` : "";
     const head = sorted.mine.length ? `<b>${label} -- boxes with this card's garments:</b>` : `<b>${label}:</b> <span class="omute">no box lists this card's garments yet</span>`;
     return `<div class="gsummary" style="${colors}">${head}${rows}${elsewhere}${unknown}</div>`;
