@@ -109,6 +109,21 @@ export function pcColorChange(gr, bi) {
   if (!yes && !pcHas(gr?.detailsOfColorChange)) return "";
   return pcRowLines("Color Change", "Cambio de Color", pcHas(gr?.detailsOfColorChange) ? gr.detailsOfColorChange : "Yes - no details typed", { crit: true, bi });
 }
+/*
+ * E-179 / D-85 (David 10-30, "Yes, split by style"): a garment type holding two or more styles names each one with its own count, so two
+ * different hats never read as one ("C112LP - 7 pcs · C402 - 3 pcs"). One style -> "" (the card is exactly what it was).
+ */
+export function pcStyles(g) {
+  const per = [];
+  sizeBlocks(g && g.countColorSize).blocks.forEach((b) => {
+    const k = String(b.group || "").trim();
+    if (!k) return;
+    let x = per.find((y) => y.k === k);
+    if (!x) per.push((x = { k, n: 0 }));
+    x.n += b.total || 0;
+  });
+  return per.length >= 2 ? per.map((x) => `${x.k} - ${x.n} pcs`).join(" · ") : "";
+}
 /* E-154: "Is Graphic Print Ready?" is a Yes / No answer now; older orders saved a tick box (true / false). */
 const pcReady = (v) => (v === true || /^yes$/i.test(String(v ?? "").trim()) ? "Yes" : v === false || /^no$/i.test(String(v ?? "").trim()) ? "No" : "");
 function pcGarmentBlock(g, bi, ironPass, productName, artDetails) {
@@ -117,7 +132,7 @@ function pcGarmentBlock(g, bi, ironPass, productName, artDetails) {
     return `<div class="graphic"><div class="grtitle">${bi ? "Graphic / Gráfico" : "Graphic"} ${i + 1}${pcHas(gr?.graphicDescription) ? ": " + pcEsc(gr.graphicDescription) : ""}</div>${pcRow("Art File", "Archivo", artNames(gr), { bi })}${pcRow("Colors", "Colores", gr?.numberOfColorsUsed, { crit: true, bi })}${pcRow("Colors Used", "Colores", gr?.colorsUsed, { bi })}${pcSwatches(productName, gr?.colorsUsed)}${artDetails ? pcColorChange(gr, bi) : ""}${pcRow("Underbase", "Base", gr?.underbase, { bi })}${pcHas(ironPass) ? pcRow("Premium Iron Pass", "Planchado", ironPass, { bi }) : ""}${pl ? `<div class="plc">${pl}</div>` : ""}</div>`;
   }).join("");
   const also = (g?.isUsedInOtherAppTypes === "Yes" && pcHas(g?.chooseApplicationType)) ? `<div class="alsonote">${bi ? "Also used with / También con" : "Also used with"}: <b>${pcEsc(g.chooseApplicationType)}</b></div>` : "";
-  return `<div class="garment"><div class="ghead"><span class="gname">${pcEsc(pcType(g) || "Garment")}</span>${pcHas(g?.garmentQuantity) ? `<span class="gqty">${bi ? "Qty / Cant" : "Qty"}: ${pcEsc(g.garmentQuantity)}</span>` : ""}</div>${pcRow("SKU(s)", "SKU(s)", pcSkus(g), { bi })}${pcSizes(g, bi)}${graphics}${also}${pcRow("Vendors", "Proveedores", g?.vendorsUsed, { bi })}${pcRow("Special Instructions", "Instrucciones", g?.specialInstructions, { bi })}</div>`;
+  return `<div class="garment"><div class="ghead"><span class="gname">${pcEsc(pcType(g) || "Garment")}</span>${pcHas(g?.garmentQuantity) ? `<span class="gqty">${bi ? "Qty / Cant" : "Qty"}: ${pcEsc(g.garmentQuantity)}</span>` : ""}</div>${pcRow("Styles", "Estilos", pcStyles(g), { crit: true, bi })}${pcRow("SKU(s)", "SKU(s)", pcSkus(g), { bi })}${pcSizes(g, bi)}${graphics}${also}${pcRow("Vendors", "Proveedores", g?.vendorsUsed, { bi })}${pcRow("Special Instructions", "Instrucciones", g?.specialInstructions, { bi })}</div>`;
 }
 function pcGarmentSummary(items, bi) {
   const gs = []; items.forEach((p) => { if (p.productType === "garment") (p.primaryBranches || []).forEach((g) => { if (pcHas(g?.garmentType) || pcHas(g?.garmentQuantity)) gs.push(`${pcHas(g?.garmentQuantity) ? pcEsc(g.garmentQuantity) + "× " : ""}${pcEsc(pcType(g) || "Garment")}`); }); });
@@ -154,7 +169,7 @@ function pcArtOrder(a) {
   const g = a.garment, p = a.product, gr = a.gr;
   if (g) {
     const pl = (gr?.tartiaryBranches || []).map((x) => [x?.placementLocation, x?.sizeAndDimensions, x?.placementSize, formatSizeVariants(x?.sizeVariants) ? "by garment size: " + formatSizeVariants(x.sizeVariants) : ""].filter(pcHas).join(" · ")).filter(Boolean);
-    return `<div class="plc" style="border-top:1px solid #eee;margin-top:6px;padding-top:4px">${pcRow("Brand / Style", "", pcType(g))}${pcRow("SKU(s)", "", pcSkus(g))}${pcRow("Garment Colors", "", pcGarmentColors(g))}${pcColorChange(gr, false)}${pl.map((x, i) => pcRow(pl.length > 1 ? `Placement ${i + 1}` : "Placement", "", x, { crit: true })).join("")}${pcRow("Vendors Used", "", g.vendorsUsed)}${pcRowLines("Special Instructions", "", g.specialInstructions)}</div>`;
+    return `<div class="plc" style="border-top:1px solid #eee;margin-top:6px;padding-top:4px">${pcRow("Brand / Style", "", pcType(g))}${pcRow("Styles", "", pcStyles(g), { crit: true })}${pcRow("SKU(s)", "", pcSkus(g))}${pcRow("Garment Colors", "", pcGarmentColors(g))}${pcColorChange(gr, false)}${pl.map((x, i) => pcRow(pl.length > 1 ? `Placement ${i + 1}` : "Placement", "", x, { crit: true })).join("")}${pcRow("Vendors Used", "", g.vendorsUsed)}${pcRowLines("Special Instructions", "", g.specialInstructions)}</div>`;
   }
   if (p) return `<div class="plc" style="border-top:1px solid #eee;margin-top:6px;padding-top:4px">${pcRow("Sizes & Dimensions", "", p.dimensions, { crit: true })}${pcRow("Vendors Used", "", p.vendorsUsed)}${pcRowLines("Special Instructions", "", pcNote(p))}</div>`;
   return "";

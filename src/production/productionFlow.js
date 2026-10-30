@@ -282,6 +282,23 @@ export function pantoneFields(rows, part, typed) {
 
 /* ---------- missing / damaged garments ---------- */
 /* What the order holds, for the picker: [{ garment, rows: [{ color, size, count }] }] (garment = the Garment Type's first line). */
+/*
+ * E-179 / D-85 (David 10-30, "Yes, split by style"): a garment type can hold several styles (size lines under style headings, e.g. the
+ * C112LP and the C402 trucker caps of Ignite D1). Each style is its own product downstream: [{ style, rows, count }] in the order typed;
+ * one entry with style "" when the lines name no style.
+ */
+export function styleGroups(text) {
+  const out = [];
+  parseSizeText(text).rows.forEach((r) => {
+    const style = str(r.group).trim();
+    let g = out.find((x) => x.style === style);
+    if (!g) out.push((g = { style, rows: [], count: 0 }));
+    const row = { color: str(r.color), size: str(r.size), count: Number(r.count) || 0 };
+    g.rows.push(row);
+    g.count += row.count;
+  });
+  return out;
+}
 export function orderGarments(data) {
   const out = [];
   ((data && data.products) || []).forEach((p) => {
@@ -289,8 +306,10 @@ export function orderGarments(data) {
     (p.primaryBranches || []).forEach((b, i) => {
       if (!b) return;
       const name = str(b.garmentType).split("\n")[0].trim() || `${p.productName} garment ${i + 1}`;
-      const rows = parseSizeText(b.countColorSize).rows.map((r) => ({ color: str(r.color), size: str(r.size), count: Number(r.count) || 0 }));
-      out.push({ garment: name, rows });
+      const groups = styleGroups(b.countColorSize);
+      // E-179: a garment type with two or more styles -> one entry per style (so a missing C402 can be reported as a C402)
+      if (groups.filter((g) => g.style).length >= 2) groups.forEach((g) => out.push({ garment: g.style || name, rows: g.rows }));
+      else out.push({ garment: name, rows: groups.flatMap((g) => g.rows) });
     });
   });
   return out;
@@ -322,6 +341,22 @@ export function expectedFor(data, dept) {
         if (!b) return;
         const name = str(b.garmentType).split("\n")[0].trim() || `${p.productName} garment ${i + 1}`;
         const parsed = parseSizeText(b.countColorSize);
+        // E-179 / D-85: two or more styles under one garment type -> one expected item per style, named by its style heading
+        const groups = styleGroups(b.countColorSize);
+        if (groups.filter((g) => g.style).length >= 2) {
+          groups.forEach((g) => {
+            const colors = [];
+            g.rows.forEach((r) => {
+              const c = str(r.color).trim() || "No color given";
+              let row = colors.find((x) => x.color === c);
+              if (!row) colors.push((row = { color: c, count: 0, sizes: [] }));
+              row.count += r.count;
+              row.sizes.push({ size: r.size, count: r.count });
+            });
+            items.push({ item: g.style || name, count: g.count, colors, typed: "", unit: "pieces" });
+          });
+          return;
+        }
         const colors = [];
         parsed.rows.forEach((r) => {
           const c = str(r.color).trim() || "No color given";
