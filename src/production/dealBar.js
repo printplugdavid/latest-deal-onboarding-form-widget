@@ -102,7 +102,8 @@ export function readInvoices(raw) {
 /*
  * Send Mockup (proposed contract, our docs/91): arguments { deal_id, dry_run "true" | "false", submitted_by }. Reply (JSON string at
  * details.output): { status "ok" | "error", result "dry_run" | "sent" | "no_link" | "no_email" | "error", message, to [emails],
- * contact, subject, stage_after }. Anything else reads as an error with what came back.
+ * contact, subject, stage_after, copies [the internal copy addresses -- Deluge LIVE 946ff03f adds it] }. Anything else reads as an error
+ * with what came back.
  */
 export function readSendMockup(raw) {
   let out = raw?.details?.output ?? raw?.output ?? raw;
@@ -110,10 +111,10 @@ export function readSendMockup(raw) {
     try {
       out = JSON.parse(out);
     } catch (e) {
-      return { ok: false, result: "error", message: "The answer was not understood.", to: [], contact: "", subject: "" };
+      return { ok: false, result: "error", message: "The answer was not understood.", to: [], contact: "", subject: "", copies: [] };
     }
   }
-  if (!out || typeof out !== "object") return { ok: false, result: "error", message: "No answer came back.", to: [], contact: "", subject: "" };
+  if (!out || typeof out !== "object") return { ok: false, result: "error", message: "No answer came back.", to: [], contact: "", subject: "", copies: [] };
   const result = str(out.result).trim() || (out.status === "ok" ? "" : "error");
   return {
     ok: out.status === "ok" && (result === "dry_run" || result === "sent"),
@@ -123,5 +124,6 @@ export function readSendMockup(raw) {
     contact: str(out.contact).trim(),
     subject: str(out.subject).trim(),
     stageAfter: str(out.stage_after).trim() || MOCKUP_STAGE,
+    copies: (Array.isArray(out.copies) ? out.copies : []).map((x) => str(x).trim()).filter(Boolean),
   };
 }

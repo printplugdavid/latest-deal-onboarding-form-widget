@@ -25,6 +25,6 @@
   "boxContentsOn": true,
   "_cardInfoOn": "E-173 / D-82 (graphic department via David 10-30): what the designer reads off the Deal every day, on the cards. At the top of EVERY card tab: Deal Status, Salesperson, Open Activities (each open task, who, due) and the Books invoice (number, status, Open in Books, items sold -- no dollar amounts, David: \"Leave money off\"). On the cards: Color Change under each graphic (department cards + Graphic Design), and under each artwork on the Graphic Design card the garment (Brand / Style, SKU, garment colors), placements, vendors, special instructions. false = the cards look exactly as before. ON with the push of E-173 (David's yes).",
   "cardInfoOn": true,
-  "_sendMockupOn": "E-173 (David 10-30: \"Yes, same as today\"): a Send Mockup to Client button on the Graphic Design tab doing exactly what the Deal's Zoho button does (mock-up email with the Mockups link, Stage -> Design Mock-Up Sent), through Deluge's card-callable copy widget_send_mockup (our docs/91), with a confirm showing who it goes to. OFF until Deluge says it is live. false = no button.",
-  "sendMockupOn": false
+  "_sendMockupOn": "E-173 (David 10-30: \"Yes, same as today\"): a Send Mockup to Client button on the Graphic Design tab doing exactly what the Deal's Zoho button does (mock-up email with the Mockups link, Stage -> Design Mock-Up Sent), through Deluge's card-callable copy widget_send_mockup (our docs/91), with a confirm showing who it goes to. LIVE on Deluge 10-30 13:21 (WIDGET_Send_Mockup 946ff03f, REST widget_send_mockup; dry run on Deal 2 - TEST OK; also sends the internal copy to info@, drew@ and the Sales Person, as the Deal button does -- shown in the confirm). ON with David's yes. false = no button.",
+  "sendMockupOn": true
 }

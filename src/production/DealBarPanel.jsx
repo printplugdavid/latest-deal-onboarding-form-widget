@@ -81,6 +81,7 @@ function SendMockup({ recordId, user, refresh }) {
               </>
             ) : null}
             , and moves the Deal to <b>{step.a.stageAfter || MOCKUP_STAGE}</b>.
+            {step.a.copies && step.a.copies.length ? <div style={{ marginTop: 4 }}>A copy also goes to {step.a.copies.join(", ")}.</div> : null}
           </div>
           <Box sx={{ mt: 1, display: "flex", gap: 1 }}>
             <Button variant="contained" size="small" onClick={send} disabled={step.s === "sending"}>
