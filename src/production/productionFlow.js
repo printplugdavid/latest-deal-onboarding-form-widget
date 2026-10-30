@@ -326,6 +326,38 @@ export function expectedFor(data, dept) {
   const total = items.filter((i) => i.unit === "pieces").reduce((s, i) => s + i.count, 0);
   return { total, items };
 }
+/*
+ * E-168 (David 10-29, "That tab's tasks"): which of THIS tab's open tasks are past due or due today. A tab's tasks = its department's
+ * work tasks; the Outsourced tab = its packing task(s) + the order task(s). today = "YYYY-MM-DD" in Mountain time (the caller's clock).
+ * Returns { late: [{ task, due, days }], today: [{ task, due }] }; a task with no due date is neither.
+ */
+export const tabTasks = (tasks, dept) =>
+  dept === "outsourced" ? [...openOrderTasks(tasks), ...openDeptTasks(tasks, "outsourced")] : openDeptTasks(tasks, dept);
+const dayNumber = (ymd) => {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(str(ymd).trim());
+  return m ? Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])) / 86400000 : null;
+};
+export function dueStatus(tasks, dept, today) {
+  const now = dayNumber(today);
+  const out = { late: [], today: [] };
+  if (now == null) return out;
+  tabTasks(tasks, dept).forEach((t) => {
+    const d = dayNumber(t.Due_Date);
+    if (d == null) return;
+    if (d < now) out.late.push({ task: t, due: str(t.Due_Date).slice(0, 10), days: now - d });
+    else if (d === now) out.today.push({ task: t, due: str(t.Due_Date).slice(0, 10) });
+  });
+  out.late.sort((a, b) => b.days - a.days);
+  return out;
+}
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+/* "Past due: SCREEN PRINT: Produce Order, due Oct 27, 2 days late" */
+export const lateLine = (l) => {
+  const [, mo, da] = l.due.split("-").map(Number);
+  return `${taskTitle(l.task)}, due ${MONTHS[mo - 1]} ${da}, ${l.days} day${l.days === 1 ? "" : "s"} late`;
+};
+export const dueFlagsOn = (config) => !!config && config.dueFlagsOn === true;
+
 /* Which count questions show the expected total (start count, Close count, Outsourced Order + Package). */
 export const COUNT_QUESTION_KEYS = ["count", "sorted", "ordered", "verified"];
 export const expectedCountsOn = (config) => !!config && config.expectedCountsOn === true;

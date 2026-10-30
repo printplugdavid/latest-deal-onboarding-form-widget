@@ -29,6 +29,10 @@ import {
   expectedCountsOn,
   COUNT_QUESTION_KEYS,
   START_STEPS,
+  dueStatus,
+  dueFlagsOn,
+  lateLine,
+  tabTasks,
   BLOCK_TEXT,
   FLOW_NOTE_TITLE,
 } from "./productionFlow";
@@ -373,5 +377,38 @@ test("E-166: sizes that can't be read are shown as typed; no products -> nothing
     .filter((q) => COUNT_QUESTION_KEYS.includes(q.key))
     .map((q) => q.key);
   expect(keys).toEqual(["count", "sorted", "ordered", "verified"]);
+});
+
+/* ---------- E-168: past due / due today, this tab's tasks only ---------- */
+const D = (id, Subject, Due_Date, Status = "Not Started") => ({ ...T(id, Subject, Status), Due_Date });
+test("E-168: only this tab's open tasks, late (most late first) and due today; no date or completed = neither", () => {
+  const tasks = [
+    D("1", "SCREEN PRINT: Produce Order / x", "2026-10-27"),
+    D("2", "SCREEN PRINT: Reproduce Order / x", "2026-10-29"),
+    D("3", "EMBROIDERY: Produce Order / x", "2026-10-20"), // another tab
+    D("4", "SCREEN PRINT: Correct Order / x", "2026-10-01", "Completed"),
+    D("5", "SCREEN PRINT: Produce Order / y", ""),
+    D("6", "SCREEN PRINT: Produce Order / z", "2026-10-30"),
+    D("7", "SCREEN PRINT: Produce Order / w", "2026-10-25"),
+  ];
+  const s = dueStatus(tasks, "screen", "2026-10-29");
+  expect(s.late.map((l) => [l.task.id, l.days])).toEqual([["7", 4], ["1", 2]]);
+  expect(s.today.map((x) => x.task.id)).toEqual(["2"]);
+  expect(lateLine(s.late[1])).toBe("SCREEN PRINT: Produce Order, due Oct 27, 2 days late");
+  expect(lateLine({ task: T("9", "VINYL DEPARTMENT: Produce Order / x"), due: "2026-10-28", days: 1 })).toBe(
+    "VINYL DEPARTMENT: Produce Order, due Oct 28, 1 day late"
+  );
+  expect(dueStatus(tasks, "embroidery", "2026-10-29").late.map((l) => l.task.id)).toEqual(["3"]);
+  expect(dueStatus(tasks, "screen", "")).toEqual({ late: [], today: [] });
+});
+
+test("E-168: the Outsourced tab watches its order and packing tasks; the switch", () => {
+  const tasks = [D("1", ORDER, "2026-10-28"), D("2", PACKAGE, "2026-10-29"), D("3", AM, "2026-10-01"), D("4", "EMBROIDERY: Produce Order / x", "2026-10-01")];
+  expect(tabTasks(tasks, "outsourced").map((t) => t.id)).toEqual(["1", "2"]);
+  const s = dueStatus(tasks, "outsourced", "2026-10-29");
+  expect(s.late.map((l) => l.task.id)).toEqual(["1"]);
+  expect(s.today.map((x) => x.task.id)).toEqual(["2"]);
+  expect(dueFlagsOn(require("./productionConfig.json"))).toBe(true);
+  expect(dueFlagsOn({})).toBe(false);
 });
 

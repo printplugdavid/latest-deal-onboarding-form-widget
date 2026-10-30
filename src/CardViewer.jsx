@@ -34,7 +34,7 @@ import { workDriveTarget } from "./productionCards";
 import { NOTE_EDITED_WARNING, newestFirst, noteEditedAfterSave, readFileText } from "./zohoFiles";
 import { LIVE_NOTE_TITLE } from "./amendment/amendmentDiff";
 import ProductionFlow from "./production/ProductionFlowPanel";
-import { DEPARTMENTS, flowDeptFor, needsOutsourcedTab } from "./production/productionFlow";
+import { DEPARTMENTS, dueFlagsOn, dueStatus, flowDeptFor, needsOutsourcedTab } from "./production/productionFlow";
 import PRODUCTION_CONFIG from "./production/productionConfig.json";
 
 const ZOHO = window.ZOHO;
@@ -205,6 +205,12 @@ const CardViewer = () => {
       ? [...state.cards, { name: outsourcedCard, label: "Outsourced", flowOnly: true }]
       : state.cards;
   const current = cards[tab];
+  /* E-168: "(past due)" on a tab whose own open tasks are past their due date (Mountain time). */
+  const todayMt = new Date().toLocaleDateString("en-CA", { timeZone: "America/Denver" });
+  const tabLabel = (c) => {
+    const d = flowOn && flow && dueFlagsOn(PRODUCTION_CONFIG) ? flowDeptFor(c.name, PRODUCTION_CONFIG) : null;
+    return d && dueStatus(flow.tasks, d.key, todayMt).late.length ? `${c.label} (past due)` : c.label;
+  };
 
   // Grow the frame to the card's full height so the popup scrolls, not the frame.
   const fitFrame = () => {
@@ -289,7 +295,7 @@ const CardViewer = () => {
           sx={{ flexGrow: 1, minHeight: 48 }}
         >
           {cards.map((c) => (
-            <Tab key={c.name} label={c.label} />
+            <Tab key={c.name} label={tabLabel(c)} />
           ))}
         </Tabs>
         {state.workDrive && (
