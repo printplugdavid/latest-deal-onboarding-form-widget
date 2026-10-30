@@ -160,6 +160,9 @@ describe("E-172 sorting boxes by department", () => {
   test("item text for the card", () => {
     expect(itemText(parseContents(LINE)[0])).toBe("1717 Granite: S 5, M 10 (15)");
     expect(itemText(parseContents(LINE)[2])).toBe("18000: 24 pcs");
+    // the dry run's real order (10-30): notice order -> shop order; an unknown size keeps its place at the end
+    expect(itemText(parseContents("Contents (box 1 of 1): 1717 Granite: S 5, XL 5, L 10, M 10, 2XL 5")[0])).toBe("1717 Granite: S 5, M 10, L 10, XL 5, 2XL 5 (35)");
+    expect(itemText(parseContents("Contents: 112Y Heather Grey/ White: Adjustable 5, OSFA 1")[0])).toBe("112Y Heather Grey/ White: OSFA 1, Adjustable 5 (6)");
   });
 });
 
@@ -175,10 +178,10 @@ describe("E-172 on the cards (switch boxContentsOn)", () => {
     ].join("\n"),
   };
 
-  test("off (as shipped until Deluge writes contents): the plain box line, exactly as before", () => {
+  test("the cards read the switch from productionConfig.json (ON since 10-30): a Deal's boxes sorted per card", () => {
     const html = buildCardsFromData(ORDER, deal).get("production-card-screenprint.html");
-    expect(html).toContain("Garment shipments (from the Deal):</b> ");
-    expect(html).not.toContain("Also in this box");
+    expect(html).toContain("boxes with this card's garments");
+    expect(html).toContain("Also in this box: 5 pcs that are not for this card");
   });
 
   test("on: each card lists its own boxes, flags the shared one, folds away the rest", () => {

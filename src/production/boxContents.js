@@ -16,7 +16,7 @@
  *
  * Pure: no ZOHO, no React. The card route function is passed in (productionCards.js imports this file).
  */
-import { normalizeSize, parseSizeText } from "../sizeRows";
+import { SIZE_OPTIONS, normalizeSize, parseSizeText } from "../sizeRows";
 import { CONTENTS_PREFIX, cleanStyle, formatContents, parseContents } from "../tracking";
 
 export { CONTENTS_PREFIX, cleanStyle, formatContents, parseContents };
@@ -118,8 +118,15 @@ export function sortBoxesForCard(boxes, garments, card) {
 }
 
 /* "1717 Granite: S 5, M 10 (15)" for a card line. */
+// Sizes come in the supplier's notice order ("S 5, XL 5, L 10, M 10"); the card reads them in the shop's order (Deluge 10-30, dry run).
+// A size the form does not know (SanMar "Adjustable") keeps its place after the known ones.
+const sizeRank = (size) => {
+  const i = SIZE_OPTIONS.indexOf(normalizeSize(size) || "");
+  return i < 0 ? SIZE_OPTIONS.length : i;
+};
 export function itemText(it) {
   const head = str(it.color).trim() ? `${it.style} ${str(it.color).trim()}` : it.style;
-  const sizes = (it.sizes || []).map((s) => `${normalizeSize(s.size) || s.size} ${s.count}`).join(", ");
+  const ordered = (it.sizes || []).map((s, i) => ({ s, i })).sort((a, b) => sizeRank(a.s.size) - sizeRank(b.s.size) || a.i - b.i).map((x) => x.s);
+  const sizes = ordered.map((s) => `${normalizeSize(s.size) || s.size} ${s.count}`).join(", ");
   return sizes ? `${head}: ${sizes} (${it.count})` : `${head}: ${it.count} pcs`;
 }
