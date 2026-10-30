@@ -86,6 +86,7 @@ import { call as callFunction } from "../products/booksItems";
 import { parseNoteToForm, toPlainText } from "./noteToForm";
 import AmendBilling from "./AmendBilling";
 import { pantoneCodeFields, writePantonesOn } from "../production/productionFlow";
+import { GARMENTS_PROVIDED_FIELD, garmentsProvidedOn, garmentsProvidedPlan } from "../products/garmentsProvided";
 import PRODUCTION_CONFIG from "../production/productionConfig.json";
 import { AMEND_FUNCTION, amendArgs, amendBillingOn, amendmentIdOf, outcomeLine, readAmendAnswer } from "../invoice/amendBilling";
 import { countFieldForTask, planTaskRestamp } from "./taskRestamp";
@@ -756,6 +757,20 @@ const AmendmentApp = () => {
         await step("Pantone codes on the Deal (" + Object.values(pf).join(", ") + ")", async () => {
           const r = await ZOHO.CRM.API.updateRecord({ Entity: entity, APIData: { id: recordId, ...pf }, Trigger: [] });
           if (!ok(r)) throw new Error("pantones: " + JSON.stringify(r?.data?.[0] || r));
+        });
+      }
+    }
+
+    // E-183 / E-114: client-owned garments set the Deal's "Garments Provided" (same rule as onboarding; with workflow for the inspect
+    // task, except at Order Needs Corrections; never cleared). An amendment that did not change the client-owned picture leaves a
+    // value someone set by hand alone.
+    if (garmentsProvidedOn(PRODUCTION_CONFIG)) {
+      const gp = garmentsProvidedPlan(loaded.deal, saved, original.current || {});
+      if (gp.change) {
+        const label = `"Garments Provided" on the Deal: ${gp.value}` + (gp.was ? ` (it was: ${gp.was})` : "") + (gp.message && /production/.test(gp.message) ? " -- already in production: close any Order Garments task if nothing needs ordering" : "");
+        await step(label, async () => {
+          const r = await ZOHO.CRM.API.updateRecord({ Entity: entity, APIData: { id: recordId, [GARMENTS_PROVIDED_FIELD]: gp.value }, ...(gp.workflow ? {} : { Trigger: [] }) });
+          if (!ok(r)) throw new Error("garments provided: " + JSON.stringify(r?.data?.[0] || r));
         });
       }
     }

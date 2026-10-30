@@ -51,6 +51,11 @@ import {
   orderGarments,
   outsourcedOn,
   ownerOf,
+  MODIFICATION_NOTES_FIELD,
+  ORDER_MODIFIED_FIELD,
+  ORDER_MODIFIED_TASK,
+  openTaskMatching,
+  orderChangesOn,
   PRODUCTION_STAGES,
   pantoneFields,
   pantoneSlots,
@@ -354,6 +359,7 @@ const ProductionFlow = ({ dept, ctx, refresh, onRevision }) => {
   const [inkMixed, setInkMixed] = useState(() => rows.map((r) => (r.mixed != null ? String(r.mixed) : "")));
   const [missing, setMissing] = useState(null); // the open "missing garments" form
   const [callNotes, setCallNotes] = useState(null); // the open Call Client form
+  const [changeNotes, setChangeNotes] = useState(null); // E-184: the open "Changes made to order" form
   const [busy, setBusy] = useState("");
   const [result, setResult] = useState(null); // { severity, text }
 
@@ -414,6 +420,22 @@ const ProductionFlow = ({ dept, ctx, refresh, onRevision }) => {
       await note(actionNote(dept, stamp(), who, "Call Client: " + callNotes.trim()));
       setCallNotes(null);
       return "Call Client flagged: the Sales Person gets a \"Call Client\" task with your notes on the Deal.";
+    });
+
+  /* E-184 (David 10-30): "Changes made to order" -- the details go on the Deal's Modification Notes (dated), then Order Modified is
+     unticked (no workflow) and ticked (workflow): CRM rule "DEAL: Order Modified" gives the Sales Person "SALES: Order Modified
+     Follow-Up" (update the invoice if needed, the onboarding through the Amendment Form, WorkDrive). Deluge skips it while one is open. */
+  const changeOpen = openTaskMatching(tasks, ORDER_MODIFIED_TASK);
+  const doChange = () =>
+    run("Recording the order change", async () => {
+      const line = `[${ymd()}${who ? " " + who : ""}] ${changeNotes.trim()}`;
+      await write({ [MODIFICATION_NOTES_FIELD]: appendDated(deal[MODIFICATION_NOTES_FIELD], line) }, false);
+      for (const w of reTick(ORDER_MODIFIED_FIELD, deal[ORDER_MODIFIED_FIELD] === true)) await write(w.fields, w.workflow);
+      await note(actionNote(dept, stamp(), who, "Changes made to order (Order Modified ticked): " + changeNotes.trim()));
+      setChangeNotes(null);
+      return changeOpen
+        ? "Order Modified ticked and your details added to the Deal's Modification Notes. The Sales Person already has an open Order Modified Follow-Up task, so no second task was made."
+        : "Order Modified ticked: the Sales Person gets an Order Modified Follow-Up task (update the order with the Amendment Form). Your details are on the Deal's Modification Notes.";
     });
 
   const common = {
@@ -508,6 +530,11 @@ const ProductionFlow = ({ dept, ctx, refresh, onRevision }) => {
             <Button variant="outlined" size="small" disabled={!!busy} onClick={() => setCallNotes("")}>
               Call Client
             </Button>
+            {orderChangesOn(PRODUCTION_CONFIG) && (
+              <Button variant="outlined" size="small" disabled={!!busy} onClick={() => setChangeNotes("")}>
+                Changes made to order
+              </Button>
+            )}
           </Box>
           {onRevision ? (
             /* E-175 (David 10-30): the Revision / Correction button under the other two, in job order. */
@@ -582,6 +609,32 @@ const ProductionFlow = ({ dept, ctx, refresh, onRevision }) => {
                   Flag Call Client
                 </Button>
                 <Button size="small" onClick={() => setCallNotes(null)}>
+                  Cancel
+                </Button>
+              </Box>
+            </Box>
+          )}
+          {changeNotes != null && (
+            <Box sx={{ mt: 1, p: 1.5, border: "1px solid #ddd" }}>
+              <TextField
+                multiline
+                minRows={2}
+                fullWidth
+                size="small"
+                label="What changed on the order? (the sales person updates the order from this)"
+                value={changeNotes}
+                onChange={(e) => setChangeNotes(e.target.value)}
+              />
+              {changeOpen && (
+                <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                  The Sales Person already has an open Order Modified Follow-Up task. Your details are added to the Deal; no second task is made.
+                </Typography>
+              )}
+              <Box sx={{ mt: 1, display: "flex", gap: 1 }}>
+                <Button variant="contained" size="small" disabled={!changeNotes.trim() || !!busy} onClick={doChange}>
+                  Submit
+                </Button>
+                <Button size="small" onClick={() => setChangeNotes(null)}>
                   Cancel
                 </Button>
               </Box>
