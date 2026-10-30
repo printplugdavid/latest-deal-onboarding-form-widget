@@ -1,0 +1,674 @@
+/*
+ * The point of these: a correction must cost only the placements actually
+ * redone. A shirt with three placements where one needs fixing is one
+ * placement's worth of work, not three -- and getting that wrong overstates
+ * every correction the shop logs.
+ */
+import {
+  costItem,
+  gangPerSheet,
+  isGangSheet,
+  placementsOf,
+  syntheticProducts,
+  embroiderySizes,
+  effectiveQty,
+  formatSizes,
+  SIZE_OPTIONS,
+  OTHER_SIZE,
+} from "./affected";
+import { computePrints } from "../printMath";
+
+// One screen-print garment: 2 graphics, 2 placements each, 1 colour, no underbase.
+const PRODUCTS = [
+  {
+    productName: "Screen Printing",
+    productType: "garment",
+    primaryBranches: [
+      {
+        garmentType: "Gildan 5000 Black",
+        garmentQuantity: "100",
+        secondaryBranches: [
+          {
+            graphicDescription: "Front logo",
+            numberOfColorsUsed: "1",
+            numberOfPlacements: "2",
+            tartiaryBranches: [{ placementLocation: "Front" }, { placementLocation: "Left Sleeve" }],
+          },
+          {
+            graphicDescription: "Back sponsors",
+            numberOfColorsUsed: "1",
+            numberOfPlacements: "2",
+            tartiaryBranches: [{ placementLocation: "Back" }, { placementLocation: "Right Sleeve" }],
+          },
+        ],
+      },
+    ],
+  },
+];
+
+const branch = PRODUCTS[0].primaryBranches[0];
+const cost = (item, formType) => computePrints(syntheticProducts(PRODUCTS, item, formType));
+
+describe("placementsOf", () => {
+  test("flattens every placement across every graphic", () => {
+    const all = placementsOf(branch);
+    expect(all.map((x) => x.key)).toEqual(["0:0", "0:1", "1:0", "1:1"]);
+    expect(all[2].placement.placementLocation).toBe("Back");
+    expect(all[2].gi).toBe(1);
+  });
+
+  test("a graphic with a placement count but no detail still offers slots", () => {
+    const sparse = { secondaryBranches: [{ numberOfPlacements: "3" }] };
+    const all = placementsOf(sparse);
+    expect(all).toHaveLength(3);
+    expect(all[0].placement).toBeNull();
+  });
+
+  test("no graphics means no placements, not a crash", () => {
+    expect(placementsOf(null)).toEqual([]);
+    expect(placementsOf({})).toEqual([]);
+  });
+});
+
+describe("a correction costs only the placements ticked", () => {
+  test("one placement of three-plus is one placement's work", () => {
+    const r = cost({ productIndex: 0, garmentIndex: 0, placementKeys: ["0:0"], affected: "5" }, "Correction");
+    expect(r.SD).toBe(5); // 5 garments x 1 colour x 1 placement
+  });
+
+  test("two placements on the same graphic double it", () => {
+    const r = cost(
+      { productIndex: 0, garmentIndex: 0, placementKeys: ["0:0", "0:1"], affected: "5" },
+      "Correction"
+    );
+    expect(r.SD).toBe(10);
+  });
+
+  test("placements spanning two graphics are counted against each graphic", () => {
+    const r = cost(
+      { productIndex: 0, garmentIndex: 0, placementKeys: ["0:0", "1:1"], affected: "5" },
+      "Correction"
+    );
+    expect(r.SD).toBe(10); // 5x1x1 for each of the two graphics
+  });
+
+  test("a graphic with nothing ticked drops out entirely", () => {
+    const synth = syntheticProducts(
+      PRODUCTS,
+      { productIndex: 0, garmentIndex: 0, placementKeys: ["1:0"], affected: "5" },
+      "Correction"
+    );
+    expect(synth[0].primaryBranches[0].secondaryBranches).toHaveLength(1);
+    expect(synth[0].primaryBranches[0].secondaryBranches[0].graphicDescription).toBe(
+      "Back sponsors"
+    );
+  });
+
+  test("nothing ticked costs nothing rather than silently costing everything", () => {
+    expect(syntheticProducts(PRODUCTS, { productIndex: 0, garmentIndex: 0, placementKeys: [], affected: "5" }, "Correction")).toEqual([]);
+  });
+});
+
+describe("a revision still reprints the whole garment", () => {
+  test("every graphic and every placement, regardless of what was ticked", () => {
+    const r = cost({ productIndex: 0, garmentIndex: 0, placementKeys: ["0:0"], affected: "5" }, "Revision");
+    // 2 graphics x 2 placements x 1 colour x 5 garments
+    expect(r.SD).toBe(20);
+  });
+
+  test("which is four times the cost of correcting one placement", () => {
+    const rev = cost({ productIndex: 0, garmentIndex: 0, placementKeys: [], affected: "5" }, "Revision");
+    const corr = cost(
+      { productIndex: 0, garmentIndex: 0, placementKeys: ["0:0"], affected: "5" },
+      "Correction"
+    );
+    expect(rev.SD).toBe(20);
+    expect(corr.SD).toBe(5);
+  });
+});
+
+describe("the quantity the agent types is what gets costed", () => {
+  test("affected count replaces the original order quantity", () => {
+    const six = cost({ productIndex: 0, garmentIndex: 0, placementKeys: ["0:0"], affected: "6" }, "Correction");
+    expect(six.SD).toBe(6);
+    // the original garment was 100 -- that number is never used
+    expect(branch.garmentQuantity).toBe("100");
+  });
+});
+
+describe("embroiderySizes", () => {
+  const emb = [
+    {
+      productName: "Embroidery",
+      productType: "garment",
+      primaryBranches: [
+        {
+          garmentQuantity: "50",
+          secondaryBranches: [
+            {
+              numberOfPlacements: "2",
+              tartiaryBranches: [
+                { placementLocation: "Left Chest", placementSize: "Small" },
+                { placementLocation: "Back", placementSize: "Large" },
+              ],
+            },
+            {
+              numberOfPlacements: "1",
+              tartiaryBranches: [{ placementLocation: "Sleeve" }], // no size recorded
+            },
+          ],
+        },
+      ],
+    },
+  ];
+
+  test("a revision attributes every placement at the affected quantity", () => {
+    const s = embroiderySizes(emb, { productIndex: 0, garmentIndex: 0, affected: "5" }, "Revision");
+    expect(s).toEqual({ Small: 5, Medium: 0, Large: 5, Unsized: 5 });
+  });
+
+  test("the breakdown sums to the embroidery total", () => {
+    const item = { productIndex: 0, garmentIndex: 0, affected: "5" };
+    const s = embroiderySizes(emb, item, "Revision");
+    const total = computePrints(syntheticProducts(emb, item, "Revision")).ED;
+    expect(s.Small + s.Medium + s.Large + s.Unsized).toBe(total); // 3 placements x 5
+    expect(total).toBe(15);
+  });
+
+  /*
+   * D-15 / D-16 cross-check, widened 2026-09-22 after it failed to do its job.
+   * It used to test ONE well-formed value, so when main gated the buckets on the
+   * graphic producing prints (2835a96) it stayed green through a real divergence
+   * that the onboarding lane had predicted. It now walks the degenerate values
+   * too -- those are the only ones where the rule can move.
+   *
+   * main's split does not track Unsized, which the note prints, so ours stays.
+   * The three sizes they share must never disagree.
+   */
+  describe("agrees with main's printMath.js split", () => {
+    const withPlacements = (v) => [
+      {
+        productName: "Embroidery",
+        productType: "garment",
+        primaryBranches: [
+          {
+            garmentQuantity: "50",
+            secondaryBranches: [
+              {
+                numberOfPlacements: v,
+                tartiaryBranches: [{ placementSize: "Small" }, { placementSize: "Large" }],
+              },
+            ],
+          },
+        ],
+      },
+    ];
+
+    // blank falls back to the rows (D-16); an explicit 0 or a negative prints nothing.
+    [["blank", ""], ["missing", undefined], ["unreadable", "abc"], ["explicit zero", "0"],
+     ["negative", "-2"], ["normal", "2"]].forEach(([label, v]) => {
+      test(label + " (" + JSON.stringify(v) + ")", () => {
+        const products = withPlacements(v);
+        const item = { productIndex: 0, garmentIndex: 0, affected: "10" };
+        const ours = embroiderySizes(products, item, "Revision");
+        const r = costItem(products, item, "Revision");
+        expect([r.embroiderySizes.small, r.embroiderySizes.medium, r.embroiderySizes.large])
+          .toEqual([ours.Small, ours.Medium, ours.Large]);
+        // the invariant main now states: the split never exceeds the department total
+        expect(ours.Small + ours.Medium + ours.Large).toBeLessThanOrEqual(r.ED);
+      });
+    });
+  });
+
+  /*
+   * ⚠️ CORRECTIONS DIVERGE FROM main's SPLIT, AND THAT IS CORRECT. Do not "fix"
+   * this into agreement.
+   *
+   * syntheticProducts() narrows a correction's numberOfPlacements to the ticked
+   * count but leaves every placement row in place, because the count is what the
+   * shared arithmetic reads. main's loop therefore attributes EVERY row of a
+   * graphic that prints -- it cannot do better, because the payload carries how
+   * many placements were redone, not WHICH one. Only this side knows that.
+   *
+   * So for corrections main's split can exceed the department total. Nothing in
+   * the CRM is wrong: this lane writes none of the three Embroidery_*_Prints
+   * fields (David, 2026-09-02 -- note only), and onboarding's own payloads always
+   * have count == rows because its form keeps them in lockstep.
+   */
+  test("a correction attributes only the placement redone, where main cannot", () => {
+    const products = [
+      {
+        productName: "Embroidery",
+        productType: "garment",
+        primaryBranches: [
+          {
+            garmentQuantity: "50",
+            secondaryBranches: [
+              {
+                numberOfPlacements: "2",
+                tartiaryBranches: [{ placementSize: "Small" }, { placementSize: "Large" }],
+              },
+            ],
+          },
+        ],
+      },
+    ];
+    const item = { productIndex: 0, garmentIndex: 0, placementKeys: ["0:1"], affected: "4" };
+    const r = costItem(products, item, "Correction");
+    const ours = embroiderySizes(products, item, "Correction");
+
+    expect(r.ED).toBe(4); // one placement redone on 4 garments
+    expect([ours.Small, ours.Medium, ours.Large]).toEqual([0, 0, 4]); // only the Large
+    expect(ours.Small + ours.Medium + ours.Large).toBe(r.ED);
+
+    // main's number for the same job counts both rows -- 8 against an ED of 4.
+    const theirs = r.embroiderySizes;
+    expect(theirs.small + theirs.medium + theirs.large).toBe(8);
+    expect(theirs.small + theirs.medium + theirs.large).toBeGreaterThan(r.ED);
+  });
+
+  test("a correction only attributes the placements ticked", () => {
+    const s = embroiderySizes(
+      emb,
+      { productIndex: 0, garmentIndex: 0, placementKeys: ["0:1"], affected: "4" },
+      "Correction"
+    );
+    expect(s).toEqual({ Small: 0, Medium: 0, Large: 4, Unsized: 0 });
+  });
+
+  test("an unsized placement is never guessed into a bucket", () => {
+    const s = embroiderySizes(
+      emb,
+      { productIndex: 0, garmentIndex: 0, placementKeys: ["1:0"], affected: "4" },
+      "Correction"
+    );
+    expect(s.Unsized).toBe(4);
+    expect(s.Small + s.Medium + s.Large).toBe(0);
+  });
+
+  test("non-embroidery work has no size split", () => {
+    const s = embroiderySizes(PRODUCTS, { productIndex: 0, garmentIndex: 0, affected: "5" }, "Revision");
+    expect(s).toEqual({ Small: 0, Medium: 0, Large: 0, Unsized: 0 });
+  });
+});
+
+describe("sizes", () => {
+  test("the sizes ARE the count when the agent breaks it down", () => {
+    const item = { affected: "99", sizes: [{ size: "M", qty: "3" }, { size: "L", qty: "2" }] };
+    expect(effectiveQty(item)).toBe(5); // the stale typed 99 is ignored
+  });
+
+  test("without sizes, the typed total stands", () => {
+    expect(effectiveQty({ affected: "7", sizes: [] })).toBe(7);
+    expect(effectiveQty({ affected: "7" })).toBe(7);
+  });
+
+  test("blank, zero and junk quantities count as nothing", () => {
+    const item = { sizes: [{ size: "S", qty: "" }, { size: "M", qty: "0" }, { size: "L", qty: "-2" }, { size: "XL", qty: "x" }] };
+    expect(effectiveQty(item)).toBe(0);
+  });
+
+  test("the size breakdown drives the print count", () => {
+    const item = {
+      productIndex: 0,
+      garmentIndex: 0,
+      placementKeys: ["0:0"],
+      sizes: [{ size: "M", qty: "3" }, { size: OTHER_SIZE, other: "3T", qty: "2" }],
+    };
+    expect(cost(item, "Correction").SD).toBe(5);
+  });
+
+  test("formats for the note and the reorder, Other shows what was typed", () => {
+    expect(
+      formatSizes([
+        { size: "M", qty: "3" },
+        { size: "L", qty: "2" },
+        { size: OTHER_SIZE, other: " 3T ", qty: "1" },
+        { size: "XL", qty: "" },
+      ])
+    ).toBe("M ×3, L ×2, 3T ×1");
+  });
+
+  test("an Other row left blank still reads as Other rather than vanishing", () => {
+    expect(formatSizes([{ size: OTHER_SIZE, other: "", qty: "2" }])).toBe("Other ×2");
+  });
+
+  test("the picker covers XXS to 5XL plus OSFA", () => {
+    expect(SIZE_OPTIONS[0]).toBe("XXS");
+    expect(SIZE_OPTIONS).toContain("5XL");
+    expect(SIZE_OPTIONS).toContain("OSFA");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Gang sheet revisions. The unit reprinted is a SHEET, and a sheet ships
+// unpressed, so there is no heat-press doubling. Prints land in the Vinyl
+// Department slot, matching where the original job rolls up.
+// ---------------------------------------------------------------------------
+describe("gang sheet costing", () => {
+  // 22 x 12.5 sheet of 3.5 x 3.5 graphics = 15 per sheet (onboarding's example).
+  const jsonSheet = [
+    {
+      productName: "DTF Gang Sheet",
+      productType: "gangsheet",
+      numberOfGangSheets: "3",
+      gangSheetWidth: "22",
+      gangSheetHeight: "12.5",
+      gangGraphics: [{ graphicWidth: "3.5", graphicHeight: "3.5" }],
+    },
+  ];
+  const noteSheet = [
+    {
+      productName: "DTF Gang Sheet",
+      productType: "gangsheet",
+      numberOfGangSheets: "3",
+      estimatedPrintsPerSheet: "15", // all a note can give us
+    },
+  ];
+
+  test("re-runs the onboarding packing from the JSON", () => {
+    expect(gangPerSheet(jsonSheet[0])).toBe(15);
+    expect(isGangSheet(jsonSheet[0])).toBe(true);
+  });
+
+  test("falls back to the per-sheet figure the note printed", () => {
+    expect(gangPerSheet(noteSheet[0])).toBe(15);
+  });
+
+  test("costs the sheets REPRINTED, not the sheets ordered", () => {
+    // The trap: gangSheetPrints().total is 15 x 3 = 45, the whole original
+    // order. Reprinting one sheet is 15, not 45.
+    const one = costItem(jsonSheet, { productIndex: 0, affected: "1" }, "Revision");
+    expect(one.VD).toBe(15);
+    const two = costItem(jsonSheet, { productIndex: 0, affected: "2" }, "Revision");
+    expect(two.VD).toBe(30);
+  });
+
+  test("lands in Vinyl, all actual, with no heat-press doubling", () => {
+    const r = costItem(jsonSheet, { productIndex: 0, affected: "1" }, "Revision");
+    expect(r).toMatchObject({ SD: 0, ED: 0, VD: 15 });
+    expect(r.actual.VD).toBe(15);
+    expect(r.projected.VD).toBe(0); // a sheet ships unpressed
+  });
+
+  test("a note-sourced sheet costs the same as the JSON one", () => {
+    expect(costItem(noteSheet, { productIndex: 0, affected: "2" }, "Revision").VD).toBe(30);
+  });
+
+  test("correction and revision cost a sheet identically", () => {
+    const item = { productIndex: 0, affected: "2" };
+    expect(costItem(jsonSheet, item, "Correction").VD).toBe(
+      costItem(jsonSheet, item, "Revision").VD
+    );
+  });
+
+  test("no sheets, or an unmeasurable sheet, costs nothing rather than guessing", () => {
+    expect(costItem(jsonSheet, { productIndex: 0, affected: "" }, "Revision").VD).toBe(0);
+    expect(costItem([{ productName: "DTF Gang Sheet", productType: "gangsheet" }],
+      { productIndex: 0, affected: "2" }, "Revision").VD).toBe(0);
+  });
+
+  test("garment items still go through the onboarding calculation", () => {
+    const r = costItem(PRODUCTS, { productIndex: 0, garmentIndex: 0, placementKeys: ["0:0"], affected: "5" }, "Correction");
+    expect(r.SD).toBe(5);
+    expect(isGangSheet(PRODUCTS[0])).toBe(false);
+  });
+});
+
+/*
+ * E-37 (2026-10-02): Flute Summit Deal 2, verbatim shape. Twelve different garments were onboarded
+ * as ONE garment type with seven graphics, one logo per garment. A 5-garment revision came out as
+ * 5 x 7 x 2 = 70. Each garment really carries one graphic.
+ */
+describe("E-37 — a revision can say which graphics the affected garments carry", () => {
+  const { costItem, embroiderySizes } = require("./affected");
+  const graphic = (d) => ({
+    graphicDescription: d,
+    numberOfColorsUsed: "1",
+    underbase: "Single-pass",
+    numberOfPlacements: "1",
+    tartiaryBranches: [{ placementLocation: "Chest", placementSize: "Large" }],
+  });
+  const flute = [
+    {
+      productName: "Direct-to-Film",
+      productType: "garment",
+      numberOfGarmentTypes: "1",
+      primaryBranches: [
+        {
+          garmentType: "DT6100 / DT6104 / DT6106 / PC340 / PC54LS / CAR78TH / 996Y",
+          garmentQuantity: "12",
+          numberOfGraphics: "7",
+          secondaryBranches: ["Logo #1", "Logo #2", "Logo #3", "Logo #5", "Logo #6", "Logo #7", "Logo #8"].map(graphic),
+        },
+      ],
+    },
+  ];
+  const item = (extra) => ({ productIndex: 0, garmentIndex: 0, placementKeys: [], affected: "", sizes: [], details: "", ...extra });
+
+  test("default (no graphicKeys) is unchanged: every graphic reprints — the 70 David saw", () => {
+    expect(costItem(flute, item({ affected: "5" }), "Revision").VD).toBe(70);
+    expect(costItem(flute, item({ affected: "5", graphicKeys: null }), "Revision").VD).toBe(70);
+  });
+
+  test("all seven ticked explicitly is the same 70", () => {
+    expect(costItem(flute, item({ affected: "5", graphicKeys: [0, 1, 2, 3, 4, 5, 6] }), "Revision").VD).toBe(70);
+  });
+
+  test("one graphic on five garments is 5 actual, 10 with the press", () => {
+    const r = costItem(flute, item({ affected: "5", graphicKeys: [5] }), "Revision");
+    expect(r.actual.VD).toBe(5);
+    expect(r.VD).toBe(10);
+  });
+
+  test("the real revision, as three items: Logo #7 x2, Logo #8 x1, Logo #1 x2 = 10", () => {
+    const parts = [
+      item({ affected: "2", graphicKeys: [5] }),
+      item({ affected: "1", graphicKeys: [6] }),
+      item({ affected: "2", graphicKeys: [0] }),
+    ];
+    expect(parts.reduce((n, it) => n + costItem(flute, it, "Revision").VD, 0)).toBe(10);
+  });
+
+  test("every graphic unticked reprints nothing", () => {
+    expect(costItem(flute, item({ affected: "5", graphicKeys: [] }), "Revision").VD).toBe(0);
+  });
+
+  test("graphicKeys is ignored on a Correction — placements decide there", () => {
+    const r = costItem(flute, item({ affected: "5", graphicKeys: [5], placementKeys: ["0:0", "1:0"] }), "Correction");
+    expect(r.actual.VD).toBe(10); // 5 garments x 2 ticked placements
+  });
+
+  test("embroidery size breakdown follows the ticked graphics", () => {
+    const emb = [{ ...flute[0], productName: "Embroidery" }];
+    expect(embroiderySizes(emb, item({ affected: "5" }), "Revision").Large).toBe(35);
+    expect(embroiderySizes(emb, item({ affected: "5", graphicKeys: [5] }), "Revision").Large).toBe(5);
+  });
+});
+
+/*
+ * E-49 -- an order with no garment to pick (Tanner Robison Deal 1, 2026-10-08: Patches +
+ * Pressed Patches, nothing pickable, so the form could not be submitted at all).
+ */
+describe("pieces: products with no garment and no sheet (E-49)", () => {
+  const { isPieceItem, departmentForProduct } = require("./affected");
+  const ORDER = [
+    { productName: "Patches", productType: "nongarment", quantityOrdered: "48- Tan and Black / 36- Gold and Black", isOutsourced: "Yes" },
+    { productName: "Pressed Patches", productType: "garment", primaryBranches: [] },
+    { productName: "Business Cards", productType: "nongarment", quantityOrdered: "500" },
+    { productName: "Stickers", productType: "nongarment", quantityOrdered: "200" },
+  ];
+  const item = (productIndex, affected) => ({ productIndex, garmentIndex: "", placementKeys: [], affected, sizes: [] });
+
+  test("which products are pieces", () => {
+    ORDER.forEach((p) => expect(isPieceItem(p)).toBe(true));
+    expect(isPieceItem(PRODUCTS[0])).toBe(false); // a garment with garment rows
+    expect(isPieceItem({ productType: "gangsheet" })).toBe(false);
+    expect(isPieceItem(undefined)).toBe(false);
+  });
+
+  test("patches: one per affected piece in Vinyl, all actual -- never the quantity ordered", () => {
+    ["Revision", "Correction"].forEach((type) => {
+      const r = costItem(ORDER, item(0, "12"), type);
+      expect([r.SD, r.ED, r.VD]).toEqual([0, 0, 12]);
+      expect(r.actual.VD).toBe(12);
+      expect(r.projected.VD).toBe(0);
+    });
+  });
+
+  test("it costs what onboarding costs the same quantity", () => {
+    const onboarding = computePrints([{ productName: "Stickers", productType: "nongarment", quantityOrdered: "30" }]);
+    expect(costItem(ORDER, item(3, "30"), "Revision").VD).toBe(onboarding.VD);
+  });
+
+  test("pressed patches with no garment rows count as patches", () => {
+    expect(costItem(ORDER, item(1, "5"), "Correction").VD).toBe(5);
+    expect(departmentForProduct(ORDER[1])).toBe(departmentForProduct(ORDER[0]));
+  });
+
+  test("an outsourced product is recorded with a count of 0", () => {
+    const r = costItem(ORDER, item(2, "100"), "Correction");
+    expect([r.SD, r.ED, r.VD]).toEqual([0, 0, 0]);
+    expect(departmentForProduct(ORDER[2])).toBe("Outsourced");
+  });
+
+  test("no quantity, no prints", () => {
+    expect(costItem(ORDER, item(0, ""), "Revision").VD).toBe(0);
+  });
+
+  test("garments and gang sheets are costed exactly as before", () => {
+    expect(departmentForProduct(PRODUCTS[0])).toBe("Screen Printing");
+    expect(departmentForProduct({ productName: "DTF Gang Sheet", productType: "gangsheet" })).toBe("Vinyl Department");
+  });
+});
+
+/* E-51 -- sizes typed in one go, and the size grid's row merge. E-46 -- youth and tall sizes. */
+describe("quick size entry (E-51)", () => {
+  const { parseSizeText, mergeSizeRows, sizeRange, YOUTH_SIZES, TALL_SIZES } = require("./affected");
+  const got = (text) => parseSizeText(text).rows.map((r) => r.size + ":" + r.qty).join(" ");
+
+  test("size then number, with commas", () => {
+    expect(got("S 3, M 5, L 2")).toBe("S:3 M:5 L:2");
+    expect(got("s:3; m=5\nxl x 2")).toBe("S:3 M:5 XL:2");
+  });
+
+  test("a range puts the quantity on EACH size in it", () => {
+    expect(got("S-XL 2")).toBe("S:2 M:2 L:2 XL:2");
+    expect(got("L-2XL 2 each, S 3")).toBe("L:2 XL:2 2XL:2 S:3");
+    expect(got("M to XL 4")).toBe("M:4 L:4 XL:4");
+    expect(got("XL-S 1")).toBe("S:1 M:1 L:1 XL:1"); // typed backwards
+    expect(sizeRange("XL", "3XL")).toEqual(["XL", "2XL", "3XL"]);
+  });
+
+  test("number then size -- the way the onboarding note writes it", () => {
+    expect(got("3- S, 5- M, 2- 2XL")).toBe("S:3 M:5 2XL:2");
+    expect(got("12 L")).toBe("L:12");
+    expect(got("2 S-L")).toBe("S:2 M:2 L:2");
+  });
+
+  test("no commas at all", () => {
+    expect(got("S 3 M 5 L 2")).toBe("S:3 M:5 L:2");
+    expect(got("3 S 5 M")).toBe("S:3 M:5");
+  });
+
+  test("a digit that belongs to the size is not a quantity", () => {
+    expect(got("2XL 3")).toBe("2XL:3");
+    expect(got("3 3XL")).toBe("3XL:3");
+    expect(got("2XLT 1")).toBe("2XLT:1");
+  });
+
+  test("what agents actually type", () => {
+    expect(got("small 2, medium 4, large 1, XXL 3")).toBe("S:2 M:4 L:1 2XL:3");
+    expect(got("2- Youth Large, 1- Youth XL")).toBe("YL:2 YXL:1");
+    expect(got("YS-YL 2")).toBe("YS:2 YM:2 YL:2");
+    expect(got("XL Tall 2, LT 1")).toBe("XLT:2 LT:1");
+    expect(got("one size 10")).toBe("OSFA:10");
+  });
+
+  test("it never guesses: unknown sizes, lone numbers and cross-run ranges are reported", () => {
+    expect(parseSizeText("5T 2, M 1")).toEqual({ rows: [{ size: "M", qty: 1 }], unknown: ["5T 2"] });
+    expect(parseSizeText("S/M 4").unknown).toEqual(["S/M 4"]);
+    expect(parseSizeText("M").unknown).toEqual(["M"]);
+    expect(parseSizeText("7").unknown).toEqual(["7"]);
+    expect(parseSizeText("S-YL 2").rows).toEqual([]);
+    expect(parseSizeText("").rows).toEqual([]);
+    expect(parseSizeText(undefined)).toEqual({ rows: [], unknown: [] });
+  });
+
+  test("typed twice, the later one wins", () => {
+    expect(got("M 2, M 5")).toBe("M:5");
+  });
+
+  test("merge: chart order, Other rows last, a blank removes the size", () => {
+    const start = [{ size: "XL", other: "", qty: "1" }, { size: OTHER_SIZE, other: "3T", qty: "2" }];
+    const rows = mergeSizeRows(start, [{ size: "S", qty: 3 }, { size: "YM", qty: "4" }]);
+    expect(rows.map((r) => r.size)).toEqual(["S", "XL", "YM", OTHER_SIZE]);
+    expect(mergeSizeRows(rows, [{ size: "XL", qty: "" }]).map((r) => r.size)).toEqual(["S", "YM", OTHER_SIZE]);
+    expect(start).toHaveLength(2); // input untouched
+  });
+
+  test("the result feeds the existing count and note line unchanged", () => {
+    const item = { sizes: mergeSizeRows([], parseSizeText("S-L 2, 2XL 1, YM 3").rows) };
+    expect(effectiveQty(item)).toBe(10);
+    expect(formatSizes(item.sizes)).toBe("S ×2, M ×2, L ×2, 2XL ×1, YM ×3");
+  });
+
+  test("youth and tall sizes exist (E-46) and match the onboarding form's codes", () => {
+    expect(YOUTH_SIZES).toEqual(["YXS", "YS", "YM", "YL", "YXL"]);
+    expect(TALL_SIZES).toEqual(["LT", "XLT", "2XLT", "3XLT", "4XLT"]);
+  });
+});
+
+describe("E-81 toddler sizes 2T / 3T / 4T", () => {
+  const { parseSizeText, TODDLER_SIZES, ALL_SIZES } = require("./affected");
+  test("their own run, between OSFA and youth; no 5T", () => {
+    expect(TODDLER_SIZES).toEqual(["2T", "3T", "4T"]);
+    expect(ALL_SIZES.indexOf("2T")).toBe(ALL_SIZES.indexOf("YXS") - 3);
+    expect(ALL_SIZES).not.toContain("5T");
+  });
+  test("quick entry reads them in either order, as a range, and as 'Toddler 2'", () => {
+    expect(parseSizeText("2T 3, 4T 1")).toEqual({ rows: [{ size: "2T", qty: 3 }, { size: "4T", qty: 1 }], unknown: [] });
+    expect(parseSizeText("3 3T")).toEqual({ rows: [{ size: "3T", qty: 3 }], unknown: [] });
+    expect(parseSizeText("2T-4T 2").rows).toEqual([{ size: "2T", qty: 2 }, { size: "3T", qty: 2 }, { size: "4T", qty: 2 }]);
+    expect(parseSizeText("Toddler 2 1, Toddler 4T 2").rows).toEqual([{ size: "2T", qty: 1 }, { size: "4T", qty: 2 }]);
+    // "4 toddler 2" reads two ways; "Toddler N" is taken as the size (4 of 2T), and the agent sees it in the grid.
+    expect(parseSizeText("4 toddler 2").rows).toEqual([{ size: "2T", qty: 4 }]);
+    expect(parseSizeText("2T-YS 1")).toMatchObject({ rows: [] }); // a range never crosses runs ...
+    expect(parseSizeText("2T-YS 1").unknown).toContain("2T-YS"); // ... and is reported, as for youth / adult
+  });
+});
+
+
+/* E-124: which garment inside a garment type that holds more than one style. */
+import { garmentStyles, styleLabel } from "./affected";
+
+test("E-124 Gingerich: two Garment Type lines + two SKUs (no names) pair up in order", () => {
+  const s = garmentStyles({ garmentType: "C2 Sport Long Sleeve\nPort and Company Hoodie", garmentSkus: [{ sku: "5104" }, { sku: "PC78H" }] });
+  expect(s.map(styleLabel)).toEqual(["C2 Sport Long Sleeve (5104)", "Port and Company Hoodie (PC78H)"]);
+  expect(s.map((x) => x.key)).toEqual(["5104", "PC78H"]);
+});
+
+test("picker names win; size-band codes of one style stay one choice", () => {
+  const s = garmentStyles({
+    garmentType: "Tees and hoodies",
+    garmentSkus: [
+      { sku: "PC54", productName: "Port & Company - Core Cotton Tee - S-XL" },
+      { sku: "PC542", productName: "Port & Company - Core Cotton Tee - 2XL" },
+      { sku: "PC78H", productName: "Port & Company - Core Fleece Pullover Hooded Sweatshirt - S-XL" },
+    ],
+  });
+  expect(s.map(styleLabel)).toEqual(["Port & Company - Core Cotton Tee (PC54, PC542)", "Port & Company - Core Fleece Pullover Hooded Sweatshirt (PC78H)"]);
+});
+
+test("one style (bands only, or one SKU), or the client's own garment row: nothing to ask", () => {
+  expect(garmentStyles({ garmentType: "Gildan tee", garmentSkus: [{ sku: "5000" }] })).toEqual([]);
+  expect(garmentStyles({ garmentType: "Hoodie", garmentSkus: [{ sku: "PC78H" }, { sku: "PC78H2" }] })).toEqual([]);
+  expect(garmentStyles({ garmentType: "Client's hoodies", garmentSkus: [{ sku: "PPCO" }, { sku: "PC78H" }] })).toEqual([]);
+  expect(garmentStyles({ garmentType: "Gildan tee" })).toEqual([]);
+  expect(garmentStyles(undefined)).toEqual([]);
+});
+
+test("SKUs that do not match the lines: codes only; older orders without SKUs: the lines", () => {
+  expect(garmentStyles({ garmentType: "Tees", garmentSkus: [{ sku: "5104" }, { sku: "PC78H" }] }).map(styleLabel)).toEqual(["5104", "PC78H"]);
+  expect(garmentStyles({ garmentType: "Black tees\nGrey hoodies" }).map(styleLabel)).toEqual(["Black tees", "Grey hoodies"]);
+});

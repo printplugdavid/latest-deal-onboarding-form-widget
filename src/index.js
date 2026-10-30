@@ -2,19 +2,22 @@ import React, { Suspense, lazy } from "react";
 import ReactDOM from "react-dom/client";
 import "./index.css";
 
-// One app, five Zoho buttons:
+// One app, six Zoho buttons:
 //   default                 -> the Deal Onboarding Form
 //   ?view=cards  or  #cards -> the production card viewer (see CardViewer.jsx)
 //   ?view=amendment         -> the Onboarding Amendment Form (see amendment/AmendmentApp.jsx, E-24/D-24)
 //   ?view=qc                -> the Quality Check form (see qc/QcApp.jsx, E-52)
 //   ?view=newproduct        -> the New Product form (see products/NewProductApp.jsx, E-85 / E-100)
+//   ?view=revision          -> the Revision / Correction form (see revision/RevisionApp.jsx; moved from the revision-form
+//                              branch 10-29, D-76; the Production Cards also open it in place, E-167)
 // Each is loaded on demand, so one view never downloads another -- and a runtime crash in one
-// cannot reach the others. (A COMPILE error still breaks all four: the build is the gate.)
+// cannot reach the others. (A COMPILE error still breaks all of them: the build is the gate.)
 const App = lazy(() => import("./App"));
 const CardViewer = lazy(() => import("./CardViewer"));
 const AmendmentApp = lazy(() => import("./amendment/AmendmentApp"));
 const QcApp = lazy(() => import("./qc/QcApp"));
 const NewProductApp = lazy(() => import("./products/NewProductApp"));
+const RevisionApp = lazy(() => import("./revision/RevisionApp"));
 
 const params = new URLSearchParams(window.location.search);
 const showCards =
@@ -22,6 +25,7 @@ const showCards =
 const showAmendment = !showCards && params.get("view") === "amendment";
 const showQc = !showCards && params.get("view") === "qc";
 const showNewProduct = !showCards && params.get("view") === "newproduct";
+const showRevision = !showCards && params.get("view") === "revision";
 
 const root = ReactDOM.createRoot(document.getElementById("root"));
 root.render(
@@ -35,7 +39,7 @@ root.render(
         ) : null
       }
     >
-      {showCards ? <CardViewer /> : showAmendment ? <AmendmentApp /> : showQc ? <QcApp /> : showNewProduct ? <NewProductApp /> : <App />}
+      {showCards ? <CardViewer /> : showAmendment ? <AmendmentApp /> : showQc ? <QcApp /> : showNewProduct ? <NewProductApp /> : showRevision ? <RevisionApp /> : <App />}
     </Suspense>
   </React.StrictMode>
 );
