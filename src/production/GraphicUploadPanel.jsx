@@ -40,7 +40,7 @@ const Pick = ({ label, value, options, onChange, width, disabled }) => (
 );
 
 /* One file being uploaded: its four parts (filled from the graphic, changeable), the name it will get, and Upload. */
-const FileRow = ({ file, start, garments, placementsFor, po, takenFor, others = [], busy, onUpload, onCancel }) => {
+const FileRow = ({ file, start, garments, placementsFor, po, takenFor, others = [], client = false, noOriginal = false, busy, onUpload, onCancel }) => {
   const [p, setP] = useState({ also: [], ...start });
   const set = (patch) => setP({ ...p, ...patch, confirm: false });
   const stem = partsReady(p) ? stemFor({ po, ...p }) : "";
@@ -51,7 +51,21 @@ const FileRow = ({ file, start, garments, placementsFor, po, takenFor, others = 
         {file.name}
       </Typography>
       <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-        <Pick label="Format" width={190} value={p.format} disabled={busy} onChange={(v) => set({ format: v })} options={UPLOAD_FORMATS.map((f) => ({ value: f.code, label: f.label }))} />
+        {client ? (
+          /* E-162 follow-up (David 10-30): the client's own art has its own button, so its format is fixed */
+          <Typography variant="body2" sx={{ alignSelf: "center" }}>
+            Client-provided art (kept as the client gave it)
+          </Typography>
+        ) : (
+          <Pick
+            label="Format"
+            width={190}
+            value={p.format}
+            disabled={busy}
+            onChange={(v) => set({ format: v })}
+            options={UPLOAD_FORMATS.filter((f) => !(noOriginal && f.code === "ORIGINAL")).map((f) => ({ value: f.code, label: f.label }))}
+          />
+        )}
         {p.format !== "ORIGINAL" && (
           <>
             <Pick label="Department" width={140} value={p.dept} disabled={busy} onChange={(v) => set({ dept: v })} options={UPLOAD_DEPARTMENTS.map((d) => ({ value: d.code, label: d.label }))} />
@@ -119,14 +133,17 @@ const GraphicUpload = ({ entity, recordId, deal, data, notes, who, defaultDept, 
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState(null);
 
-  const choose = (where) => (e) => {
+  const choose = (where, client = false) => (e) => {
     const f = e.target.files && e.target.files[0];
     e.target.value = "";
     if (f) {
       setResult(null);
-      setPicked({ where, file: f });
+      setPicked({ where, file: f, client });
     }
   };
+  /* E-162 follow-up (David 10-30): a shared client file says so under each graphic it belongs to. */
+  const sharedWith = (key, name) =>
+    graphics.filter((g) => g.key !== key && (byGraphic[g.key] || []).some((f) => f.name === name)).map((g) => g.label + (g.description ? ` (${g.description})` : ""));
   const doUpload = async (parts, graphic) => {
     setBusy(true);
     setResult(null);
@@ -158,14 +175,16 @@ const GraphicUpload = ({ entity, recordId, deal, data, notes, who, defaultDept, 
   const fileRow = (where, start, garments, placementsFor, graphic) =>
     picked && picked.where === where ? (
       <FileRow
-        key={picked.file.name + where}
+        key={picked.file.name + where + (picked.client ? "|client" : "")}
         file={picked.file}
         start={start}
         garments={garments}
         placementsFor={placementsFor}
         po={po}
         takenFor={takenFor(where)}
-        others={alsoOn && graphic ? graphics.filter((x) => x.key !== where) : []}
+        others={alsoOn && graphic && picked.client ? graphics.filter((x) => x.key !== where) : []}
+        client={alsoOn && !!picked.client}
+        noOriginal={alsoOn && !!graphic && !picked.client}
         busy={busy}
         onUpload={(p) => doUpload(p, graphic)}
         onCancel={() => setPicked(null)}
@@ -191,12 +210,16 @@ const GraphicUpload = ({ entity, recordId, deal, data, notes, who, defaultDept, 
               {g.description ? `: ${g.description}` : ""}
               {g.placements.length ? ` (${g.placements.join(", ")})` : ""}
             </Typography>
-            {files.map((f) => (
-              <Typography key={f.name} variant="body2" sx={{ pl: 1 }}>
-                {f.name} - {statusOf(f)}
-                {f.original ? ` (was ${f.original})` : ""}
-              </Typography>
-            ))}
+            {files.map((f) => {
+              const shared = alsoOn ? sharedWith(g.key, f.name) : [];
+              return (
+                <Typography key={f.name} variant="body2" sx={{ pl: 1 }}>
+                  {f.name} - {statusOf(f)}
+                  {f.original ? ` (was ${f.original})` : ""}
+                  {shared.length > 0 && <b style={{ color: "#1565c0" }}> · Client art, shared with {shared.join("; ")}</b>}
+                </Typography>
+              );
+            })}
             {old.map((a) => (
               <Typography key={a.key || a.name} variant="body2" color="text.secondary" sx={{ pl: 1 }}>
                 {a.name} - attached at onboarding (old name, on the onboarding note)
@@ -208,14 +231,22 @@ const GraphicUpload = ({ entity, recordId, deal, data, notes, who, defaultDept, 
               </Typography>
             )}
             {uploadsOn && !(picked && picked.where === g.key) && (
-              <Button size="small" variant="outlined" component="label" disabled={busy} sx={{ mt: 0.5 }}>
-                Upload a file for this graphic
-                <input hidden type="file" onChange={choose(g.key)} />
-              </Button>
+              <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", mt: 0.5 }}>
+                <Button size="small" variant="outlined" component="label" disabled={busy}>
+                  Upload a file for this graphic
+                  <input hidden type="file" onChange={choose(g.key)} />
+                </Button>
+                {alsoOn && (
+                  <Button size="small" variant="outlined" color="secondary" component="label" disabled={busy}>
+                    Upload new client-provided art
+                    <input hidden type="file" onChange={choose(g.key, true)} />
+                  </Button>
+                )}
+              </Box>
             )}
             {fileRow(
               g.key,
-              { dept: d.dept || defaultDept || "", garment: d.garment || "ALL", placement: d.placement || "Whole-item", format: "", artName: d.artName },
+              { dept: d.dept || defaultDept || "", garment: d.garment || "ALL", placement: d.placement || "Whole-item", format: alsoOn && picked && picked.client ? "ORIGINAL" : "", artName: d.artName },
               d.garments || allGarments,
               (gv) => (gv === d.garment ? d.placements || [] : placementOptions(data, gv)),
               { key: g.key, label: g.label }
