@@ -291,3 +291,15 @@ describe("Graphic labels name the product and garment (switch graphicLabelsOn)",
     expect(g.graphicAt([prod("Polo")], "products.0.primaryBranches.0.secondaryBranches.0").label).toBe("Garment 1 - Graphic 1");
   });
 });
+
+describe("Filing status for a reopened onboarding", () => {
+  const { filingByName } = require("./graphicUpload");
+  it("filed, not filed, and a file on no note", () => {
+    const filed = { Note_Title: "GRAPHIC UPLOAD - FILED", Note_Content: "Graphic upload - w - A<br>4523_ORIGINAL_Logo_v1.ai -> Art Assets (graphic G1: Embroidery: Polo - Graphic 1; graphic G2: Embroidery: Hat - Graphic 1)<br>FILING JSON: {}" };
+    const failed = { Note_Title: "GRAPHIC UPLOAD", Note_Content: "Graphic upload - w - A\n4523_EMB_ALL_Front_DST_v1.dst -> Department Folders / Embroidery (graphic G2: Embroidery: Hat - Graphic 1)\nNot filed 10-30 09:05: 4523_EMB_ALL_Front_DST_v1.dst - no_deal_folder" };
+    const m = filingByName([filed, failed]);
+    expect(m.get("4523_ORIGINAL_Logo_v1.ai")).toEqual({ filed: true, notFiled: "", folder: "Art Assets" });
+    expect(m.get("4523_EMB_ALL_Front_DST_v1.dst")).toEqual({ filed: false, notFiled: "no_deal_folder", folder: "Department Folders / Embroidery" });
+    expect(m.has("other_v1.png")).toBe(false);
+  });
+});

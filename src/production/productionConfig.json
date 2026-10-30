@@ -38,5 +38,7 @@
   "_cardsSideBySideOn": "E-178 (David 10-30): on a tab with a production flow, the flow sits in a column left of the card (each scrolls on its own; the Deal bar stays on top) and the window opens at 90% width. Narrow windows (under 1100 px) stack as before. false = stacked as before.",
   "cardsSideBySideOn": true,
   "_graphicLabelsOn": "Small follow-up (David 10-30): a graphic is named by its product and garment (\"Embroidery: Nike Polo NKDC1963 - Graphic 1\") on the Graphic Design tab, onboarding's Also used by and the upload notes, instead of \"Garment 1 - Graphic 1\" (which repeated across products). Brackets and ; left out of the name. false = as before.",
-  "graphicLabelsOn": true
+  "graphicLabelsOn": true,
+  "_filingStatusOn": "Small follow-up (David 10-30): a reopened onboarding reads the Deal's GRAPHIC UPLOAD notes once at open and shows, for each file uploaded earlier, \"filed in <folder>\" or \"NOT filed (<reason>)\" instead of the saved \"being filed now\". Read only, never blocks. false = as before.",
+  "filingStatusOn": true
 }

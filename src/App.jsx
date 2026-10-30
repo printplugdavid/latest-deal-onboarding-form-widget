@@ -49,7 +49,7 @@ import { billingOnFor, billingRecord, draftsOn, prepareDraft, sendWithFallback }
 import { BillingOn } from "./invoice/billingContext";
 import { screenPrintShortfall } from "./invoice/minimums";
 import { MAX_UPLOAD_BYTES, artKey, collectArtFiles } from "./graphicArt";
-import { filingOn, uploadsOn } from "./production/graphicUpload"; // E-162 / E-170
+import { filingByName, filingOn, uploadsOn } from "./production/graphicUpload"; // E-162 / E-170
 import { refileAfterFolders, uploadGraphicFile, withCap } from "./production/graphicUploader";
 import { CLOSING_FIELD, EXTENDED_DATE_LABEL, EXTRA_WEEK_QUESTION, dueDateProblem, extendedRange, turnaroundPlan, turnaroundWriteOn } from "./turnaround";
 import ExtendedClosingDate from "./components/ExtendedClosingDate";
@@ -80,6 +80,7 @@ function App() {
   const [entityId, setEntityId] = useState(null); // keeps the module id
   const [recordData, setRecordData] = useState(null); // holds record response
   const [accountNotes, setAccountNotes] = useState(""); // E-38: Account's Customer Notes at open
+  const [filingStatus, setFilingStatus] = useState(() => new Map()); // small follow-up: uploaded file -> filed / not filed
 
   const [options, setOptions] = useState(null);
 
@@ -129,6 +130,12 @@ function App() {
           .catch(() => setOnboarding({ onboarded: false }));
         // E-38: the Account's standing Customer Notes, shown read-only. Never blocks the form.
         loadAccountNotes(recordResp?.data?.[0]).then((a) => setAccountNotes(a?.notes || ""));
+        // Small follow-up (David 10-30): whether each file uploaded earlier was filed, from the Deal's GRAPHIC UPLOAD notes. Never blocks.
+        if (PRODUCTION_CONFIG.filingStatusOn === true && uploadsOn(PRODUCTION_CONFIG))
+          Promise.resolve()
+            .then(() => ZOHO.CRM.API.getRelatedRecords({ Entity: entity, RecordID: entityId, RelatedList: "Notes", page: 1, per_page: 200 }))
+            .then((r) => setFilingStatus(filingByName(r?.data || [])))
+            .catch(() => {});
 
         loadDealVendors(); // E-126: the Deal's vendor choices, live (not awaited; the built-in list until it answers)
         const variableResp = await ZOHO.CRM.API.getOrgVariable("products");
@@ -179,6 +186,7 @@ function App() {
           ? `All files together (art + other files) cannot exceed 15MB.`
           : "",
       deal: recordData, // E-162: the PO for the names
+      status: (name) => filingStatus.get(name) || null, // small follow-up: filed / not filed, read at open
       // E-162 / E-170 (D-78): each graphic's art is uploaded on its own -- named, attached to a GRAPHIC UPLOAD note, filed by the CRM.
       uploader:
         uploadsOn(PRODUCTION_CONFIG) && entity && entityId
@@ -200,7 +208,7 @@ function App() {
             }
           : null,
     }),
-    [attachments, entity, entityId, recordData, currentUser] // eslint-disable-line react-hooks/exhaustive-deps
+    [attachments, entity, entityId, recordData, currentUser, filingStatus] // eslint-disable-line react-hooks/exhaustive-deps
   );
 
   const {

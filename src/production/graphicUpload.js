@@ -410,6 +410,21 @@ export function uploadsByGraphic(notes) {
   return out;
 }
 
+/*
+ * Small follow-up (David 10-30): a reopened onboarding shows whether each uploaded file was filed. Map(file name -> { filed, notFiled,
+ * folder }) from the Deal's GRAPHIC UPLOAD notes (folder = the folder's name as written on the note). A file not on any note yet -> absent.
+ */
+export function filingByName(notes) {
+  const out = new Map();
+  Object.values(uploadsByGraphic(notes)).forEach((list) =>
+    list.forEach((f) => {
+      const had = out.get(f.name);
+      out.set(f.name, { filed: !!(f.filed || (had && had.filed)), notFiled: f.notFiled || (had && had.notFiled) || "", folder: f.folder });
+    })
+  );
+  return out;
+}
+
 /* Has anything been uploaded for this department ("" = any department)? Gates the Graphic Design Close Task. */
 export const hasUploadFor = (notes, dept) => uploadedNames(notes).some((n) => !dept || n.split("_")[1] === dept);
 
