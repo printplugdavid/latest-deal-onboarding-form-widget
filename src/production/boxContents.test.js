@@ -146,7 +146,7 @@ describe("E-172 on the cards (switch boxContentsOn)", () => {
     expect(sp).toContain("Also in this box: 5 pcs that are not for this card");
     expect(sp).toContain("112Y Heather Grey: OSFA 5 (5) &rarr; <b>Embroidery</b>");
     expect(sp).toContain("1 other box holds only other departments' garments");
-    expect(sp).toContain("Contents not listed:</span> 449780000900001");
+    expect(sp).toMatch(/Contents not listed:<\/span> <a [^>]+>449780000900001<\/a>/);
     const em = cards.get("production-card-embroidery.html");
     expect(em).toContain("112Y Heather Grey: OSFA 5 (5)");
     expect(em).toContain("&rarr; <b>Screen Print</b>");
