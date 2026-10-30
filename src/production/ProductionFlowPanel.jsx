@@ -25,6 +25,7 @@ import {
   Typography,
 } from "@mui/material";
 import {
+  COUNT_QUESTION_KEYS,
   DEPARTMENTS,
   FLOW_NOTE_TITLE,
   MISSING_REASONS,
@@ -35,6 +36,8 @@ import {
   closePlan,
   closeQuestionsFor,
   deptStarted,
+  expectedCountsOn,
+  expectedFor,
   grams,
   hasStartSteps,
   missingLine,
@@ -73,6 +76,44 @@ const Section = ({ title, children }) => (
   </Box>
 );
 
+/* E-166: "Expected: 48 pieces" next to a count question; a click shows garment / color / sizes (David: "the total, and make it
+   clickable to drop down variables"). Plain text, display only. */
+const ExpectedCount = ({ expected }) => {
+  const [open, setOpen] = useState(false);
+  if (!expected || !expected.items.length) return null;
+  const sheets = expected.items.filter((i) => i.unit === "sheets").reduce((s, i) => s + i.count, 0);
+  const label =
+    `Expected: ${expected.total} piece${expected.total === 1 ? "" : "s"}` + (sheets ? `, ${sheets} gang sheet${sheets === 1 ? "" : "s"}` : "");
+  return (
+    <Box sx={{ mb: 0.5 }}>
+      <Button size="small" variant="text" onClick={() => setOpen(!open)} sx={{ textTransform: "none", p: 0, minWidth: 0 }}>
+        {label} ({open ? "hide" : "show sizes and colors"})
+      </Button>
+      {open && (
+        <Box sx={{ pl: 1.5, borderLeft: "2px solid #ddd", mt: 0.5 }}>
+          {expected.items.map((it, i) => (
+            <Box key={i} sx={{ mb: 0.5 }}>
+              <Typography variant="body2" fontWeight="bold">
+                {it.item}: {it.count} {it.unit}
+              </Typography>
+              {it.colors.map((c) => (
+                <Typography key={c.color} variant="body2" sx={{ pl: 1 }}>
+                  {c.color}: {c.sizes.map((s) => `${s.count} ${s.size}`).join(", ")} ({c.count})
+                </Typography>
+              ))}
+              {it.typed && (
+                <Typography variant="body2" color="text.secondary" sx={{ pl: 1, whiteSpace: "pre-line" }}>
+                  As typed on the order: {it.typed}
+                </Typography>
+              )}
+            </Box>
+          ))}
+        </Box>
+      )}
+    </Box>
+  );
+};
+
 const inkRow = (r, i, list, setList, word, busy) => (
   <Box key={r.code} sx={{ display: "flex", gap: 1, alignItems: "center", mb: 1 }}>
     <Typography sx={{ minWidth: 150 }}>Pantone {r.code}</Typography>
@@ -92,7 +133,7 @@ const inkRow = (r, i, list, setList, word, busy) => (
 
 /* One "close" block: the tasks to tick, the questions (all Yes), grams left (screen print), feedback; then the tasks closed, the note,
    and the stage moved last. The Outsourced tab shows it twice: step "order" and step "package" (E-164). */
-const CloseTask = ({ dept, step, title, list, tasks, deal, rows, withOutsourced, busy, run, write, note, who, userId }) => {
+const CloseTask = ({ dept, step, title, list, tasks, deal, rows, withOutsourced, busy, run, write, note, who, userId, expected }) => {
   const d = DEPARTMENTS[dept];
   const [answers, setAnswers] = useState({});
   const [inkLeft, setInkLeft] = useState(() => rows.map((r) => (r.left != null ? String(r.left) : "")));
@@ -152,6 +193,7 @@ const CloseTask = ({ dept, step, title, list, tasks, deal, rows, withOutsourced,
       {closeQuestionsFor(dept, step).map((q) => (
         <Box key={q.key}>
           <Typography variant="body2">{q.question}</Typography>
+          {COUNT_QUESTION_KEYS.includes(q.key) && <ExpectedCount expected={expected} />}
           <YesNo value={answers[q.key]} disabled={!!busy} onChange={(v) => setAnswers({ ...answers, [q.key]: v })} />
           {answers[q.key] === "no" && <Alert severity="warning" sx={{ mb: 1 }}>Please ensure that step is completed before closing the task.</Alert>}
         </Box>
@@ -191,6 +233,7 @@ const ProductionFlow = ({ dept, ctx, refresh }) => {
   const orderOpen = useMemo(() => (dept === "outsourced" ? openOrderTasks(tasks) : []), [dept, tasks]);
   const rows = useMemo(() => (d.inks ? pantoneSlots(deal, pantonesOf(data)) : []), [d.inks, deal, data]);
   const garments = useMemo(() => orderGarments(data), [data]);
+  const expected = useMemo(() => (expectedCountsOn(PRODUCTION_CONFIG) ? expectedFor(data, dept) : null), [data, dept]);
 
   const [start, setStart] = useState({});
   const [inkMixed, setInkMixed] = useState(() => rows.map((r) => (r.mixed != null ? String(r.mixed) : "")));
@@ -258,7 +301,7 @@ const ProductionFlow = ({ dept, ctx, refresh }) => {
       return "Call Client flagged: the Sales Person gets a \"Call Client\" task with your notes on the Deal.";
     });
 
-  const common = { dept, tasks, deal, rows, withOutsourced, busy, run, write, note, who, userId: user.id };
+  const common = { dept, tasks, deal, rows, withOutsourced, busy, run, write, note, who, userId: user.id, expected };
 
   return (
     <Box sx={{ p: 2, bgcolor: "#fff", borderBottom: 2, borderColor: "#1a1a1a" }}>
@@ -282,6 +325,7 @@ const ProductionFlow = ({ dept, ctx, refresh }) => {
                 <Typography variant="body2">
                   {i + 1}. {s.question}
                 </Typography>
+                {COUNT_QUESTION_KEYS.includes(s.key) && <ExpectedCount expected={expected} />}
                 <YesNo value={start[s.key]} disabled={!before || !!busy} onChange={(v) => setStart({ ...start, [s.key]: v })} />
                 {start[s.key] === "no" && <Alert severity="error" sx={{ mb: 1 }}>{s.stop}</Alert>}
               </Box>

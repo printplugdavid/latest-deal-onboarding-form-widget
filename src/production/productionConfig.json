@@ -6,5 +6,7 @@
   "_writePantones": "E-159 (David 10-29): onboarding Submit and the Amendment Form write the order's screen print Pantone codes into the Deal's PANTONE 1-8 fields (code only, never blanked; Trigger []). false = nothing written.",
   "writePantones": true,
   "_outsourcedOn": "E-164 (David 10-29, D-75): an open \"OUTSOURCED: Order Products\" or \"Package Outsourced Products\" task holds the move to Quality Check, and the Outsourced card tab gets its flow (the Production Manager closes the Package task there with David's two questions). false = round 1 as before: outsourced tasks are not counted and the Outsourced tab has no flow.",
-  "outsourcedOn": true
+  "outsourcedOn": true,
+  "_expectedCountsOn": "E-166 (David 10-29): next to each count question (start count, Close \"Garments counted...\", Outsourced Order and Package) the expected total for that tab's job, clickable to show garment / color / sizes. Display only. false = not shown.",
+  "expectedCountsOn": true
 }

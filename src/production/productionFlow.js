@@ -17,6 +17,7 @@
  */
 import { colorModeFor, readInkText } from "../colorLibrary";
 import { parseSizeText } from "../sizeRows";
+import { cardRouteOf } from "../productionCards";
 
 const str = (v) => (v == null ? "" : String(v));
 
@@ -277,6 +278,57 @@ export function orderGarments(data) {
   });
   return out;
 }
+
+/*
+ * E-166 (David 10-29): what this tab's job should hold, for the count questions -- "the total, and make it clickable to drop down
+ * variables". Each tab expects exactly the products its card shows (same routing as the cards); the Outsourced tab also takes any
+ * product answered "outsourced" (e.g. patches, which sit on the Vinyl card). Returns
+ *   { total, items: [{ item, count, colors: [{ color, count, sizes: [{ size, count }] }], typed, unit }] }
+ * total = pieces (garments + non-garment items); gang sheets are listed in sheets and left out of the total.
+ */
+const CARD_FOR_DEPT = { screen: "screenprint", embroidery: "embroidery", vinyl: "vinyl", outsourced: "outsourced" };
+const yesAnswer = (v) => v === true || /^yes$/i.test(str(v).trim());
+const num = (v) => {
+  const n = Number(str(v).replace(/,/g, "").trim());
+  return Number.isFinite(n) && n > 0 ? n : 0;
+};
+export function expectedFor(data, dept) {
+  const card = CARD_FOR_DEPT[dept];
+  const items = [];
+  ((data && data.products) || []).forEach((p) => {
+    if (!p) return;
+    const route = cardRouteOf(p);
+    const mine = (route && route.card === card) || (dept === "outsourced" && yesAnswer(p.isOutsourced));
+    if (!mine) return;
+    if (p.productType === "garment") {
+      (p.primaryBranches || []).forEach((b, i) => {
+        if (!b) return;
+        const name = str(b.garmentType).split("\n")[0].trim() || `${p.productName} garment ${i + 1}`;
+        const parsed = parseSizeText(b.countColorSize);
+        const colors = [];
+        parsed.rows.forEach((r) => {
+          const c = str(r.color).trim() || "No color given";
+          let row = colors.find((x) => x.color === c);
+          if (!row) colors.push((row = { color: c, count: 0, sizes: [] }));
+          row.count += Number(r.count) || 0;
+          row.sizes.push({ size: str(r.size), count: Number(r.count) || 0 });
+        });
+        const fromRows = colors.reduce((s, c) => s + c.count, 0);
+        const count = num(b.garmentQuantity) || fromRows;
+        items.push({ item: name, count, colors, typed: colors.length ? "" : str(b.countColorSize).trim(), unit: "pieces" });
+      });
+    } else if (p.productType === "gangsheet") {
+      items.push({ item: "DTF Gang Sheet", count: num(p.numberOfGangSheets), colors: [], typed: "", unit: "sheets" });
+    } else if (p.productType === "nongarment") {
+      items.push({ item: str(p.productName) + (str(p.dimensions).trim() ? ` (${str(p.dimensions).trim()})` : ""), count: num(p.quantityOrdered), colors: [], typed: "", unit: "pieces" });
+    }
+  });
+  const total = items.filter((i) => i.unit === "pieces").reduce((s, i) => s + i.count, 0);
+  return { total, items };
+}
+/* Which count questions show the expected total (start count, Close count, Outsourced Order + Package). */
+export const COUNT_QUESTION_KEYS = ["count", "sorted", "ordered", "verified"];
+export const expectedCountsOn = (config) => !!config && config.expectedCountsOn === true;
 
 /* One dated Missing Garments line: "[2026-10-29 Mastin] 2 x Gildan 5000 Black L - Supplier shorted us. <note>" */
 export function missingLine({ quantity, garment, color, size, reason, note, who, date }) {

@@ -222,3 +222,5 @@ function buildProductionCards(data, counts, dealInfo) {
 }
 
 export { buildProductionCards };
+// E-166: which card a product lands on, shared with the production flow so each tab expects exactly what its card shows.
+export { pcRoute as cardRouteOf };
