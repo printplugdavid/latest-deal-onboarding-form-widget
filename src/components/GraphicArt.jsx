@@ -17,6 +17,7 @@ import React, { createContext, useContext, useEffect, useState } from "react";
 import { Box, Button, Checkbox, FormControlLabel, MenuItem, TextField, Typography } from "@mui/material";
 import { useFormContext, useWatch } from "react-hook-form";
 import ImageColorFinder from "./ImageColorFinder";
+import PRODUCTION_CONFIG from "../production/productionConfig.json";
 import { artKey, finderModeFor, isPicture, writePicks } from "../graphicArt";
 import {
   FOLDER_LABELS,
@@ -25,6 +26,7 @@ import {
   graphicDefaults,
   graphicsOf,
   newGraphicId,
+  otherReady,
   poPart,
   stemFor,
   stemTakenBy,
@@ -275,6 +277,17 @@ const UploadRow = ({ p, d, po, others, taken, busy, disabled, onChange, onUpload
         />
       </Box>
     )}
+    {/* E-177: "Other" says what it is (goes on the upload note) */}
+    {PRODUCTION_CONFIG.otherFormatTypedOn === true && p.format === "OTHER" && (
+      <TextField
+        size="small"
+        label="What kind of file is it?"
+        value={p.otherWhat || ""}
+        disabled={disabled}
+        onChange={(e) => onChange({ otherWhat: e.target.value })}
+        sx={{ minWidth: 240 }}
+      />
+    )}
     {p.format !== "ORIGINAL" && p.open && (
       <>
         <Sel label="Department" width={140} value={p.dept} disabled={disabled} onChange={(v) => onChange({ dept: v })} options={UPLOAD_DEPARTMENTS.map((x) => ({ value: x.code, label: x.label }))} />
@@ -290,7 +303,13 @@ const UploadRow = ({ p, d, po, others, taken, busy, disabled, onChange, onUpload
     <Button
       size="small"
       variant="contained"
-      disabled={disabled || !p.format || (p.format !== "ORIGINAL" && (!p.dept || !p.garment || !p.placement)) || (taken.length > 0 && !p.confirm)}
+      disabled={
+        disabled ||
+        !p.format ||
+        (p.format !== "ORIGINAL" && (!p.dept || !p.garment || !p.placement)) ||
+        (taken.length > 0 && !p.confirm) ||
+        !otherReady(p, PRODUCTION_CONFIG.otherFormatTypedOn === true)
+      }
       onClick={onUpload}
       sx={{ textTransform: "none", py: "2px" }}
     >

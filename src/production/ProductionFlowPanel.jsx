@@ -493,6 +493,7 @@ const ProductionFlow = ({ dept, ctx, refresh, onRevision }) => {
           uploadsOn={uploadsOn(PRODUCTION_CONFIG)}
           startFiling={filingOn(PRODUCTION_CONFIG)}
           alsoOn={PRODUCTION_CONFIG.gdAlsoUsedByOn === true}
+          otherOn={PRODUCTION_CONFIG.otherFormatTypedOn === true}
           refresh={refresh}
         />
       )}

@@ -18,6 +18,7 @@ import {
   graphicDefaults,
   graphicsOf,
   partsReady,
+  otherReady,
   placementOptions,
   poPart,
   stemFor,
@@ -40,7 +41,7 @@ const Pick = ({ label, value, options, onChange, width, disabled }) => (
 );
 
 /* One file being uploaded: its four parts (filled from the graphic, changeable), the name it will get, and Upload. */
-const FileRow = ({ file, start, garments, placementsFor, po, takenFor, others = [], client = false, noOriginal = false, busy, onUpload, onCancel }) => {
+const FileRow = ({ file, start, garments, placementsFor, po, takenFor, others = [], client = false, noOriginal = false, otherOn = false, busy, onUpload, onCancel }) => {
   const [p, setP] = useState({ also: [], ...start });
   const set = (patch) => setP({ ...p, ...patch, confirm: false });
   const stem = partsReady(p) ? stemFor({ po, ...p }) : "";
@@ -74,6 +75,17 @@ const FileRow = ({ file, start, garments, placementsFor, po, takenFor, others = 
           </>
         )}
       </Box>
+      {/* E-177: "Other" says what it is */}
+      {otherOn && p.format === "OTHER" && (
+        <TextField
+          size="small"
+          sx={{ mt: 1, width: 360, maxWidth: "100%" }}
+          label="What kind of file is it? (e.g. PSD, puff template, cut file)"
+          value={p.otherWhat || ""}
+          disabled={busy}
+          onChange={(e) => setP({ ...p, otherWhat: e.target.value })}
+        />
+      )}
       {/* E-162 follow-up (D-79): a client's original can serve several graphics -- uploaded once, listed under each ticked one. */}
       {p.format === "ORIGINAL" && others.length > 0 && (
         <Box sx={{ mt: 1, display: "flex", flexWrap: "wrap", alignItems: "center", gap: "0.25rem" }}>
@@ -111,7 +123,7 @@ const FileRow = ({ file, start, garments, placementsFor, po, takenFor, others = 
         </Typography>
       )}
       <Box sx={{ mt: 1, display: "flex", gap: 1 }}>
-        <Button variant="contained" size="small" disabled={!stem || busy || (taken.length > 0 && !p.confirm)} onClick={() => onUpload(p)}>
+        <Button variant="contained" size="small" disabled={!stem || busy || (taken.length > 0 && !p.confirm) || !otherReady(p, otherOn)} onClick={() => onUpload(p)}>
           {busy ? "Uploading…" : "Upload"}
         </Button>
         <Button size="small" disabled={busy} onClick={onCancel}>
@@ -124,7 +136,7 @@ const FileRow = ({ file, start, garments, placementsFor, po, takenFor, others = 
 
 const statusOf = (f) => (f.notFiled ? `not filed: ${f.notFiled}` : f.filed ? "filed" : "being filed (reopen the cards in a moment to see it filed)");
 
-const GraphicUpload = ({ entity, recordId, deal, data, notes, who, defaultDept, uploadsOn, startFiling, alsoOn = false, refresh }) => {
+const GraphicUpload = ({ entity, recordId, deal, data, notes, who, defaultDept, uploadsOn, startFiling, alsoOn = false, otherOn = false, refresh }) => {
   const graphics = useMemo(() => graphicsOf(data), [data]);
   const byGraphic = useMemo(() => uploadsByGraphic(notes), [notes]);
   const allGarments = useMemo(() => garmentOptions(data), [data]);
@@ -184,6 +196,7 @@ const GraphicUpload = ({ entity, recordId, deal, data, notes, who, defaultDept, 
         takenFor={takenFor(where)}
         others={alsoOn && graphic && picked.client ? graphics.filter((x) => x.key !== where) : []}
         client={alsoOn && !!picked.client}
+        otherOn={otherOn}
         noOriginal={alsoOn && !!graphic && !picked.client}
         busy={busy}
         onUpload={(p) => doUpload(p, graphic)}

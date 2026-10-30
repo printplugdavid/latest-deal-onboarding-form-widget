@@ -32,5 +32,9 @@
   "_revisionInFlowOn": "E-175 (David 10-30): on a tab with a production flow, the Order Revision / Correction button sits in the flow under Missing or damaged garments / Call Client instead of the top bar (tabs without a flow keep the top-bar button). Needs revisionInCardsOn. false = the top-bar button as before.",
   "revisionInFlowOn": true,
   "_gdAlsoUsedByOn": "E-162 follow-up (D-79, David 10-30 \"Yes, start there\"): on the Graphic Design tab, a client's original file (Format Original) can be ticked \"Also used by\" other graphics on the order -- uploaded once, listed under each (one GRAPHIC UPLOAD note line, no copies), like onboarding. false = as before (one graphic per upload). ON with the push (David's yes).",
-  "gdAlsoUsedByOn": true
+  "gdAlsoUsedByOn": true,
+  "_otherFormatTypedOn": "E-177 (David 10-30): on the Graphic Design tab and onboarding's Upload, Format \"Other\" asks \"What kind of file is it?\" (required, up to 60 characters); the answer goes on the GRAPHIC UPLOAD note as \"  other file type: ...\" so the common ones can be added to the list later. File name (OTHER) and folders unchanged. false = as before.",
+  "otherFormatTypedOn": true,
+  "_cardsSideBySideOn": "E-178 (David 10-30): on a tab with a production flow, the flow sits in a column left of the card (each scrolls on its own; the Deal bar stays on top) and the window opens at 90% width. Narrow windows (under 1100 px) stack as before. false = stacked as before.",
+  "cardsSideBySideOn": true
 }

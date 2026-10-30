@@ -90,6 +90,12 @@ export const artNameFor = (description, label) => {
 export const fileName = (stem, version, ext) => `${stem}_v${Number(version) || 1}${ext ? "." + ext : ""}`;
 /* Every part chosen? (the PO always is) */
 export const partsReady = (p) => !!(p && p.format && (p.format === "ORIGINAL" ? namePart(p.artName) : p.dept && p.garment && p.placement));
+/*
+ * E-177 (David 10-30): "Other" asks what kind of file it is; the answer goes on the upload note (its own line, "  other file type: ..."),
+ * so the common ones can be added to the list later. The file name keeps OTHER and the folder rules do not change.
+ */
+export const otherTyped = (p) => String((p && p.otherWhat) || "").replace(/\s+/g, " ").trim().slice(0, 60);
+export const otherReady = (p, on) => !on || !p || p.format !== "OTHER" || otherTyped(p).length >= 2;
 
 /* The garments / items of the order, for the Garment picker: ALL first, then each style + color, then each non-garment item. */
 export function garmentOptions(data) {
@@ -327,6 +333,7 @@ export function uploadNote({ who, when, items }) {
         it.original && it.original !== it.name ? " (was: " + it.original + ")" : ""
       }`
     );
+    if (it.other) lines.push(`  other file type: ${it.other}`);
     (it.wouldMove || []).forEach((m) => lines.push(`  replaces ${m} (moved to Rejected)`));
   });
   /* Deluge docs/58 §4: one machine line for the background filing run (people read the lines above; the run reads only this). */
