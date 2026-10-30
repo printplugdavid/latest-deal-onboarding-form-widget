@@ -81,7 +81,7 @@ export function buildCardsFromData(data, deal) {
   // the cards here are rebuilt from the Deal as it is now, so they show it.
   // E-137: the boxes coming in from suppliers, read from the Deal now (the new Production Tracking field, else the 8 old boxes).
   // E-146 (David, 10-28): revision reorder boxes live in Revision_Tracking_Link (same format; the supplier robot writes "R" POs there).
-  const dealInfo = { poNumber: deal.PO_Number, workDriveLink: folder.href, workDriveLabel: folder.label, garmentsOrderedNotes: deal.Garments_Ordered_Notes, shipments: dealShipments(deal), revisionShipments: parseTracking(deal.Revision_Tracking_Link), boxContents: PRODUCTION_CONFIG.boxContentsOn === true, artDetails: PRODUCTION_CONFIG.cardInfoOn === true };
+  const dealInfo = { poNumber: deal.PO_Number, workDriveLink: folder.href, workDriveLabel: folder.label, garmentsOrderedNotes: deal.Garments_Ordered_Notes, shipments: dealShipments(deal), revisionShipments: parseTracking(deal.Revision_Tracking_Link), boxContents: PRODUCTION_CONFIG.boxContentsOn === true, artDetails: PRODUCTION_CONFIG.cardInfoOn === true, styleSplit: PRODUCTION_CONFIG.styleSplitOn === true };
   for (const c of buildProductionCards(liveDue, counts, dealInfo)) built.set(c.name.toLowerCase(), c.html);
   return built;
 }

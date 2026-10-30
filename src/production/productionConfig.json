@@ -40,5 +40,7 @@
   "_graphicLabelsOn": "Small follow-up (David 10-30): a graphic is named by its product and garment (\"Embroidery: Nike Polo NKDC1963 - Graphic 1\") on the Graphic Design tab, onboarding's Also used by and the upload notes, instead of \"Garment 1 - Graphic 1\" (which repeated across products). Brackets and ; left out of the name. false = as before.",
   "graphicLabelsOn": true,
   "_filingStatusOn": "Small follow-up (David 10-30, \"Yes, build that\"): onboarding lists the files already uploaded on the Deal (an unsubmitted form opens blank) in an \"Already uploaded on this Deal\" box with filed / not filed, and counts them in the \"art name already used\" warning. It also reads the Deal's GRAPHIC UPLOAD notes once at open and shows, for each file uploaded earlier, \"filed in <folder>\" or \"NOT filed (<reason>)\" instead of the saved \"being filed now\". Read only, never blocks. false = as before.",
-  "filingStatusOn": true
+  "filingStatusOn": true,
+  "_styleSplitOn": "E-179 / D-85 (David 10-30, \"Yes, split by style\"): a garment type holding two or more styles shows a \"Styles\" line on the cards (each style with its own count; viewer only, robot cards unchanged). Expected garments and the missing-garments picker list each style separately (always). false = no Styles line.",
+  "styleSplitOn": true
 }

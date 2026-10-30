@@ -15,9 +15,17 @@ const ADD = { kind: "add" };
  * size-band family (PC54 · PC541 · PC542). The rep removes bands the order does not use. Nothing is locked: every field stays editable.
  * Not in Books -> the New Product form, then its new items fill the garment the same way.
  */
-export default function GarmentProductPick({ index, branchIndex }) {
+export default function GarmentProductPick({ index, branchIndex, setSkus }) {
   const { control, getValues, setValue } = useFormContext();
   const base = `products.${index}.primaryBranches.${branchIndex}`;
+  /* E-179: write the SKU list through the garment's field array when given (its boxes then show the saved codes) */
+  const writeSkus = (list) => {
+    if (setSkus) setSkus(list);
+    else {
+      setValue(`${base}.garmentSkus`, list);
+      setValue(`${base}.numberOfSkus`, String(list.length));
+    }
+  };
   // E-107: the style's whole size-band family is kept on the garment; the SKU rows show only the bands its size lines need.
   const family = useWatch({ control, name: `${base}.booksFamily` });
   const sizesText = useWatch({ control, name: `${base}.countColorSize` });
@@ -51,16 +59,32 @@ export default function GarmentProductPick({ index, branchIndex }) {
     const f = garmentFill(fam, category);
     if (!String(getValues(`${base}.garmentType`) || "").trim()) setValue(`${base}.garmentType`, f.garmentType);
     if (f.garmentKind && !String(getValues(`${base}.garmentKind`) || "").trim()) setValue(`${base}.garmentKind`, f.garmentKind);
-    setValue(`${base}.booksFamily`, f.garmentSkus);
+    // E-179: a second style keeps the first style's family (the size-band follow stops anyway once two styles are listed)
+    const hadOther = (getValues(`${base}.garmentSkus`) || []).some((r) => r && String(r.sku || "").trim() && !f.garmentSkus.some((x) => String(x.sku).toUpperCase() === String(r.sku).toUpperCase()));
+    if (!hadOther) setValue(`${base}.booksFamily`, f.garmentSkus);
     // E-113: the style's vendor fills Vendors Used (empty box, or a list of Deal choices).
     const next = withVendor(vendorsOf({ vendorsList: getValues(`${base}.vendorsList`), vendorsUsed: getValues(`${base}.vendorsUsed`) }), (fam[0] || {}).vendor);
     if (next) setVendors(setValue, base, next);
     const need = skusForSizes(f.garmentSkus.map((r) => ({ ...r, name: r.productName })), getValues(`${base}.countColorSize`));
     const shown = f.garmentSkus.filter((r) => need.items.some((p) => p.sku === r.sku));
-    setValue(`${base}.garmentSkus`, shown);
-    setValue(`${base}.numberOfSkus`, String(shown.length));
+    /*
+     * E-179 (Ignite D1, 13 garments since 10-21): picking a SECOND style for a garment that already has another style's SKUs used to
+     * REPLACE them (the old code stayed on screen, the saved list became the new style's). Now the new style's SKUs are ADDED after the
+     * ones already there; a first pick (or a re-pick of the same style) still fills the list as before.
+     */
+    const famSkus = f.garmentSkus.map((r) => String(r.sku).toUpperCase());
+    const before = (getValues(`${base}.garmentSkus`) || []).filter((r) => r && String(r.sku || "").trim());
+    const others = before.filter((r) => !famSkus.includes(String(r.sku).toUpperCase()));
+    if (others.length) {
+      const add = (shown.length ? shown : f.garmentSkus.slice(0, 1)).filter((r) => !before.some((b) => String(b.sku).toUpperCase() === String(r.sku).toUpperCase()));
+      writeSkus([...before, ...add]);
+      setUnmatched([]);
+      setFilled({ added: true, skus: add.map((r) => r.sku) });
+      return;
+    }
+    writeSkus(shown);
     setUnmatched(need.unmatched);
-    setFilled(f.garmentSkus.map((r) => r.sku));
+    setFilled({ added: false, skus: f.garmentSkus.map((r) => r.sku) });
   };
 
   // E-107: follow the size lines -- add a band when a size needs it, drop it when no size does. A row the rep added by hand (not in
@@ -74,8 +98,7 @@ export default function GarmentProductPick({ index, branchIndex }) {
     const wanted = family.filter((r) => need.items.some((p) => p.sku === r.sku));
     setUnmatched(need.unmatched);
     if (wanted.map((r) => r.sku).join(",") === family.filter((r) => current.includes(r.sku.toUpperCase())).map((r) => r.sku).join(",")) return;
-    setValue(`${base}.garmentSkus`, wanted);
-    setValue(`${base}.numberOfSkus`, String(wanted.length));
+    writeSkus(wanted);
   }, [sizesText, family]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const pick = async (p) => {
@@ -149,7 +172,9 @@ export default function GarmentProductPick({ index, branchIndex }) {
       />
       {filled && (
         <Alert severity="success" icon={false} sx={{ mt: 1, py: 0 }}>
-          Filled from Books ({filled.join(", ")}). The SKUs below follow the sizes you enter: each size band appears when a size needs it.
+          {filled.added
+            ? `Added ${filled.skus.join(", ") || "nothing new"} as another style of this garment type (the SKUs already there are kept). Give its sizes their own style section with "+ Add another garment style".`
+            : `Filled from Books (${filled.skus.join(", ")}). The SKUs below follow the sizes you enter: each size band appears when a size needs it.`}
         </Alert>
       )}
       {unmatched.length > 0 && (

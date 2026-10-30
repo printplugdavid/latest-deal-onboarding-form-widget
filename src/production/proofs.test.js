@@ -138,3 +138,39 @@ describe("E-176 the flow's history stays visible", () => {
     expect(h[1].lines).toEqual(["Closed: EMBROIDERY: Produce Order", "Deal moved to Quality Check."]);
   });
 });
+
+describe("E-181 notes come back from Zoho with & as &amp;", () => {
+  const { decodeEntities, noteText } = require("./noteText");
+  const { proofStatus: ps } = require("./proofs");
+  it("decodes before matching (David Balls Deal 1: six approvals that never counted)", () => {
+    const data = { products: [{ productType: "garment", productName: "Direct-to-Film", primaryBranches: [{ garmentType: "Port & Company - Tall Core Fleece Pullover Hooded Sweatshirt (PC78HT)", secondaryBranches: [{ tartiaryBranches: [{ placementLocation: "Full Front" }] }] }] }] };
+    const asZohoReturnsIt = { Note_Title: "PRODUCTION FLOW", Created_Time: "2026-10-30T15:36:45-06:00", Note_Content: "Vinyl - PROOF APPROVED - 10/30/26, 3:36 PM - Desi Mastin\nApproved: Port &amp; Company - Tall Core Fleece Pullover Hooded Sweatshirt (PC78HT) (Full Front)" };
+    expect(ps(data, [asZohoReturnsIt], "vinyl")).toMatchObject({ done: true, left: [] });
+    expect(decodeEntities("A &amp; B &lt;x&gt; &quot;q&quot; &#39;s")).toBe("A & B <x> \"q\" 's");
+    expect(noteText({ Note_Content: "a<br>b &amp; c" })).toBe("a\nb & c");
+  });
+});
+
+describe("E-179 a garment type with two styles is split by style", () => {
+  const { expectedFor, orderGarments, styleGroups } = require("./productionFlow");
+  const { buildProductionCards } = require("../productionCards");
+  const hats = {
+    products: [{ productType: "garment", productName: "Embroidery", primaryBranches: [{
+      garmentType: "Port Authority - Low-Profile Snapback Trucker Cap (C112LP)", garmentQuantity: "10", garmentSkus: [{ sku: "C112LP" }, { sku: "C402" }],
+      countColorSize: "Port Authority - Low-Profile Snapback Trucker Cap (C112LP):\nHeather Grey/Black\n2- OSFA\nSoft Coral\n5- OSFA\n\nC402:\nSteele Grey/Black\n2- OSFA\nHeather Grey/Black\n1- OSFA",
+      secondaryBranches: [{ graphicDescription: "logo", tartiaryBranches: [{ placementLocation: "Front" }] }] }] }],
+  };
+  it("expected garments and the missing-garments picker name each style (Ignite D1's C402 was missing)", () => {
+    expect(styleGroups(hats.products[0].primaryBranches[0].countColorSize).map((g) => [g.style, g.count])).toEqual([["Port Authority - Low-Profile Snapback Trucker Cap (C112LP)", 7], ["C402", 3]]);
+    const ex = expectedFor(hats, "embroidery");
+    expect(ex.items.map((i) => [i.item, i.count])).toEqual([["Port Authority - Low-Profile Snapback Trucker Cap (C112LP)", 7], ["C402", 3]]);
+    expect(ex.total).toBe(10);
+    expect(orderGarments(hats).map((g) => g.garment)).toEqual(["Port Authority - Low-Profile Snapback Trucker Cap (C112LP)", "C402"]);
+  });
+  it("the card's Styles line, only with the switch (viewer) -- off is byte-identical", () => {
+    const card = (info) => buildProductionCards(hats, null, info).find((f) => /embroidery/.test(f.name)).html;
+    expect(card({ styleSplit: true })).toMatch(/Styles<\/span><span class="val">Port Authority - Low-Profile Snapback Trucker Cap \(C112LP\) - 7 pcs · C402 - 3 pcs</);
+    expect(card(undefined)).toBe(card({ styleSplit: false }));
+    expect(card(undefined)).not.toMatch(/>Styles</);
+  });
+});

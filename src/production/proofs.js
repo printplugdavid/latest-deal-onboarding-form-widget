@@ -16,6 +16,7 @@
  */
 import { cardRouteOf } from "../productionCards";
 import { DEPARTMENTS, FLOW_NOTE_TITLE } from "./productionFlow";
+import { noteText } from "./noteText";
 
 const str = (v) => (v == null ? "" : String(v));
 
@@ -88,7 +89,7 @@ export function proofApprovals(notes, dept) {
   const map = new Map();
   (notes || [])
     .filter((n) => n && n.Note_Title === FLOW_NOTE_TITLE)
-    .map((n) => ({ t: str(n.Created_Time), lines: str(n.Note_Content).replace(/<br\s*\/?>/gi, "\n").split("\n") }))
+    .map((n) => ({ t: str(n.Created_Time), lines: noteText(n).split("\n") }))
     .filter((n) => n.lines[0].startsWith(HEAD(dept)))
     .sort((a, b) => (a.t < b.t ? -1 : a.t > b.t ? 1 : 0))
     .forEach((n) => {

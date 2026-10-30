@@ -19,6 +19,7 @@ import { colorModeFor, readInkText } from "../colorLibrary";
 import { parseSizeText } from "../sizeRows";
 import { cardRouteOf } from "../productionCards";
 import { deptOfDesignTask, graphicFlowOn, hasUploadFor, isDesignTask } from "./graphicUpload";
+import { noteText } from "./noteText";
 
 const str = (v) => (v == null ? "" : String(v));
 
@@ -281,6 +282,23 @@ export function pantoneFields(rows, part, typed) {
 
 /* ---------- missing / damaged garments ---------- */
 /* What the order holds, for the picker: [{ garment, rows: [{ color, size, count }] }] (garment = the Garment Type's first line). */
+/*
+ * E-179 / D-85 (David 10-30, "Yes, split by style"): a garment type can hold several styles (size lines under style headings, e.g. the
+ * C112LP and the C402 trucker caps of Ignite D1). Each style is its own product downstream: [{ style, rows, count }] in the order typed;
+ * one entry with style "" when the lines name no style.
+ */
+export function styleGroups(text) {
+  const out = [];
+  parseSizeText(text).rows.forEach((r) => {
+    const style = str(r.group).trim();
+    let g = out.find((x) => x.style === style);
+    if (!g) out.push((g = { style, rows: [], count: 0 }));
+    const row = { color: str(r.color), size: str(r.size), count: Number(r.count) || 0 };
+    g.rows.push(row);
+    g.count += row.count;
+  });
+  return out;
+}
 export function orderGarments(data) {
   const out = [];
   ((data && data.products) || []).forEach((p) => {
@@ -288,8 +306,10 @@ export function orderGarments(data) {
     (p.primaryBranches || []).forEach((b, i) => {
       if (!b) return;
       const name = str(b.garmentType).split("\n")[0].trim() || `${p.productName} garment ${i + 1}`;
-      const rows = parseSizeText(b.countColorSize).rows.map((r) => ({ color: str(r.color), size: str(r.size), count: Number(r.count) || 0 }));
-      out.push({ garment: name, rows });
+      const groups = styleGroups(b.countColorSize);
+      // E-179: a garment type with two or more styles -> one entry per style (so a missing C402 can be reported as a C402)
+      if (groups.filter((g) => g.style).length >= 2) groups.forEach((g) => out.push({ garment: g.style || name, rows: g.rows }));
+      else out.push({ garment: name, rows: groups.flatMap((g) => g.rows) });
     });
   });
   return out;
@@ -321,6 +341,22 @@ export function expectedFor(data, dept) {
         if (!b) return;
         const name = str(b.garmentType).split("\n")[0].trim() || `${p.productName} garment ${i + 1}`;
         const parsed = parseSizeText(b.countColorSize);
+        // E-179 / D-85: two or more styles under one garment type -> one expected item per style, named by its style heading
+        const groups = styleGroups(b.countColorSize);
+        if (groups.filter((g) => g.style).length >= 2) {
+          groups.forEach((g) => {
+            const colors = [];
+            g.rows.forEach((r) => {
+              const c = str(r.color).trim() || "No color given";
+              let row = colors.find((x) => x.color === c);
+              if (!row) colors.push((row = { color: c, count: 0, sizes: [] }));
+              row.count += r.count;
+              row.sizes.push({ size: r.size, count: r.count });
+            });
+            items.push({ item: g.style || name, count: g.count, colors, typed: "", unit: "pieces" });
+          });
+          return;
+        }
         const colors = [];
         parsed.rows.forEach((r) => {
           const c = str(r.color).trim() || "No color given";
@@ -518,7 +554,7 @@ export function flowHistory(notes, dept) {
   const label = (DEPARTMENTS[dept] || {}).label || dept;
   return (notes || [])
     .filter((n) => n && n.Note_Title === FLOW_NOTE_TITLE)
-    .map((n) => ({ t: str(n.Created_Time), all: str(n.Note_Content).replace(/<br\s*\/?>/gi, "\n").split("\n").map((l) => l.trim()).filter(Boolean) }))
+    .map((n) => ({ t: str(n.Created_Time), all: noteText(n).split("\n").map((l) => l.trim()).filter(Boolean) }))
     .filter((n) => n.all.length && n.all[0].startsWith(label + " - "))
     .sort((a, b) => (a.t < b.t ? -1 : a.t > b.t ? 1 : 0))
     .map((n) => ({ when: n.t, head: n.all[0], lines: n.all.slice(1) }));
@@ -532,7 +568,7 @@ export function deptStarted(notes, dept) {
   const label = (DEPARTMENTS[dept] || {}).label || dept;
   const mine = (notes || [])
     .filter((n) => n && n.Note_Title === FLOW_NOTE_TITLE)
-    .map((n) => ({ t: str(n.Created_Time), first: str(n.Note_Content).split("\n")[0] }))
+    .map((n) => ({ t: str(n.Created_Time), first: noteText(n).split("\n")[0] }))
     .filter((n) => n.first.startsWith(label + " - STARTED") || n.first.startsWith(label + " - CLOSED"))
     .sort((a, b) => (a.t < b.t ? 1 : a.t > b.t ? -1 : 0));
   return !!mine.length && mine[0].first.startsWith(label + " - STARTED");

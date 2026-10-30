@@ -16,6 +16,7 @@ import { locationsFor, OTHER } from "../placements";
 import { parseSizeText } from "../sizeRows";
 import { cardRouteOf } from "../productionCards";
 import PRODUCTION_CONFIG from "./productionConfig.json";
+import { noteText } from "./noteText";
 
 const str = (v) => (v == null ? "" : String(v));
 
@@ -372,7 +373,7 @@ export function uploadedNames(notes) {
   (notes || [])
     .filter((n) => n && /^GRAPHIC UPLOAD/.test(str(n.Note_Title)))
     .forEach((n) =>
-      str(n.Note_Content)
+      noteText(n)
         .split(/\n|<br\s*\/?>/i)
         .forEach((l) => {
           const m = /^([^\s]+_v\d+(?:\.[A-Za-z0-9]+)?) -> /.exec(l.trim());
@@ -388,7 +389,7 @@ export function uploadsByGraphic(notes) {
     .filter((n) => n && /^GRAPHIC UPLOAD/.test(str(n.Note_Title)))
     .forEach((n) => {
       const filedNote = /FILED/i.test(str(n.Note_Title));
-      const content = str(n.Note_Content);
+      const content = noteText(n); // E-181: "&amp;" decoded
       str(content)
         .split(/\n|<br\s*\/?>/i)
         .forEach((l) => {
@@ -437,7 +438,7 @@ export function earlierUploads(notes) {
     .filter((n) => n && /^GRAPHIC UPLOAD/.test(str(n.Note_Title)))
     .sort((a, b) => (str(a.Created_Time) < str(b.Created_Time) ? -1 : 1))
     .forEach((n) =>
-      str(n.Note_Content)
+      noteText(n)
         .split(/\n|<br\s*\/?>/i)
         .forEach((l) => {
           const m = /^([^\s]+_v\d+(?:\.[A-Za-z0-9]+)?) -> (.+?)(?: \((graphic [^)]*)\))?(?: \(was: (.+)\))?$/.exec(l.trim());
