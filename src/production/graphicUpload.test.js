@@ -173,7 +173,7 @@ test("E-170: graphics of the order, their permanent ids, and what an upload for 
   withId.products[0].primaryBranches[0].secondaryBranches[0].graphicDescription = "Company logo";
   withId.products[0].primaryBranches[0].secondaryBranches[0].graphicId = "GAB12CD";
   const list = graphicsOf(withId);
-  expect(list.map((g) => [g.base, g.key, g.label])).toEqual([["products.0.primaryBranches.0.secondaryBranches.0", "GAB12CD", "Garment 1 - Graphic 1"]]);
+  expect(list.map((g) => [g.base, g.key, g.label])).toEqual([["products.0.primaryBranches.0.secondaryBranches.0", "GAB12CD", "Embroidery: Port Authority K500 Polo - Graphic 1"]]);
   expect(list[0]).toMatchObject({ description: "Company logo", placements: ["Left Chest", "Full Back"] });
   const at = graphicAt(order.products, "products.0.primaryBranches.0.secondaryBranches.0");
   expect(graphicKey(at)).toBe("p0-g0-s0"); // an older order with no id: its position
@@ -271,5 +271,23 @@ describe("E-177 Other format: typed answer on the note", () => {
     const content = uploadNote({ who: "A", when: "w", items: [{ name: "4523_VIN_ALL_Front_OTHER_v1.psd", stem: "4523_VIN_ALL_Front_OTHER", ext: "psd", folder: "graphic_design", original: "t.psd", links: [{ key: "G1", label: "Garment 1 - Graphic 1" }], other: "Puff template" }] });
     expect(content).toMatch(/\n  other file type: Puff template\n/);
     expect(uploadsByGraphic([{ Note_Title: "GRAPHIC UPLOAD", Note_Content: content }]).G1.map((f) => f.name)).toEqual(["4523_VIN_ALL_Front_OTHER_v1.psd"]);
+  });
+});
+
+describe("Graphic labels name the product and garment (switch graphicLabelsOn)", () => {
+  const g = require("./graphicUpload");
+  const prod = (garmentType) => ({ productType: "garment", productName: "Embroidery", primaryBranches: [{ garmentType, secondaryBranches: [{}, {}] }] });
+  afterEach(() => g.setNamedGraphicLabels(require("./productionConfig.json").graphicLabelsOn === true));
+  it("names the product and the garment's first line; brackets and ; left out (the note parser reads up to the first ')')", () => {
+    g.setNamedGraphicLabels(true);
+    const at = g.graphicAt([prod("Comfort Colors (1717); Garment Dyed\nSecond line")], "products.0.primaryBranches.0.secondaryBranches.1");
+    expect(at.label).toBe("Embroidery: Comfort Colors 1717 Garment Dyed - Graphic 2");
+    const note = g.uploadNote({ who: "A", when: "w", items: [{ name: "4523_ORIGINAL_Logo_v1.ai", folder: "art_assets", links: [{ key: "G1", label: at.label }, { key: "G2", label: "Vinyl: Hat - Graphic 1" }] }] });
+    expect(Object.keys(g.uploadsByGraphic([{ Note_Title: "GRAPHIC UPLOAD", Note_Content: note }]))).toEqual(["G1", "G2"]);
+    expect(g.artNameFor("", "Embroidery: Graphic Tee 5 - Graphic 2")).toBe("Graphic-2");
+  });
+  it("switch off: exactly as before", () => {
+    g.setNamedGraphicLabels(false);
+    expect(g.graphicAt([prod("Polo")], "products.0.primaryBranches.0.secondaryBranches.0").label).toBe("Garment 1 - Graphic 1");
   });
 });
