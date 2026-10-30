@@ -18,5 +18,7 @@
   "_graphicUploadsOn": "E-162: the upload step really calls widget_upload_graphics (dry run, then one call per file). false = the step shows names but uploads nothing.",
   "graphicUploadsOn": true,
   "_graphicFilingOn": "E-162 / E-170 (Deluge docs/58): after each upload the form unticks then ticks the hidden Deal box Graphics_Filing, so the CRM files the GRAPHIC UPLOAD notes into WorkDrive right away (instant rule 5249739000129105051, Deluge docs/58 §11). ON 10-30 (field + rule in Zoho, proven on Deal 2 - TEST). false = the files stay on their notes.",
-  "graphicFilingOn": true
+  "graphicFilingOn": true,
+  "_addedRevisionOn": "E-169 / D-80 (David 10-30): a revision / correction pass filed while the Deal is already at its revision / correction stage (no stage change, so no stage rule) unticks then ticks the hidden Deal box Added_Revision; Deluge's rule makes that pass's redo tasks. Never when the stage moved. ON 10-30 (David's \"push it\"; Deluge docs/60: handlers 4aef28fb / ef368001 open-only, rule \"PRODUCTION: Added Revision\" 5249739000129105086 by stage; SCHOOL: Order Corrections not wired, so never ticked there). false = as before: \"already in that stage, tell the production manager\".",
+  "addedRevisionOn": true
 }

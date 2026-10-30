@@ -17,7 +17,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { readPayload } from "./payload";
 import { deriveAgents, orderTasksForTrace } from "./agentAssign";
-import { targetStage } from "./stageMove";
+import { targetStage, needsAddedRevision, tickAddedRevision } from "./stageMove";
+import PRODUCTION_CONFIG from "../production/productionConfig.json";
 import {
   placementsOf,
   costItem,
@@ -822,6 +823,14 @@ export default function App({ pageData } = {}) {
           stageWarn = true;
           stageMsg = t("warn.stage", { stage: target.stage });
           console.log("Stage not moved:", err);
+        }
+      } else if (target.reason === "already" && PRODUCTION_CONFIG.addedRevisionOn && needsAddedRevision(target)) {
+        // E-169 / D-80: no stage change, so the stage rule will not fire -- the hidden box asks Deluge for this pass's tasks.
+        if (await tickAddedRevision(ZOHO, ctx.entity, ctx.recordId)) {
+          stageMsg = t("ok.redoRequested", { stage: target.stage });
+        } else {
+          stageWarn = true;
+          stageMsg = t("warn.redoRequest", { stage: target.stage });
         }
       } else if (target.reason === "already") {
         stageWarn = true;
