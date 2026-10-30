@@ -8,7 +8,7 @@
  * belong to no single graphic.
  */
 import React, { useMemo, useState } from "react";
-import { Alert, Box, Button, MenuItem, TextField, Typography } from "@mui/material";
+import { Alert, Box, Button, Checkbox, FormControlLabel, MenuItem, TextField, Typography } from "@mui/material";
 import {
   FOLDER_LABELS,
   UPLOAD_DEPARTMENTS,
@@ -21,7 +21,9 @@ import {
   placementOptions,
   poPart,
   stemFor,
+  stemTakenBy,
   uploadsByGraphic,
+  artNameFor,
 } from "./graphicUpload";
 import { uploadGraphicFile } from "./graphicUploader";
 
@@ -38,10 +40,11 @@ const Pick = ({ label, value, options, onChange, width, disabled }) => (
 );
 
 /* One file being uploaded: its four parts (filled from the graphic, changeable), the name it will get, and Upload. */
-const FileRow = ({ file, start, garments, placementsFor, po, busy, onUpload, onCancel }) => {
+const FileRow = ({ file, start, garments, placementsFor, po, takenFor, busy, onUpload, onCancel }) => {
   const [p, setP] = useState(start);
-  const set = (patch) => setP({ ...p, ...patch });
+  const set = (patch) => setP({ ...p, ...patch, confirm: false });
   const stem = partsReady(p) ? stemFor({ po, ...p }) : "";
+  const taken = stem && p.format === "ORIGINAL" ? takenFor(stem) : [];
   return (
     <Box sx={{ mt: 1, p: 1.5, border: "1px solid #ddd", bgcolor: "#fafafa" }}>
       <Typography variant="body2" sx={{ mb: 1 }}>
@@ -49,17 +52,31 @@ const FileRow = ({ file, start, garments, placementsFor, po, busy, onUpload, onC
       </Typography>
       <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
         <Pick label="Format" width={190} value={p.format} disabled={busy} onChange={(v) => set({ format: v })} options={UPLOAD_FORMATS.map((f) => ({ value: f.code, label: f.label }))} />
-        <Pick label="Department" width={140} value={p.dept} disabled={busy} onChange={(v) => set({ dept: v })} options={UPLOAD_DEPARTMENTS.map((d) => ({ value: d.code, label: d.label }))} />
-        <Pick label="Garment" width={210} value={p.garment} disabled={busy} onChange={(v) => set({ garment: v, placement: "" })} options={garments} />
-        <Pick label="Placement" width={170} value={p.placement} disabled={busy || !p.garment} onChange={(v) => set({ placement: v })} options={placementsFor(p.garment)} />
+        {p.format !== "ORIGINAL" && (
+          <>
+            <Pick label="Department" width={140} value={p.dept} disabled={busy} onChange={(v) => set({ dept: v })} options={UPLOAD_DEPARTMENTS.map((d) => ({ value: d.code, label: d.label }))} />
+            <Pick label="Garment" width={210} value={p.garment} disabled={busy} onChange={(v) => set({ garment: v, placement: "" })} options={garments} />
+            <Pick label="Placement" width={170} value={p.placement} disabled={busy || !p.garment} onChange={(v) => set({ placement: v })} options={placementsFor(p.garment)} />
+          </>
+        )}
       </Box>
+      {taken.length > 0 && (
+        <Box sx={{ mt: 1, color: "#8a4b00", fontSize: "0.85rem" }}>
+          This art name is already used by {taken.join(", ")}. Uploading makes this a new version and moves that file to Rejected.
+          <FormControlLabel
+            sx={{ ml: 1 }}
+            control={<Checkbox size="small" checked={!!p.confirm} disabled={busy} onChange={(e) => setP({ ...p, confirm: e.target.checked })} />}
+            label={<span style={{ fontSize: "0.85rem" }}>It is a new version of that file</span>}
+          />
+        </Box>
+      )}
       {stem && (
         <Typography variant="body2" sx={{ mt: 1 }}>
           {stem}_vN{extOf(file.name) ? "." + extOf(file.name) : ""}
         </Typography>
       )}
       <Box sx={{ mt: 1, display: "flex", gap: 1 }}>
-        <Button variant="contained" size="small" disabled={!stem || busy} onClick={() => onUpload(p)}>
+        <Button variant="contained" size="small" disabled={!stem || busy || (taken.length > 0 && !p.confirm)} onClick={() => onUpload(p)}>
           {busy ? "Uploading…" : "Upload"}
         </Button>
         <Button size="small" disabled={busy} onClick={onCancel}>
@@ -106,6 +123,14 @@ const GraphicUpload = ({ entity, recordId, deal, data, notes, who, defaultDept, 
     setBusy(false);
   };
 
+  /* every file already uploaded on the Deal, with the graphic it belongs to (for the art-name warning) */
+  const labelOf = (key) => (graphics.find((g) => g.key === key) || {}).label || "another upload";
+  const takenFor = (key) => (stem) =>
+    stemTakenBy(
+      stem,
+      Object.entries(byGraphic).flatMap(([k, list]) => list.map((f) => ({ name: f.name, key: k, label: labelOf(k) }))),
+      [key]
+    );
   const fileRow = (where, start, garments, placementsFor, graphic) =>
     picked && picked.where === where ? (
       <FileRow
@@ -115,6 +140,7 @@ const GraphicUpload = ({ entity, recordId, deal, data, notes, who, defaultDept, 
         garments={garments}
         placementsFor={placementsFor}
         po={po}
+        takenFor={takenFor(where)}
         busy={busy}
         onUpload={(p) => doUpload(p, graphic)}
         onCancel={() => setPicked(null)}
@@ -164,7 +190,7 @@ const GraphicUpload = ({ entity, recordId, deal, data, notes, who, defaultDept, 
             )}
             {fileRow(
               g.key,
-              { dept: d.dept || defaultDept || "", garment: d.garment || "ALL", placement: d.placement || "Whole-item", format: "" },
+              { dept: d.dept || defaultDept || "", garment: d.garment || "ALL", placement: d.placement || "Whole-item", format: "", artName: d.artName },
               d.garments || allGarments,
               (gv) => (gv === d.garment ? d.placements || [] : placementOptions(data, gv)),
               { key: g.key, label: g.label }
@@ -180,7 +206,13 @@ const GraphicUpload = ({ entity, recordId, deal, data, notes, who, defaultDept, 
               <input hidden type="file" onChange={choose("other")} />
             </Button>
           )}
-          {fileRow("other", { dept: defaultDept || "GD", garment: "ALL", placement: "Whole-item", format: "" }, allGarments, (gv) => placementOptions(data, gv), null)}
+          {fileRow(
+            "other",
+            { dept: defaultDept || "GD", garment: "ALL", placement: "Whole-item", format: "", artName: picked ? artNameFor(picked.file.name.replace(/\.[^.]+$/, ""), "") : "" },
+            allGarments,
+            (gv) => placementOptions(data, gv),
+            null
+          )}
         </Box>
       )}
       {result && (

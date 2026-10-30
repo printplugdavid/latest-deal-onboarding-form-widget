@@ -71,11 +71,25 @@ export function folderFor(dept, format) {
   return "graphic_design";
 }
 
-export const stemFor = ({ po, dept, garment, placement, format }) =>
-  [po, dept, garment, placement, format].map(namePart).join("_");
+/*
+ * D-79 (David 10-30, "Yes, use it"): a client-provided file (format ORIGINAL) is named PO_ORIGINAL_ARTNAME (e.g. 4523_ORIGINAL_Company-
+ * Logo) -- no department, garment or placement: client art is not yet one use, and one file can serve several graphics ("Also used by").
+ * ARTNAME = the graphic's typed description, shortened. Every other format keeps PO_DEPARTMENT_GARMENT_PLACEMENT_FORMAT.
+ */
+export const stemFor = ({ po, dept, garment, placement, format, artName }) =>
+  format === "ORIGINAL"
+    ? [po, "ORIGINAL", namePart(artName) || "Graphic"].map(namePart).join("_")
+    : [po, dept, garment, placement, format].map(namePart).join("_");
+/* The art name for a client file: the graphic's description (shortened to 4 words), else "Graphic-<n>" from its label. */
+export const artNameFor = (description, label) => {
+  const words = str(description).replace(/[^A-Za-z0-9& ]+/g, " ").trim().split(/\s+/).filter(Boolean).slice(0, 4);
+  if (words.length) return namePart(words.map((w) => w[0].toUpperCase() + w.slice(1)).join(" "));
+  const n = /Graphic (\d+)/.exec(str(label));
+  return "Graphic-" + (n ? n[1] : "1");
+};
 export const fileName = (stem, version, ext) => `${stem}_v${Number(version) || 1}${ext ? "." + ext : ""}`;
 /* Every part chosen? (the PO always is) */
-export const partsReady = (p) => !!(p && p.dept && p.garment && p.placement && p.format);
+export const partsReady = (p) => !!(p && p.format && (p.format === "ORIGINAL" ? namePart(p.artName) : p.dept && p.garment && p.placement));
 
 /* The garments / items of the order, for the Garment picker: ALL first, then each style + color, then each non-garment item. */
 export function garmentOptions(data) {
@@ -255,6 +269,7 @@ export function graphicDefaults(products, base) {
     garment: specific.length === 1 ? specific[0].value : "ALL",
     placements,
     placement: placementsHere.length ? namePart(placementsHere[0]) : "Whole-item",
+    artName: artNameFor(at.graphic.graphicDescription, at.label),
   };
 }
 
@@ -285,13 +300,30 @@ export function graphicsOf(data) {
     .filter(Boolean);
 }
 
+/*
+ * D-79: is this stem already used by ANOTHER graphic (so uploading would make it a new version and move that file to Rejected)?
+ * taken = [{ name, key, label }] of files already uploaded on the order; mine = the keys this upload belongs to. Returns the labels.
+ */
+export function stemTakenBy(stem, taken, mine) {
+  const own = new Set((mine || []).map(str));
+  const labels = [];
+  (taken || []).forEach((f) => {
+    if (str(f.name).startsWith(stem + "_v") && !own.has(str(f.key)) && f.label && !labels.includes(f.label)) labels.push(f.label);
+  });
+  return labels;
+}
+
 /* ---------- the note ---------- */
 /* "GRAPHIC UPLOAD" note: one line per file, with where it goes, which graphic it belongs to, and the name it came in with. */
+/* The graphics an item belongs to: [{ key, label }] from `links`, or the single `graphic` / `graphicLabel` (D-79: one file, several graphics). */
+const linksOf = (it) =>
+  Array.isArray(it.links) && it.links.length ? it.links.filter((l) => l && l.key) : it.graphic ? [{ key: it.graphic, label: it.graphicLabel || "" }] : [];
 export function uploadNote({ who, when, items }) {
   const lines = [`Graphic upload - ${str(when)}${who ? " - " + str(who) : ""}`];
   (items || []).forEach((it) => {
+    const links = linksOf(it);
     lines.push(
-      `${it.name} -> ${FOLDER_LABELS[it.folder] || it.folder}${it.graphic ? " (graphic " + it.graphic + (it.graphicLabel ? ": " + it.graphicLabel : "") + ")" : ""}${
+      `${it.name} -> ${FOLDER_LABELS[it.folder] || it.folder}${links.length ? " (" + links.map((l) => "graphic " + l.key + (l.label ? ": " + l.label : "")).join("; ") + ")" : ""}${
         it.original && it.original !== it.name ? " (was: " + it.original + ")" : ""
       }`
     );
@@ -301,7 +333,10 @@ export function uploadNote({ who, when, items }) {
   lines.push(
     "FILING JSON: " +
       JSON.stringify({
-        files: (items || []).map((it) => ({ name: it.name, stem: it.stem || "", ext: it.ext || "", folder: it.folder, graphic_id: it.graphic || "" })),
+        files: (items || []).map((it) => {
+          const ids = linksOf(it).map((l) => l.key);
+          return { name: it.name, stem: it.stem || "", ext: it.ext || "", folder: it.folder, graphic_id: ids[0] || "", graphic_ids: ids };
+        }),
       })
   );
   return lines.join("\n");
@@ -332,18 +367,19 @@ export function uploadsByGraphic(notes) {
       str(content)
         .split(/\n|<br\s*\/?>/i)
         .forEach((l) => {
-          const m = /^([^\s]+_v\d+(?:\.[A-Za-z0-9]+)?) -> (.+?)(?: \(graphic ([A-Za-z0-9-]+)(?::[^)]*)?\))?(?: \(was: (.+)\))?$/.exec(l.trim());
+          const m = /^([^\s]+_v\d+(?:\.[A-Za-z0-9]+)?) -> (.+?)(?: \((graphic [^)]*)\))?(?: \(was: (.+)\))?$/.exec(l.trim());
           if (!m) return;
-          const key = m[3] || "";
+          const keys = m[3] ? m[3].split("; ").map((g) => (/^graphic ([A-Za-z0-9-]+)/.exec(g) || [])[1]).filter(Boolean) : [""];
           const esc = m[1].replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
           const notFiled = new RegExp("Not filed[^<\\n]*?: " + esc + " - ([^<\\n]*)").exec(content);
-          (out[key] = out[key] || []).push({
+          const entry = {
             name: m[1],
             folder: m[2],
             original: m[4] || "",
             filed: filedNote || new RegExp("(^|[\\n>])Filed[^\\n<]*" + esc).test(content),
             notFiled: notFiled ? notFiled[1].trim() : "",
-          });
+          };
+          keys.forEach((key) => (out[key] = out[key] || []).push(entry));
         });
     });
   return out;

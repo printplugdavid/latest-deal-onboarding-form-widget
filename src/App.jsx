@@ -50,7 +50,7 @@ import { BillingOn } from "./invoice/billingContext";
 import { screenPrintShortfall } from "./invoice/minimums";
 import { MAX_UPLOAD_BYTES, artKey, collectArtFiles } from "./graphicArt";
 import { filingOn, uploadsOn } from "./production/graphicUpload"; // E-162 / E-170
-import { uploadGraphicFile } from "./production/graphicUploader";
+import { refileAfterFolders, uploadGraphicFile, withCap } from "./production/graphicUploader";
 import { CLOSING_FIELD, EXTENDED_DATE_LABEL, EXTRA_WEEK_QUESTION, dueDateProblem, extendedRange, turnaroundPlan, turnaroundWriteOn } from "./turnaround";
 import ExtendedClosingDate from "./components/ExtendedClosingDate";
 import { RUSH_FIELD, RUSH_REMINDER, rushBoxPlan } from "./rushOrder";
@@ -178,11 +178,12 @@ function App() {
         artBytes() + otherBytes(attachments) + addBytes > MAX_UPLOAD_BYTES
           ? `All files together (art + other files) cannot exceed 15MB.`
           : "",
+      deal: recordData, // E-162: the PO for the names
       // E-162 / E-170 (D-78): each graphic's art is uploaded on its own -- named, attached to a GRAPHIC UPLOAD note, filed by the CRM.
       uploader:
         uploadsOn(PRODUCTION_CONFIG) && entity && entityId
           ? {
-              upload: (file, parts, graphic) =>
+              upload: (file, parts, graphic, links) =>
                 uploadGraphicFile(ZOHO, {
                   entity,
                   recordId: entityId,
@@ -192,7 +193,9 @@ function App() {
                   file,
                   parts,
                   graphic,
+                  links,
                   startFiling: filingOn(PRODUCTION_CONFIG),
+                  ensureFolders: true, // E-171: a Deal with no folder yet gets its folders at the first upload
                 }),
             }
           : null,
@@ -420,7 +423,13 @@ function App() {
     // function reads the onboarded departments from them) and NOT awaited -- a real run takes about
     // 13 seconds and the rep is not made to wait for it. It cannot throw (see dealFolders.js).
     // Not sent for a Deal that already has a hand-made folder (David: no back-fill).
-    if (shouldRequestFolders(recordData)) requestDealFolders(entityId);
+    const foldersAsked = shouldRequestFolders(recordData) ? requestDealFolders(entityId) : null;
+    // E-162 (Deluge docs/59 §2.0): art uploaded on this form before the Deal had a folder could not be filed yet -- once the folders
+    // exist, tick the filing box once more. Started now, never blocks; waited for (15 s at most) only where the popup would close.
+    const refiled =
+      foldersAsked && filingOn(PRODUCTION_CONFIG) && collectArtFiles(data?.products).some((a) => a.uploaded)
+        ? refileAfterFolders(ZOHO, { entity, recordId: entityId, folders: foldersAsked })
+        : null;
 
     // Attach the full form submission as a minified JSON file on the Deal (create-only;
     // machine-readable handoff for downstream production tooling). Own try/catch so a
@@ -536,6 +545,7 @@ function App() {
           setLoading(false);
           return;
         }
+        if (refiled) await withCap(refiled, 15000); // E-162: let the re-tick leave before the popup closes
         ZOHO.CRM.UI.Popup.closeReload();
         setLoading(false);
       }
