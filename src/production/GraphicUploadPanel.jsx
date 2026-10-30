@@ -5,6 +5,8 @@
  * the next version and what it would move to Rejected -> "Upload" writes one "GRAPHIC UPLOAD" note (final names, the client's own
  * names), attaches the renamed files to it, then calls the real run once per file (Deluge copies each into its folder and moves the
  * older version to Rejected). Switch graphicUploadsOn off = names are shown, nothing is uploaded.
+ * A `too_slow` answer (a fresh attachment downloads slowly) is retried by itself every ~30 s, up to 3 times (David 10-30); files still
+ * waiting after that get a "Try again" button that re-files only them, on the same note (nothing attached twice).
  */
 import React, { useMemo, useState } from "react";
 import { Alert, Box, Button, MenuItem, TextField, Typography } from "@mui/material";
@@ -14,6 +16,9 @@ import {
   UPLOAD_FORMATS,
   UPLOAD_FUNCTION,
   UPLOAD_NOTE_TITLE,
+  RETRIES,
+  RETRY_WAIT_MS,
+  afterCall,
   callArguments,
   dryRunPayload,
   extOf,
@@ -51,6 +56,7 @@ const GraphicUpload = ({ entity, recordId, deal, data, who, defaultDept, uploads
   const [checked, setChecked] = useState(false);
   const [busy, setBusy] = useState("");
   const [result, setResult] = useState(null);
+  const [pending, setPending] = useState(null); // { noteId, files } still waiting on WorkDrive after the retries
 
   const named = rows.map((r) => {
     const stem = partsReady(r) ? stemFor({ po, ...r }) : "";
@@ -86,11 +92,56 @@ const GraphicUpload = ({ entity, recordId, deal, data, who, defaultDept, uploads
     setBusy("");
   };
 
+  const wait = (ms) => new Promise((res) => setTimeout(res, ms));
+  /* The real calls, one per file; too_slow retried by itself. Returns { done, problems, slow }. */
+  const fileAll = async (files, noteId) => {
+    const done = [];
+    const problems = [];
+    const slow = [];
+    for (const r of files) {
+      for (let used = 0; ; used++) {
+        setBusy(used ? `WorkDrive is still busy with ${r.name}; trying again (${used} of ${RETRIES})` : `Filing ${r.name}`);
+        const ans = await call(realPayload({ file: r, noteId, who }));
+        const next = afterCall(ans, used);
+        if (next === "retry") {
+          setBusy(`WorkDrive is still busy with ${r.name}; trying again in 30 seconds (${used + 1} of ${RETRIES})`);
+          await wait(RETRY_WAIT_MS);
+          continue;
+        }
+        if (next === "done") done.push(r.name);
+        else if (next === "slow") slow.push(r);
+        else problems.push(`${r.name}: ${ans.result || ans.status}${ans.message ? " (" + ans.message + ")" : ""}`);
+        const f = ans.files[0];
+        if (f && Array.isArray(f.not_moved) && f.not_moved.length) problems.push(`${r.name}: not moved to Rejected yet: ${f.not_moved.join(", ")}`);
+        break;
+      }
+    }
+    return { done, problems, slow };
+  };
+  const report = ({ done, problems, slow }, total, noteId) => {
+    setPending(slow.length ? { noteId, files: slow } : null);
+    const parts = [`${done.length} of ${total} named and filed.`];
+    if (slow.length) parts.push(`WorkDrive is still busy with ${slow.map((r) => r.name).join(", ")}. Try again in a minute.`);
+    if (problems.length) parts.push(`${problems.join(" · ")}. The files are on the GRAPHIC UPLOAD note; tell the production manager.`);
+    setResult({ severity: problems.length ? "warning" : slow.length ? "info" : "success", text: slow.length || problems.length ? parts.join(" ") : `${done.length} file(s) named, filed and listed on a GRAPHIC UPLOAD note.` });
+  };
+  const doRetry = async () => {
+    if (!pending) return;
+    setResult(null);
+    try {
+      report(await fileAll(pending.files, pending.noteId), pending.files.length, pending.noteId);
+      if (refresh) await refresh();
+    } catch (e) {
+      setResult({ severity: "error", text: `Try again did not finish: ${String(e?.message || e)}.` });
+    }
+    setBusy("");
+  };
+
   const doUpload = async () => {
     setBusy("Uploading");
     setResult(null);
-    const done = [];
-    const problems = [];
+    setPending(null);
+    let filed = { done: [] };
     try {
       const items = named.map((r) => ({ name: r.name, folder: r.folder, original: r.file.name, wouldMove: r.wouldMove }));
       const n = await ZOHO.CRM.API.addNotes({ Entity: entity, RecordID: recordId, Title: UPLOAD_NOTE_TITLE, Content: uploadNote({ who, when: stamp(), items }) });
@@ -100,23 +151,13 @@ const GraphicUpload = ({ entity, recordId, deal, data, who, defaultDept, uploads
         const content = new Blob([await r.file.arrayBuffer()], { type: r.file.type });
         await ZOHO.CRM.API.attachFile({ Entity: "Notes", RecordID: noteId, File: { Name: r.name, Content: content } });
       }
-      for (const r of named) {
-        const ans = await call(realPayload({ file: r, noteId, who }));
-        if (ans.result === "copied" || ans.result === "skipped") done.push(r.name);
-        else problems.push(`${r.name}: ${ans.result || ans.status}${ans.message ? " (" + ans.message + ")" : ""}`);
-        const f = ans.files[0];
-        if (f && Array.isArray(f.not_moved) && f.not_moved.length) problems.push(`${r.name}: not moved to Rejected yet: ${f.not_moved.join(", ")}`);
-      }
+      filed = await fileAll(named, noteId);
       setRows([]);
       setChecked(false);
-      setResult(
-        problems.length
-          ? { severity: "warning", text: `${done.length} of ${named.length} filed. ${problems.join(" · ")}. The files are on the GRAPHIC UPLOAD note; tell the production manager.` }
-          : { severity: "success", text: `${done.length} file(s) named, filed and listed on a GRAPHIC UPLOAD note.` }
-      );
+      report(filed, named.length, noteId);
       if (refresh) await refresh();
     } catch (e) {
-      setResult({ severity: "error", text: `Upload did not finish: ${String(e?.message || e)}. Filed so far: ${done.length ? done.join(", ") : "none"}.` });
+      setResult({ severity: "error", text: `Upload did not finish: ${String(e?.message || e)}. Filed so far: ${filed.done.length ? filed.done.join(", ") : "none"}.` });
     }
     setBusy("");
   };
@@ -175,6 +216,11 @@ const GraphicUpload = ({ entity, recordId, deal, data, who, defaultDept, uploads
             Upload {rows.length} file{rows.length === 1 ? "" : "s"}
           </Button>
         </Box>
+      )}
+      {pending && !busy && (
+        <Button variant="contained" size="small" sx={{ mt: 1 }} onClick={doRetry}>
+          Try again ({pending.files.length} file{pending.files.length === 1 ? "" : "s"})
+        </Button>
       )}
       {busy && (
         <Typography variant="body2" sx={{ mt: 1 }}>

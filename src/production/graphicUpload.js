@@ -194,6 +194,21 @@ export function versionFrom(answer, stem) {
   };
 }
 
+/*
+ * David 10-30 (relayed, Deluge docs/57 §9, "Yes, both"): a file attached a moment ago is slow to download, so the first real call often
+ * answers `too_slow` with nothing written. The form waits ~30 s and calls again by itself, up to 3 times; after that it tells the
+ * designer to try again in a minute. Only `too_slow` is retried (a repeat of a finished file is `skipped`, never doubled).
+ */
+export const RETRY_WAIT_MS = 30000;
+export const RETRIES = 3;
+/* What to do with one real-call answer: "done" (copied / skipped), "retry" (too_slow, tries left), "slow" (too_slow, none left), "problem". */
+export function afterCall(answer, retriesUsed) {
+  const r = str(answer && answer.result);
+  if (r === "copied" || r === "skipped") return "done";
+  if (r === "too_slow") return retriesUsed < RETRIES ? "retry" : "slow";
+  return "problem";
+}
+
 /* ---------- the note ---------- */
 /* "GRAPHIC UPLOAD" note: one line per file, with where it went and the name it came in with. */
 export function uploadNote({ who, when, items }) {

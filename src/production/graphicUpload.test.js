@@ -20,6 +20,9 @@ import {
   hasUploadFor,
   graphicFlowOn,
   uploadsOn,
+  afterCall,
+  RETRIES,
+  RETRY_WAIT_MS,
   UPLOAD_NOTE_TITLE,
 } from "./graphicUpload";
 
@@ -138,3 +141,17 @@ test("E-162: both switches are OFF until Deluge's function is in Zoho", () => {
   expect(uploadsOn(cfg)).toBe(false);
   expect(graphicFlowOn({ graphicFlowOn: true })).toBe(true);
 });
+
+test("E-162 (David 10-30, relayed): too_slow is retried by itself every ~30 s, up to 3 times; nothing else is", () => {
+  expect(RETRIES).toBe(3);
+  expect(RETRY_WAIT_MS).toBe(30000);
+  expect(afterCall({ result: "copied" }, 0)).toBe("done");
+  expect(afterCall({ result: "skipped" }, 2)).toBe("done");
+  expect(afterCall({ result: "too_slow" }, 0)).toBe("retry");
+  expect(afterCall({ result: "too_slow" }, 2)).toBe("retry");
+  expect(afterCall({ result: "too_slow" }, 3)).toBe("slow");
+  expect(afterCall({ result: "name_taken" }, 0)).toBe("problem");
+  expect(afterCall({ result: "no_deal_folder" }, 0)).toBe("problem");
+  expect(afterCall({ status: "unavailable", result: "" }, 0)).toBe("problem");
+});
+
