@@ -12,5 +12,9 @@
   "_dueFlagsOn": "E-168 (David 10-29): a red \"Past due\" line at the top of a tab's flow (and \"(past due)\" on the tab's name) when one of THAT tab's open tasks is past its due date; a yellow \"Due today\" line for today. Display only. false = not shown.",
   "dueFlagsOn": true,
   "_revisionInCardsOn": "E-167 / D-76 (David 10-29): a \"Revision / Correction\" button at the top of the Production Cards opens the revision form (?view=revision, moved into main) in place, for this Deal. false = no button; the flow says to use the Deal's own button.",
-  "revisionInCardsOn": true
+  "revisionInCardsOn": true,
+  "_graphicFlowOn": "E-162 (D-77, David 10-29): the Graphic Design card tab gets its flow -- the upload step (named + filed files) and Close Task for design tasks. OFF until Deluge's widget_upload_graphics is in Zoho (their docs/57).",
+  "graphicFlowOn": false,
+  "_graphicUploadsOn": "E-162: the upload step really calls widget_upload_graphics (dry run, then one call per file). false = the step shows names but uploads nothing.",
+  "graphicUploadsOn": false
 }
