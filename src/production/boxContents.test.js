@@ -17,6 +17,10 @@ describe("E-172 Contents line (format owned here; the Deluge twin must write exa
     expect(formatContents([{ style: "pc-78 h", color: "Black", sizes: [{ size: "L", count: 2 }, { size: "XL", count: 0 }] }])).toBe(
       "Contents: PC78H Black: L 2",
     );
+    // real S&S color names carry "/"; ":" "|" "," are taken out so the line always reads back
+    const odd = [{ style: "AT104", color: "Medium Grey Heather/ Black", sizes: [{ size: "L", count: 3 }] }, { style: "X1", color: "Red: Hot|Pink", sizes: [{ size: "S, M", count: 1 }] }];
+    expect(formatContents(odd)).toBe("Contents: AT104 Medium Grey Heather/ Black: L 3 | X1 Red Hot Pink: S M 1");
+    expect(parseContents(formatContents(odd)).map((i) => [i.color, i.sizes[0].size])).toEqual([["Medium Grey Heather/ Black", "L"], ["Red Hot Pink", "S M"]]);
   });
 
   test("read it back", () => {

@@ -158,9 +158,12 @@ export function formatContents(items) {
     .map((it) => {
       const style = cleanStyle(it.style);
       if (!style) return "";
-      const head = str(it.color).trim() ? `${style} ${str(it.color).trim()}` : style;
-      const sizes = (it.sizes || []).filter((s) => str(s.size).trim() && Number(s.count) > 0);
-      const tail = sizes.length ? sizes.map((s) => `${str(s.size).trim()} ${Number(s.count)}`).join(", ") : String(Number(it.count) || 0);
+      // ":" "|" "," would break the line: a supplier color like "Black/ Red: Heather" keeps its words, never those marks.
+      const safe = (v) => str(v).replace(/[:|,]/g, " ").replace(/\s+/g, " ").trim();
+      const color = safe(it.color);
+      const head = color ? `${style} ${color}` : style;
+      const sizes = (it.sizes || []).filter((s) => safe(s.size) && Number(s.count) > 0);
+      const tail = sizes.length ? sizes.map((s) => `${safe(s.size)} ${Number(s.count)}`).join(", ") : String(Number(it.count) || 0);
       return `${head}: ${tail}`;
     })
     .filter(Boolean);
