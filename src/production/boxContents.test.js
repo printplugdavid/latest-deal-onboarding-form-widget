@@ -198,6 +198,12 @@ describe("E-172 on the cards (switch boxContentsOn)", () => {
     expect(em).not.toContain("none of this card's garments");
   });
 
+  test("on: a box with its place in the supplier order says Box 2 of 5", () => {
+    const info = { shipments: parseTracking("G172906104222002002\nContents (box 2 of 5): 1717 Granite: S 5"), boxContents: true };
+    const sp = new Map(buildProductionCards(ORDER, {}, info).map((c) => [c.name, c.html])).get("production-card-screenprint.html");
+    expect(sp).toContain('<b>Box 2 of 5</b> &middot; label ends <b style="font-size:16px">2002</b>');
+  });
+
   test("on, but no box lists contents: the plain line, as before", () => {
     const plain = { poNumber: "4523", shipments: parseTracking("449780000900001"), boxContents: true };
     const sp = new Map(buildProductionCards(ORDER, {}, plain).map((c) => [c.name, c.html])).get("production-card-screenprint.html");
