@@ -335,7 +335,7 @@ export function uploadsByGraphic(notes) {
           if (!m) return;
           const key = m[3] || "";
           const esc = m[1].replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-          const notFiled = new RegExp("Not filed[^:]*: " + esc + " - ([^<\\n]*)").exec(content);
+          const notFiled = new RegExp("Not filed[^<\\n]*?: " + esc + " - ([^<\\n]*)").exec(content);
           (out[key] = out[key] || []).push({
             name: m[1],
             folder: m[2],
