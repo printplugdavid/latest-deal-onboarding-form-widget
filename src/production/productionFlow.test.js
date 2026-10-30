@@ -412,3 +412,8 @@ test("E-168: the Outsourced tab watches its order and packing tasks; the switch"
   expect(dueFlagsOn({})).toBe(false);
 });
 
+test("E-167 / D-76: the cards' Revision / Correction button is switched on, and the revision form lives in main", () => {
+  expect(require("./productionConfig.json").revisionInCardsOn).toBe(true);
+  expect(typeof require("../revision/RevisionApp").default).toBe("function");
+});
+

@@ -10,5 +10,7 @@
   "_expectedCountsOn": "E-166 (David 10-29): next to each count question (start count, Close \"Garments counted...\", Outsourced Order and Package) the expected total for that tab's job, clickable to show garment / color / sizes. Display only. false = not shown.",
   "expectedCountsOn": true,
   "_dueFlagsOn": "E-168 (David 10-29): a red \"Past due\" line at the top of a tab's flow (and \"(past due)\" on the tab's name) when one of THAT tab's open tasks is past its due date; a yellow \"Due today\" line for today. Display only. false = not shown.",
-  "dueFlagsOn": true
+  "dueFlagsOn": true,
+  "_revisionInCardsOn": "E-167 / D-76 (David 10-29): a \"Revision / Correction\" button at the top of the Production Cards opens the revision form (?view=revision, moved into main) in place, for this Deal. false = no button; the flow says to use the Deal's own button.",
+  "revisionInCardsOn": true
 }
