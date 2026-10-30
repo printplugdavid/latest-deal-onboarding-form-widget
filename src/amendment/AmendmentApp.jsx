@@ -769,7 +769,7 @@ const AmendmentApp = () => {
       if (gp.change) {
         const label = `"Garments Provided" on the Deal: ${gp.value}` + (gp.was ? ` (it was: ${gp.was})` : "") + (gp.message && /production/.test(gp.message) ? " -- already in production: close any Order Garments task if nothing needs ordering" : "");
         await step(label, async () => {
-          const r = await ZOHO.CRM.API.updateRecord({ Entity: entity, APIData: { id: recordId, [GARMENTS_PROVIDED_FIELD]: gp.value }, ...(gp.workflow ? {} : { Trigger: [] }) });
+          const r = await ZOHO.CRM.API.updateRecord({ Entity: entity, APIData: { id: recordId, [GARMENTS_PROVIDED_FIELD]: gp.value }, Trigger: gp.workflow ? ["workflow"] : [] });
           if (!ok(r)) throw new Error("garments provided: " + JSON.stringify(r?.data?.[0] || r));
         });
       }

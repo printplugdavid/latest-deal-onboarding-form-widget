@@ -427,7 +427,7 @@ function App() {
     if (garmentsProvidedOn(PRODUCTION_CONFIG)) {
       try {
         const gp = garmentsProvidedPlan(recordData, data);
-        if (gp.change) await ZOHO.CRM.API.updateRecord({ Entity: entity, APIData: { id: entityId, [GARMENTS_PROVIDED_FIELD]: gp.value }, ...(gp.workflow ? {} : { Trigger: [] }) });
+        if (gp.change) await ZOHO.CRM.API.updateRecord({ Entity: entity, APIData: { id: entityId, [GARMENTS_PROVIDED_FIELD]: gp.value }, Trigger: gp.workflow ? ["workflow"] : [] });
         if (gp.message) turnaroundNotices.push(gp.message);
       } catch (err) {
         console.log("Garments Provided not set - skipping:", err);
