@@ -410,7 +410,12 @@ export const QC_STAGE = "Quality Check";
  * What Close does: { problems[], close[] (task ids), stage: { move, to, reason }, fields }.
  * answers = { questionKey: "yes" | "no" }; closing = ids of the department's tasks the agent is closing; inkLeft = grams typed per row.
  */
-export function closePlan({ dept, step, tasks, closing, answers, rows, inkLeft, stage, withOutsourced = false, notes }) {
+/*
+ * E-174 / E-176 (D-83, David 10-30): proofsLeft = this card's garments whose test garment (proof print) is not approved yet -> Close waits
+ * ("Yes, wait for proofs"); sendAnyway = the agent chose "Send to Quality Check anyway" past other departments' open production tasks
+ * ("I don't want them to hold it up") -> the move happens and `forced` lists what was still open.
+ */
+export function closePlan({ dept, step, tasks, closing, answers, rows, inkLeft, stage, withOutsourced = false, notes, proofsLeft = [], sendAnyway = false }) {
   const problems = [];
   const isOrder = dept === "outsourced" && step === "order";
   const isDesign = dept === "graphicdesign";
@@ -421,6 +426,7 @@ export function closePlan({ dept, step, tasks, closing, answers, rows, inkLeft, 
   });
   const ids = (closing || []).map(str);
   if (!ids.length) problems.push("Tick the task(s) you are closing.");
+  if ((proofsLeft || []).length) problems.push(`Approve the test garment (proof print) first: ${proofsLeft.join("; ")}`);
   /* E-162: a design task closes only once something was uploaded for its department (any department for a general task). */
   if (isDesign)
     ids.forEach((id) => {
@@ -437,16 +443,20 @@ export function closePlan({ dept, step, tasks, closing, answers, rows, inkLeft, 
   const outsourcedOpen = stillOpen.some((t) => deptOfTask(t.Subject) === "outsourced" || isOrderProductsTask(t.Subject));
   const cur = str(stage);
   let move = { move: false, to: QC_STAGE, reason: "" };
+  let forced = [];
   if (isOrder) move.reason = "the Package Outsourced Products task comes next";
   else if (isDesign) move.reason = "graphic design tasks do not move the Deal";
-  else if (stillOpen.length)
+  else if (stillOpen.length && sendAnyway && PRODUCTION_STAGES.includes(cur)) {
+    move = { move: true, to: QC_STAGE, reason: "" };
+    forced = stillOpen;
+  } else if (stillOpen.length)
     move.reason = `${stillOpen.length} ${outsourcedOpen ? "production or outsourced" : "production"} task(s) still open: ${stillOpen.map(taskTitle).join("; ")}`;
   else if (cur === QC_STAGE) move.reason = "already in Quality Check";
   else if (!PRODUCTION_STAGES.includes(cur)) move.reason = `the Deal is at "${cur}", not a production stage - the stage is left as it is`;
   else move = { move: true, to: QC_STAGE, reason: "" };
   const fields = DEPARTMENTS[dept] && DEPARTMENTS[dept].inks ? pantoneFields(rows, "Left", inkLeft) : {};
   /* Closing the order task fires workflow so Zoho's rule makes the Package task; every other close is Trigger [] as before. */
-  return { problems, close: ids, stage: move, fields, stillOpen, workflowOnClose: isOrder };
+  return { problems, close: ids, stage: move, fields, stillOpen, forced, workflowOnClose: isOrder };
 }
 
 /* ---------- the note ---------- */
@@ -470,7 +480,7 @@ export function startNote({ dept, who, when, answers, rows, inkMixed }) {
 }
 
 /* "Screen Print · CLOSED" note: tasks closed, the answers, grams left, feedback per task, what happened to the stage. */
-export function closeNote({ dept, step, who, when, tasks, closing, answers, rows, inkLeft, feedback, stage }) {
+export function closeNote({ dept, step, who, when, tasks, closing, answers, rows, inkLeft, feedback, stage, forced, openAfter }) {
   const byId = new Map((tasks || []).map((t) => [str(t.id), t]));
   const lines = [`${closeLabel(dept, step)} - CLOSED - ${str(when)}${who ? " - " + str(who) : ""}`];
   (closing || []).forEach((id) => {
@@ -483,12 +493,36 @@ export function closeNote({ dept, step, who, when, tasks, closing, answers, rows
   const ink = inkLines(rows, inkLeft, "left");
   if (ink.length) lines.push("Ink left:", ...ink);
   if (stage) lines.push(stage.move ? `Deal moved to ${stage.to}.` : `Stage not moved: ${stage.reason}.`);
+  /* E-176: what was sent past, and what is still open on the Deal after the move. */
+  if ((forced || []).length) lines.push(`Sent to Quality Check anyway, with these production task(s) still open: ${forced.map(taskTitle).join("; ")}`);
+  if (stage && stage.move && (openAfter || []).length)
+    lines.push(`Still open on the Deal: ${openAfter.map((t) => taskTitle(t) + (ownerOf(t).name ? " (" + ownerOf(t).name + ")" : "")).join("; ")}`);
   return lines.join("\n");
 }
+
+/* E-176: every task still open on the Deal once these are closed (any kind: another department's, the Account Manager's, sales'). */
+export const openAfterClose = (tasks, closing) => {
+  const ids = (closing || []).map(str);
+  return (tasks || []).filter((t) => isOpen(t) && !ids.includes(str(t.id)));
+};
 
 /* Short dated lines for the in-between actions (missing garments, Call Client), also kept on the flow note. */
 export const actionNote = (dept, when, who, text) =>
   `${(DEPARTMENTS[dept] && DEPARTMENTS[dept].label) || dept} - ${str(when)}${who ? " - " + str(who) : ""}\n${str(text)}`;
+
+/*
+ * E-176 (David 10-30: "by close, i still want it visible. i don't want it to disappear"): what this department's flow has done so far,
+ * oldest first, from its PRODUCTION FLOW notes -- [{ when, head, lines }] (head = the note's first line, lines = the rest, trimmed).
+ */
+export function flowHistory(notes, dept) {
+  const label = (DEPARTMENTS[dept] || {}).label || dept;
+  return (notes || [])
+    .filter((n) => n && n.Note_Title === FLOW_NOTE_TITLE)
+    .map((n) => ({ t: str(n.Created_Time), all: str(n.Note_Content).replace(/<br\s*\/?>/gi, "\n").split("\n").map((l) => l.trim()).filter(Boolean) }))
+    .filter((n) => n.all.length && n.all[0].startsWith(label + " - "))
+    .sort((a, b) => (a.t < b.t ? -1 : a.t > b.t ? 1 : 0))
+    .map((n) => ({ when: n.t, head: n.all[0], lines: n.all.slice(1) }));
+}
 
 /*
  * Has this department started since its last close? Reads the PRODUCTION FLOW notes (newest first by Created_Time):

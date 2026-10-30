@@ -40,15 +40,18 @@ import {
   dueStatus,
   expectedCountsOn,
   expectedFor,
+  flowHistory,
   grams,
   hasStartSteps,
   lateLine,
   missingLine,
+  openAfterClose,
   openDeptTasks,
   openOrderTasks,
   orderGarments,
   outsourcedOn,
   ownerOf,
+  PRODUCTION_STAGES,
   pantoneFields,
   pantoneSlots,
   pantonesOf,
@@ -59,6 +62,7 @@ import {
 import PRODUCTION_CONFIG from "./productionConfig.json";
 import GraphicUpload from "./GraphicUploadPanel";
 import { deptOfDesignTask, filingOn, uploadsOn } from "./graphicUpload";
+import { PROOF_DEPTS, pendingNote, proofNote, proofStatus, proofStepOn, proofWrites } from "./proofs";
 
 const ZOHO = window.ZOHO;
 const ok = (r) => r?.data?.[0]?.code === "SUCCESS";
@@ -138,8 +142,9 @@ const inkRow = (r, i, list, setList, word, busy) => (
 
 /* One "close" block: the tasks to tick, the questions (all Yes), grams left (screen print), feedback; then the tasks closed, the note,
    and the stage moved last. The Outsourced tab shows it twice: step "order" and step "package" (E-164). */
-const CloseTask = ({ dept, step, title, list, tasks, deal, rows, withOutsourced, busy, run, write, note, who, userId, expected, notes }) => {
+const CloseTask = ({ dept, step, title, list, tasks, deal, rows, withOutsourced, busy, run, write, note, who, userId, expected, notes, proofsLeft, closeExtras }) => {
   const d = DEPARTMENTS[dept];
+  const [sendAnyway, setSendAnyway] = useState(false); // E-176: past other departments' open production tasks
   const [answers, setAnswers] = useState({});
   const [inkLeft, setInkLeft] = useState(() => rows.map((r) => (r.left != null ? String(r.left) : "")));
   const [mineOnly, setMineOnly] = useState(true);
@@ -147,18 +152,30 @@ const CloseTask = ({ dept, step, title, list, tasks, deal, rows, withOutsourced,
   const [feedback, setFeedback] = useState({});
   const mine = list.filter((t) => ownerOf(t).id && ownerOf(t).id === userId);
   const shown = mineOnly && mine.length ? mine : list;
-  const plan = closePlan({ dept, step, tasks, closing, answers, rows, inkLeft, stage: deal.Stage, withOutsourced, notes });
+  const plan = closePlan({ dept, step, tasks, closing, answers, rows, inkLeft, stage: deal.Stage, withOutsourced, notes, proofsLeft, sendAnyway: closeExtras && sendAnyway });
+  /* E-176: "Send to Quality Check anyway" is offered when only other departments' production tasks keep the Deal from moving. */
+  const canSendAnyway =
+    closeExtras && step !== "order" && dept !== "graphicdesign" && plan.stillOpen.length > 0 && PRODUCTION_STAGES.includes(String(deal.Stage || ""));
   const doClose = () =>
     run("Closing the task(s)", async () => {
+      const openAfter = closeExtras ? openAfterClose(tasks, plan.close) : [];
       if (Object.keys(plan.fields).length) await write(plan.fields, false);
       for (const id of plan.close) {
         const r = await ZOHO.CRM.API.updateRecord({ Entity: "Tasks", APIData: { id, Status: "Completed" }, Trigger: plan.workflowOnClose ? ["workflow"] : [] });
         if (!ok(r)) throw new Error("task " + id + ": " + JSON.stringify(r?.data?.[0] || r));
       }
-      await note(closeNote({ dept, step, who, when: stamp(), tasks, closing: plan.close, answers, rows, inkLeft, feedback, stage: plan.stage }));
+      await note(closeNote({ dept, step, who, when: stamp(), tasks, closing: plan.close, answers, rows, inkLeft, feedback, stage: plan.stage, forced: plan.forced, openAfter }));
       if (plan.stage.move) await write({ Stage: plan.stage.to }, true);
       setClosing([]);
       setAnswers({});
+      setSendAnyway(false);
+      if (closeExtras && plan.stage.move) {
+        const lead = plan.forced.length
+          ? `${plan.close.length} task(s) closed. Sent to Quality Check with ${plan.forced.length} production task(s) still open: ${plan.forced.map(taskTitle).join("; ")}.`
+          : `${plan.close.length} task(s) closed. That was the last production task in the run: the Deal is going to Quality Check.`;
+        const left = openAfter.filter((t) => !plan.forced.some((f) => f.id === t.id));
+        return lead + (left.length ? `\nStill open on the Deal (not closed): ${left.map((t) => taskTitle(t) + (ownerOf(t).name ? " - " + ownerOf(t).name : "")).join("; ")}.` : "");
+      }
       if (plan.workflowOnClose)
         return `${plan.close.length} order task(s) closed. Zoho makes the Package Outsourced Products task in a few seconds; reopen the cards if it does not show yet.`;
       return `${plan.close.length} task(s) closed.` + (plan.stage.move ? " Every production task is done: the Deal moved to Quality Check." : ` ${plan.stage.reason}.`);
@@ -211,6 +228,18 @@ const CloseTask = ({ dept, step, title, list, tasks, deal, rows, withOutsourced,
           {rows.map((r, i) => inkRow(r, i, inkLeft, setInkLeft, "left", busy))}
         </Box>
       )}
+      {canSendAnyway && (
+        <Box sx={{ mt: 1, p: 1, border: "1px solid #f0c36d", bgcolor: "#fffaf0" }}>
+          <Typography variant="body2">
+            Other production task(s) still open on this Deal: {plan.stillOpen.map((t) => taskTitle(t) + (ownerOf(t).name ? " - " + ownerOf(t).name : "")).join("; ")}.
+            The Deal waits for them before Quality Check.
+          </Typography>
+          <FormControlLabel
+            control={<Checkbox size="small" checked={sendAnyway} disabled={!!busy} onChange={(e) => setSendAnyway(e.target.checked)} />}
+            label="Send to Quality Check anyway (those tasks stay open and are listed on the Deal)"
+          />
+        </Box>
+      )}
       <Button variant="contained" size="small" disabled={!!plan.problems.length || !!busy} onClick={doClose} sx={{ mt: 1 }}>
         Close {closing.length > 1 ? `${closing.length} tasks` : "task"}
       </Button>
@@ -221,14 +250,90 @@ const CloseTask = ({ dept, step, title, list, tasks, deal, rows, withOutsourced,
       )}
       {closing.length > 0 && (
         <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-          {plan.stage.move ? "Closing this finishes production: the Deal will move to Quality Check." : step === "order" ? "Closing the order makes the Package Outsourced Products task (the Deal stays where it is)." : `The Deal stays where it is (${plan.stage.reason}).`}
+          {plan.stage.move && plan.forced.length
+            ? "Closing this sends the Deal to Quality Check now, with the other production task(s) still open."
+            : plan.stage.move && closeExtras
+            ? "This is the last production task in the run: closing it sends the Deal to Quality Check."
+            : plan.stage.move ? "Closing this finishes production: the Deal will move to Quality Check." : step === "order" ? "Closing the order makes the Package Outsourced Products task (the Deal stays where it is)." : `The Deal stays where it is (${plan.stage.reason}).`}
         </Typography>
       )}
     </Section>
   );
 };
 
-const ProductionFlow = ({ dept, ctx, refresh }) => {
+/* E-174: the test garment (proof print) step -- one approval per garment on this card; the last one on the order moves the Deal. */
+const ProofStep = ({ dept, proof, busy, run, write, note, who, deal, data, notes }) => {
+  const [ticked, setTicked] = useState([]);
+  const label = DEPARTMENTS[dept].label;
+  const doApprove = () =>
+    run("Recording the approved test garment", async () => {
+      const labels = proof.items.filter((it) => ticked.includes(it.key)).map((it) => it.label);
+      const content = proofNote({ dept, who, when: stamp(), labels });
+      const after = proofWrites({ deal, data, notes: [...(notes || []), pendingNote(content)], dept });
+      await note(content);
+      if (Object.keys(after.fields).length) await write(after.fields, false);
+      if (after.stage.move) await write({ Stage: after.stage.to }, true);
+      setTicked([]);
+      return (
+        `Test garment approved: ${labels.join("; ")}.` +
+        (after.deptDone ? ` Every ${label} proof is approved: you can close the task when the job is done.` : "") +
+        (after.stage.move ? " Every proof on the order is approved: the Deal moved to Test Garment Approved." : after.allDone ? ` (${after.stage.reason}.)` : after.deptDone ? ` The Deal moves to Test Garment Approved once ${after.stage.reason.replace(/^waiting for /, "")} are approved.` : "")
+      );
+    });
+  return (
+    <Section title="Test garment (proof print)">
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
+        Print one of each garment with all its graphics and check it against the mock-up, the notes and the original art. Approve each one
+        when it passes. Closing the task waits for these.
+      </Typography>
+      {proof.items.map((it) =>
+        it.approved ? (
+          <Typography key={it.key} variant="body2" sx={{ pl: 1, py: 0.25 }}>
+            <b>Approved</b> - {it.label} <span style={{ color: "#666" }}>({[it.approved.who, it.approved.when].filter(Boolean).join(", ")})</span>
+          </Typography>
+        ) : (
+          <FormControlLabel
+            key={it.key}
+            sx={{ display: "flex" }}
+            control={
+              <Checkbox size="small" checked={ticked.includes(it.key)} disabled={!!busy} onChange={(e) => setTicked(e.target.checked ? [...ticked, it.key] : ticked.filter((k) => k !== it.key))} />
+            }
+            label={it.label}
+          />
+        )
+      )}
+      {proof.left.length > 0 && (
+        <Button variant="contained" size="small" disabled={!ticked.length || !!busy} onClick={doApprove} sx={{ mt: 0.5 }}>
+          Test garment approved{ticked.length > 1 ? ` (${ticked.length})` : ""}
+        </Button>
+      )}
+      {proof.done && <Alert severity="success" sx={{ mt: 0.5 }}>Every {label} proof is approved.</Alert>}
+    </Section>
+  );
+};
+
+/* E-176: the card's flow stays visible -- what was done so far on this tab, oldest first. */
+const History = ({ entries }) => (
+  <Section title="Done so far on this card">
+    {entries.map((e, i) => (
+      <Box key={i} sx={{ pl: 1, mb: 0.5, borderLeft: "2px solid #ddd" }}>
+        <Typography variant="body2" fontWeight="bold">
+          {e.head}
+        </Typography>
+        {e.lines
+          .filter((l) => !/\? (Yes|No|-)$/.test(l))
+          .slice(0, 6)
+          .map((l, j) => (
+            <Typography key={j} variant="body2" color="text.secondary" sx={{ pl: 1 }}>
+              {l}
+            </Typography>
+          ))}
+      </Box>
+    ))}
+  </Section>
+);
+
+const ProductionFlow = ({ dept, ctx, refresh, onRevision }) => {
   const d = DEPARTMENTS[dept];
   const { entity, recordId, deal = {}, data, tasks = [], notes = [], user = {} } = ctx || {};
   const myTasks = useMemo(() => openDeptTasks(tasks, dept), [tasks, dept]);
@@ -240,6 +345,10 @@ const ProductionFlow = ({ dept, ctx, refresh }) => {
   const garments = useMemo(() => orderGarments(data), [data]);
   const expected = useMemo(() => (expectedCountsOn(PRODUCTION_CONFIG) ? expectedFor(data, dept) : null), [data, dept]);
   const due = useMemo(() => (dueFlagsOn(PRODUCTION_CONFIG) ? dueStatus(tasks, dept, ymd()) : null), [tasks, dept]);
+  /* E-174 / E-176 (switch proofStepOn): the proof step, Close waiting for it, the last-task notice, send anyway, the history. */
+  const proofsOn = proofStepOn(PRODUCTION_CONFIG);
+  const proof = useMemo(() => (proofsOn && PROOF_DEPTS.includes(dept) ? proofStatus(data, notes, dept) : null), [proofsOn, data, notes, dept]);
+  const history = useMemo(() => (proofsOn ? flowHistory(notes, dept) : []), [proofsOn, notes, dept]);
 
   const [start, setStart] = useState({});
   const [inkMixed, setInkMixed] = useState(() => rows.map((r) => (r.mixed != null ? String(r.mixed) : "")));
@@ -307,7 +416,11 @@ const ProductionFlow = ({ dept, ctx, refresh }) => {
       return "Call Client flagged: the Sales Person gets a \"Call Client\" task with your notes on the Deal.";
     });
 
-  const common = { dept, tasks, deal, rows, withOutsourced, busy, run, write, note, who, userId: user.id, expected, notes };
+  const common = {
+    dept, tasks, deal, rows, withOutsourced, busy, run, write, note, who, userId: user.id, expected, notes,
+    proofsLeft: proof && proof.items.length ? proof.left : [],
+    closeExtras: proofsOn,
+  };
 
   return (
     <Box sx={{ p: 2, bgcolor: "#fff", borderBottom: 2, borderColor: "#1a1a1a" }}>
@@ -362,6 +475,11 @@ const ProductionFlow = ({ dept, ctx, refresh }) => {
       )}
       {hasStart && started && myTasks.length > 0 && <Alert severity="success" sx={{ mt: 1 }}>Job started (count, artwork and tools checked).</Alert>}
 
+      {/* E-174: 2. TEST GARMENT (proof print), after Start, before Close */}
+      {proof && proof.items.length > 0 && started && myTasks.length > 0 && (
+        <ProofStep dept={dept} proof={proof} busy={busy} run={run} write={write} note={note} who={who} deal={deal} data={data} notes={notes} />
+      )}
+
       {/* E-162: the upload step (Graphic Design tab) */}
       {dept === "graphicdesign" && (
         <GraphicUpload
@@ -389,11 +507,23 @@ const ProductionFlow = ({ dept, ctx, refresh }) => {
               Call Client
             </Button>
           </Box>
-          <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-            {PRODUCTION_CONFIG.revisionInCardsOn === true
-              ? "Something printed wrong that must be redone: use the Revision / Correction button at the top of the cards."
-              : "Something printed wrong that must be redone: close this window and use the Revision / Correction button on the Deal."}
-          </Typography>
+          {onRevision ? (
+            /* E-175 (David 10-30): the Revision / Correction button under the other two, in job order. */
+            <Box sx={{ mt: 1 }}>
+              <Button variant="outlined" size="small" color="warning" disabled={!!busy} onClick={onRevision}>
+                Order Revision / Correction
+              </Button>
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                Something printed wrong that must be redone: opens the revision / correction form for this Deal.
+              </Typography>
+            </Box>
+          ) : (
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+              {PRODUCTION_CONFIG.revisionInCardsOn === true
+                ? "Something printed wrong that must be redone: use the Revision / Correction button at the top of the cards."
+                : "Something printed wrong that must be redone: close this window and use the Revision / Correction button on the Deal."}
+            </Typography>
+          )}
           {missing && (
             <Box sx={{ mt: 1, p: 1.5, border: "1px solid #ddd", display: "flex", gap: 1, flexWrap: "wrap", alignItems: "center" }}>
               <TextField select size="small" label="Garment" value={missing.g} onChange={(e) => setMissing({ ...missing, g: Number(e.target.value), color: "", size: "" })} sx={{ minWidth: 220 }}>
@@ -477,8 +607,11 @@ const ProductionFlow = ({ dept, ctx, refresh }) => {
           <CircularProgress size={16} /> <Typography variant="body2">{busy}…</Typography>
         </Box>
       )}
+      {/* E-176: the flow stays visible after Close */}
+      {history.length > 0 && <History entries={history} />}
+
       {result && (
-        <Alert severity={result.severity} sx={{ mt: 1 }}>
+        <Alert severity={result.severity} sx={{ mt: 1, whiteSpace: "pre-line" }}>
           {result.text}
         </Alert>
       )}
