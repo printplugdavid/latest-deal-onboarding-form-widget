@@ -36,6 +36,8 @@ import { LIVE_NOTE_TITLE } from "./amendment/amendmentDiff";
 import ProductionFlow from "./production/ProductionFlowPanel";
 import { DEPARTMENTS, dueFlagsOn, dueStatus, flowDeptFor, needsOutsourcedTab } from "./production/productionFlow";
 import PRODUCTION_CONFIG from "./production/productionConfig.json";
+import DealBar from "./production/DealBarPanel";
+import { INVOICE_FUNCTION, readInvoices } from "./production/dealBar";
 
 /* E-167 / D-76: the Revision / Correction form, opened in place from the cards (loaded only when asked for). */
 const RevisionApp = lazy(() => import("./revision/RevisionApp"));
@@ -166,6 +168,11 @@ const CardViewer = () => {
   const frameRef = useRef(null);
   const keepOutsourcedTab = useRef(false); // E-164: once shown, the flow-only Outsourced tab stays for this visit
   const flowOn = PRODUCTION_CONFIG.flowOn === true;
+  // E-173 / D-82: the Deal bar (status, salesperson, open activities, invoice without money) on every tab; Send Mockup on Graphic Design.
+  const cardInfoOn = PRODUCTION_CONFIG.cardInfoOn === true;
+  const sendMockupOn = PRODUCTION_CONFIG.sendMockupOn === true;
+  const [invoice, setInvoice] = useState(null);
+  const recordIdRef = useRef(null);
   const refreshFlow = async () => {
     if (!flow) return;
     const f = await loadFlow(flow.entity, flow.recordId);
@@ -190,9 +197,20 @@ const CardViewer = () => {
       }
       const entity = data?.Entity;
       const recordId = data?.EntityId?.[0] ?? data?.EntityId;
+      recordIdRef.current = recordId;
       try {
         const { cards, info, workDrive, workDriveLabel, noteEdited, flow: base } = await loadCards(entity, recordId);
-        setState({ status: "ready", cards, message: "", info, workDrive, workDriveLabel, noteEdited });
+        setState({ status: "ready", cards, message: "", info, workDrive, workDriveLabel, noteEdited, deal: base?.deal || null });
+        // E-173: the Books invoice, read AFTER the cards are on screen (Books can be slow); never fatal, never waited on past 15 s.
+        if (PRODUCTION_CONFIG.cardInfoOn === true && cards.length) {
+          setInvoice({ state: "loading" });
+          Promise.race([
+            Promise.resolve().then(() => ZOHO.CRM.FUNCTIONS.execute(INVOICE_FUNCTION, { arguments: JSON.stringify({ deal_id: String(recordId) }) })),
+            new Promise((resolve) => setTimeout(() => resolve({ __timeout: true }), 15000)),
+          ])
+            .then((r) => setInvoice(r && r.__timeout ? { state: "error", invoices: [], message: "Books did not answer in time -- open the Deal's invoice in Books." } : readInvoices(r)))
+            .catch(() => setInvoice({ state: "error", invoices: [], message: "The invoice could not be read -- open it in Books." }));
+        }
         if (PRODUCTION_CONFIG.flowOn === true && base) {
           const f = await loadFlow(entity, recordId);
           setFlow({ ...base, ...(f.deal ? { deal: f.deal } : {}), tasks: f.tasks, ...(f.notes ? { notes: f.notes } : {}), user: f.user });
@@ -358,6 +376,18 @@ const CardViewer = () => {
       )}
 
       <Box sx={{ flexGrow: 1, overflow: "auto", background: "#e9eaec" }}>
+        {cardInfoOn && (flow?.deal || state.deal) && (
+          <DealBar
+            deal={flow?.deal || state.deal}
+            tasks={flow ? flow.tasks : null}
+            invoice={invoice}
+            today={todayMt}
+            showSendMockup={sendMockupOn && current?.name === "production-card-graphicdesign.html"}
+            recordId={recordIdRef.current}
+            user={flow?.user}
+            refresh={refreshFlow}
+          />
+        )}
         {flowOn && flow && current && flowDeptFor(current.name, PRODUCTION_CONFIG) && (
           <ProductionFlow key={"flow-" + current.name} dept={flowDeptFor(current.name, PRODUCTION_CONFIG).key} ctx={flow} refresh={refreshFlow} />
         )}
