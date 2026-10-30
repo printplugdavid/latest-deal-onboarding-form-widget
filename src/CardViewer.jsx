@@ -165,6 +165,8 @@ const CardViewer = () => {
   const [revisionOpen, setRevisionOpen] = useState(false); // E-167: the revision form in place of the cards
   const pageDataRef = useRef(null); // Zoho's PageLoad data, handed to the revision form (it fires once per widget)
   const revisionInCards = PRODUCTION_CONFIG.revisionInCardsOn === true;
+  // E-175 (David 10-30): on a tab with a flow, the button sits in the flow under Missing garments / Call Client (job order).
+  const revisionInFlow = revisionInCards && PRODUCTION_CONFIG.revisionInFlowOn === true;
   const frameRef = useRef(null);
   const keepOutsourcedTab = useRef(false); // E-164: once shown, the flow-only Outsourced tab stays for this visit
   const flowOn = PRODUCTION_CONFIG.flowOn === true;
@@ -338,7 +340,7 @@ const CardViewer = () => {
             <Tab key={c.name} label={tabLabel(c)} />
           ))}
         </Tabs>
-        {revisionInCards && pageDataRef.current && (
+        {revisionInCards && pageDataRef.current && !(revisionInFlow && flowOn && flow && current && flowDeptFor(current.name, PRODUCTION_CONFIG)) && (
           <Button variant="outlined" size="small" onClick={() => setRevisionOpen(true)}>
             Revision / Correction
           </Button>
@@ -389,7 +391,13 @@ const CardViewer = () => {
           />
         )}
         {flowOn && flow && current && flowDeptFor(current.name, PRODUCTION_CONFIG) && (
-          <ProductionFlow key={"flow-" + current.name} dept={flowDeptFor(current.name, PRODUCTION_CONFIG).key} ctx={flow} refresh={refreshFlow} />
+          <ProductionFlow
+            key={"flow-" + current.name}
+            dept={flowDeptFor(current.name, PRODUCTION_CONFIG).key}
+            ctx={flow}
+            refresh={refreshFlow}
+            onRevision={revisionInFlow && pageDataRef.current ? () => setRevisionOpen(true) : undefined}
+          />
         )}
         {current?.flowOnly ? (
           <Box sx={{ p: 3 }}>
