@@ -6,14 +6,22 @@
  * ArtFilesContext (provided by the onboarding form, App.jsx) and are uploaded to the onboarding note on Submit with
  * the "Other files", then copied to the Deal's Art Assets (E-72). The Amendment Form provides it too (E-96): new art
  * goes on the amendment's note. Without the context the row offers the color finder only (nothing saved).
+ *
+ * E-162 / E-170 (D-77, D-78, David 10-30: "Replace it."): when the store carries an `uploader` (onboarding, switch graphicUploadsOn),
+ * each file gets a Format pick and its own Upload: it is renamed PO_DEPT_GARMENT_PLACEMENT_FORMAT_vN at once (department, garment and
+ * placement from this graphic, changeable), attached to a GRAPHIC UPLOAD note and filed into WorkDrive ~5 minutes later by the CRM.
+ * Its entry then reads { name: <final>, original, uploaded: true, folder } and Submit does not attach it again. The graphic gets a
+ * permanent `graphicId` so the Graphic Design card can show its files (client original -> final).
  */
-import React, { createContext, useContext, useState } from "react";
-import { Box, Button, Typography } from "@mui/material";
+import React, { createContext, useContext, useEffect, useState } from "react";
+import { Box, Button, MenuItem, TextField, Typography } from "@mui/material";
 import { useFormContext, useWatch } from "react-hook-form";
 import ImageColorFinder from "./ImageColorFinder";
 import { artKey, finderModeFor, isPicture, writePicks } from "../graphicArt";
+import { FOLDER_LABELS, UPLOAD_DEPARTMENTS, UPLOAD_FORMATS, graphicDefaults, newGraphicId } from "../production/graphicUpload";
 
-/* { get(key) -> File, put(file) -> key, room(addBytes) -> "" | error text } -- provided by the onboarding form. */
+/* { get(key) -> File, put(file) -> key, room(addBytes) -> "" | error text, uploader? } -- provided by the onboarding form.
+   uploader = { upload(file, parts, graphic) -> Promise<{ name, folder }> } (E-162), only when uploads are switched on. */
 export const ArtFilesContext = createContext(null);
 
 const mb = (n) => (n / (1024 * 1024)).toFixed(2);
@@ -28,6 +36,41 @@ const GraphicArt = ({ base, productName: givenName, productIndex }) => {
   const [finding, setFinding] = useState(null); // a file key, or "pick" (finder without an attached file)
   const [error, setError] = useState("");
   const mode = finderModeFor(productName);
+  const uploader = store && store.uploader;
+  const [parts, setParts] = useState({}); // per file key: { dept, garment, placement, format, open }
+  const [sending, setSending] = useState(""); // the file key being uploaded
+  const [sent, setSent] = useState({}); // per file key: "" | error text
+
+  // E-170: a permanent id for this graphic, the first time it is shown with uploads on (never changed afterwards).
+  useEffect(() => {
+    if (uploader && !getValues(`${base}.graphicId`)) setValue(`${base}.graphicId`, newGraphicId());
+  }, [uploader, base]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const defaultsFor = () => graphicDefaults(getValues("products"), base);
+  const partsFor = (key) => {
+    const d = defaultsFor() || {};
+    return { dept: d.dept || "", garment: d.garment || "ALL", placement: d.placement || "Whole-item", format: "ORIGINAL", ...(parts[key] || {}) };
+  };
+  const upload = async (a) => {
+    const file = store.get(a.key);
+    if (!file || !uploader) return;
+    const p = partsFor(a.key);
+    const d = defaultsFor() || {};
+    setSending(a.key);
+    setSent({ ...sent, [a.key]: "" });
+    try {
+      const res = await uploader.upload(file, p, { key: getValues(`${base}.graphicId`) || d.key, label: d.label });
+      const list = Array.isArray(getValues(`${base}.artFiles`)) ? getValues(`${base}.artFiles`) : [];
+      setValue(
+        `${base}.artFiles`,
+        list.map((x) => (x.key === a.key ? { ...x, name: res.name, original: x.original || x.name, uploaded: true, folder: res.folder } : x)),
+        { shouldDirty: true }
+      );
+    } catch (e) {
+      setSent({ ...sent, [a.key]: `Not uploaded: ${String(e?.message || e)}. Try Upload again.` });
+    }
+    setSending("");
+  };
 
   const addPicks = (picks) =>
     setValue(`${base}.colorsUsed`, writePicks(getValues(`${base}.colorsUsed`), picks, productName), { shouldDirty: true });
@@ -50,6 +93,7 @@ const GraphicArt = ({ base, productName: givenName, productIndex }) => {
     if (firstPicture) setFinding(firstPicture.key); // straight to its colors -- the rep still clicks Add
   };
   const remove = (key) => {
+    if ((files.find((a) => a.key === key) || {}).uploaded) return; // already on the Deal: stays
     setValue(`${base}.artFiles`, files.filter((a) => a.key !== key), { shouldDirty: true });
     if (finding === key) setFinding(null);
   };
@@ -76,6 +120,11 @@ const GraphicArt = ({ base, productName: givenName, productIndex }) => {
             <Box component="li" key={a.key} sx={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap", fontSize: "0.85rem", py: "2px" }}>
               <b>{a.name}</b>
               <span style={{ color: "#777" }}>{mb(a.size || 0)} MB</span>
+              {a.uploaded && (
+                <span style={{ color: "#2e7d32" }}>
+                  uploaded{a.original && a.original !== a.name ? ` (was ${a.original})` : ""}: filing into {FOLDER_LABELS[a.folder] || "WorkDrive"} in a few minutes
+                </span>
+              )}
               {store && store.get(a.key) && isPicture(a.name) && (
                 <Button size="small" variant="outlined" onClick={() => setFinding(a.key)} sx={{ textTransform: "none", py: 0 }}>
                   Find colors in this file
@@ -85,11 +134,22 @@ const GraphicArt = ({ base, productName: givenName, productIndex }) => {
                 <span style={{ color: "#777" }}>design file -- colors are read from a PNG, JPG or SVG</span>
               )}
               {(!store || !store.get(a.key)) && <span style={{ color: "#777" }}>attached earlier -- on an earlier onboarding note</span>}
-              {store && (
+              {store && !a.uploaded && (
                 <Button size="small" variant="text" onClick={() => remove(a.key)} sx={{ textTransform: "none", py: 0, minWidth: 0 }}>
                   Remove
                 </Button>
               )}
+              {uploader && !a.uploaded && store.get(a.key) && (
+                <UploadRow
+                  p={partsFor(a.key)}
+                  d={defaultsFor()}
+                  busy={sending === a.key}
+                  disabled={!!sending}
+                  onChange={(patch) => setParts({ ...parts, [a.key]: { ...partsFor(a.key), ...patch } })}
+                  onUpload={() => upload(a)}
+                />
+              )}
+              {sent[a.key] && <span style={{ color: "#b00020" }}>{sent[a.key]}</span>}
             </Box>
           ))}
         </Box>
@@ -109,12 +169,45 @@ const GraphicArt = ({ base, productName: givenName, productIndex }) => {
       )}
 
       <Typography sx={{ fontSize: "0.75rem", color: "#777", mt: "0.4rem" }}>
-        {store
+        {uploader
+          ? `Upload names each file ${"<PO>_<DEPARTMENT>_<GARMENT>_<PLACEMENT>_<FORMAT>_v<N>"} and files it in the Deal's WorkDrive; a file not uploaded goes on the onboarding note as before. Add buttons write the ${WHERE[mode]} into this graphic's Colors Used.`
+          : store
           ? `Attached art goes on the onboarding note and into the Deal's Art Assets. Add buttons write the ${WHERE[mode]} into this graphic's Colors Used.`
           : "A picture picked here is only read for its colors; it is not saved."}
       </Typography>
     </Box>
   );
 };
+
+/* E-162: one file's Format pick (+ the other three parts, changeable) and its Upload button. */
+const Sel = ({ label, value, options, onChange, width, disabled }) => (
+  <TextField select size="small" label={label} value={value || ""} onChange={(e) => onChange(e.target.value)} sx={{ minWidth: width }} disabled={disabled}>
+    {options.map((o) => (
+      <MenuItem key={o.value} value={o.value}>
+        {o.label}
+      </MenuItem>
+    ))}
+  </TextField>
+);
+const UploadRow = ({ p, d, busy, disabled, onChange, onUpload }) => (
+  <Box sx={{ display: "flex", gap: "0.5rem", alignItems: "center", flexWrap: "wrap", width: "100%", pl: 1, mt: 0.5 }}>
+    <Sel label="Format" width={190} value={p.format} disabled={disabled} onChange={(v) => onChange({ format: v })} options={UPLOAD_FORMATS.map((f) => ({ value: f.code, label: f.label }))} />
+    {p.open && (
+      <>
+        <Sel label="Department" width={140} value={p.dept} disabled={disabled} onChange={(v) => onChange({ dept: v })} options={UPLOAD_DEPARTMENTS.map((x) => ({ value: x.code, label: x.label }))} />
+        <Sel label="Garment" width={200} value={p.garment} disabled={disabled} onChange={(v) => onChange({ garment: v })} options={(d && d.garments) || [{ value: "ALL", label: "All" }]} />
+        <Sel label="Placement" width={170} value={p.placement} disabled={disabled} onChange={(v) => onChange({ placement: v })} options={(d && d.placements) || []} />
+      </>
+    )}
+    {!p.open && (
+      <Button size="small" variant="text" onClick={() => onChange({ open: true })} sx={{ textTransform: "none", py: 0 }}>
+        {UPLOAD_DEPARTMENTS.find((x) => x.code === p.dept)?.label || p.dept} / {p.garment} / {p.placement} (change)
+      </Button>
+    )}
+    <Button size="small" variant="contained" disabled={disabled || !p.dept || !p.garment || !p.placement || !p.format} onClick={onUpload} sx={{ textTransform: "none", py: "2px" }}>
+      {busy ? "Uploading…" : "Upload"}
+    </Button>
+  </Box>
+);
 
 export default GraphicArt;

@@ -20,9 +20,15 @@ import {
   hasUploadFor,
   graphicFlowOn,
   uploadsOn,
-  afterCall,
-  RETRIES,
-  RETRY_WAIT_MS,
+  newGraphicId,
+  deptForProduct,
+  graphicAt,
+  graphicKey,
+  graphicDefaults,
+  graphicsOf,
+  uploadsByGraphic,
+  filingOn,
+  FILING_FIELD,
   UPLOAD_NOTE_TITLE,
 } from "./graphicUpload";
 
@@ -112,46 +118,78 @@ test("E-162: the calls to Deluge's widget_upload_graphics (docs/57) and reading 
   expect(readUploadAnswer(null).status).toBe("unavailable");
 });
 
-test("E-162: the GRAPHIC UPLOAD note keeps the client's own name, and the Close check reads it back", () => {
+test("E-162 / E-170: the GRAPHIC UPLOAD note -- people's lines, the graphic it belongs to, the client's name, and the FILING JSON line", () => {
   const text = uploadNote({
     who: "Desi",
-    when: "10/29/26, 7:00 PM",
+    when: "10/30/26, 9:00 AM",
     items: [
-      { name: "4523_EMB_K500-Navy_Left-Chest_ORIGINAL_v1.ai", folder: "art_assets", original: "Logo FINAL final.ai" },
-      { name: "4523_EMB_K500-Navy_Left-Chest_DST_v2.dst", folder: "dept:Embroidery", original: "x.dst", wouldMove: ["4523_EMB_K500-Navy_Left-Chest_DST_v1.dst"] },
+      {
+        name: "4523_EMB_K500-Navy_Left-Chest_DST_v2.dst",
+        stem: "4523_EMB_K500-Navy_Left-Chest_DST",
+        ext: "dst",
+        folder: "dept:Embroidery",
+        original: "Logo FINAL final.DST",
+        graphic: "GAB12CD",
+        graphicLabel: "Garment 1 - Graphic 1",
+        wouldMove: ["4523_EMB_K500-Navy_Left-Chest_DST_v1.dst"],
+      },
     ],
   });
-  expect(text.split("\n")).toEqual([
-    "Graphic upload - 10/29/26, 7:00 PM - Desi",
-    "4523_EMB_K500-Navy_Left-Chest_ORIGINAL_v1.ai -> Art Assets (was: Logo FINAL final.ai)",
-    "4523_EMB_K500-Navy_Left-Chest_DST_v2.dst -> Department Folders / Embroidery (was: x.dst)",
+  const lines = text.split("\n");
+  expect(lines.slice(0, 3)).toEqual([
+    "Graphic upload - 10/30/26, 9:00 AM - Desi",
+    "4523_EMB_K500-Navy_Left-Chest_DST_v2.dst -> Department Folders / Embroidery (graphic GAB12CD: Garment 1 - Graphic 1) (was: Logo FINAL final.DST)",
     "  replaces 4523_EMB_K500-Navy_Left-Chest_DST_v1.dst (moved to Rejected)",
   ]);
-  const notes = [{ Note_Title: UPLOAD_NOTE_TITLE, Note_Content: text.replace(/\n/g, "<br>") }, { Note_Title: "PRODUCTION FLOW", Note_Content: "4523_SP_x_y_PNG_v1.png -> z" }];
-  expect(uploadedNames(notes)).toEqual(["4523_EMB_K500-Navy_Left-Chest_ORIGINAL_v1.ai", "4523_EMB_K500-Navy_Left-Chest_DST_v2.dst"]);
-  expect(hasUploadFor(notes, "EMB")).toBe(true);
-  expect(hasUploadFor(notes, "SP")).toBe(false);
-  expect(hasUploadFor(notes, "")).toBe(true);
-  expect(hasUploadFor([], "")).toBe(false);
+  expect(lines[3].startsWith("FILING JSON: ")).toBe(true);
+  expect(JSON.parse(lines[3].slice("FILING JSON: ".length))).toEqual({
+    files: [{ name: "4523_EMB_K500-Navy_Left-Chest_DST_v2.dst", stem: "4523_EMB_K500-Navy_Left-Chest_DST", ext: "dst", folder: "dept:Embroidery", graphic_id: "GAB12CD" }],
+  });
+  // read back for the cards and the Close check (Zoho turns line breaks into <br>)
+  const pending = { Note_Title: UPLOAD_NOTE_TITLE, Note_Content: text.replace(/\n/g, "<br>") };
+  expect(uploadsByGraphic([pending])).toEqual({
+    GAB12CD: [{ name: "4523_EMB_K500-Navy_Left-Chest_DST_v2.dst", folder: "Department Folders / Embroidery", original: "Logo FINAL final.DST", filed: false, notFiled: "" }],
+  });
+  expect(hasUploadFor([pending], "EMB")).toBe(true);
+  expect(hasUploadFor([pending], "SP")).toBe(false);
+  // Deluge docs/58 §3: a "Filed" line, then the note retitled "GRAPHIC UPLOAD - FILED"; a "Not filed" line carries the reason
+  const filedLine = { ...pending, Note_Content: pending.Note_Content + "<br>Filed 10-30 09:05: 4523_EMB_K500-Navy_Left-Chest_DST_v2.dst -> Department Folders / Embroidery" };
+  expect(uploadsByGraphic([filedLine]).GAB12CD[0].filed).toBe(true);
+  expect(uploadsByGraphic([{ ...pending, Note_Title: "GRAPHIC UPLOAD - FILED" }]).GAB12CD[0].filed).toBe(true);
+  const notFiled = { ...pending, Note_Content: pending.Note_Content + "<br>Not filed 10-30 09:05: 4523_EMB_K500-Navy_Left-Chest_DST_v2.dst - no_deal_folder" };
+  expect(uploadsByGraphic([notFiled]).GAB12CD[0]).toMatchObject({ filed: false, notFiled: "no_deal_folder" });
+  expect(uploadedNames([{ ...pending, Note_Title: "GRAPHIC UPLOAD - FILED" }])).toEqual(["4523_EMB_K500-Navy_Left-Chest_DST_v2.dst"]);
+  expect(uploadsByGraphic([{ Note_Title: "PRODUCTION FLOW", Note_Content: "x_v1.png -> y" }])).toEqual({});
 });
 
-test("E-162: both switches are OFF until Deluge's function is in Zoho", () => {
+test("E-170: graphics of the order, their permanent ids, and what an upload for one graphic is named from", () => {
+  expect(newGraphicId()).toMatch(/^G[0-9A-Z]{6}$/);
+  expect(newGraphicId()).not.toBe(newGraphicId());
+  const withId = JSON.parse(JSON.stringify(order));
+  withId.products[0].primaryBranches[0].secondaryBranches[0].graphicDescription = "Company logo";
+  withId.products[0].primaryBranches[0].secondaryBranches[0].graphicId = "GAB12CD";
+  const list = graphicsOf(withId);
+  expect(list.map((g) => [g.base, g.key, g.label])).toEqual([["products.0.primaryBranches.0.secondaryBranches.0", "GAB12CD", "Garment 1 - Graphic 1"]]);
+  expect(list[0]).toMatchObject({ description: "Company logo", placements: ["Left Chest", "Full Back"] });
+  const at = graphicAt(order.products, "products.0.primaryBranches.0.secondaryBranches.0");
+  expect(graphicKey(at)).toBe("p0-g0-s0"); // an older order with no id: its position
+  expect(graphicAt(order.products, "products.9.branches.0")).toBe(null);
+  const d = graphicDefaults(withId.products, "products.0.primaryBranches.0.secondaryBranches.0");
+  expect(d).toMatchObject({ key: "GAB12CD", dept: "EMB", garment: "ALL", placement: "Left-Chest" }); // two colors -> ALL
+  expect(d.garments.map((g) => g.value)).toEqual(["ALL", "K500-Navy", "K500-White"]);
+  expect(d.placements[0]).toMatchObject({ value: "Left-Chest", fromOrder: true });
+  expect(d.placements.map((p) => p.value)).toContain("Right-Chest");
+  expect(deptForProduct({ productName: "Screen Printing", productType: "garment" })).toBe("SP");
+  expect(deptForProduct({ productName: "Direct-to-Film", productType: "garment" })).toBe("VIN");
+  expect(deptForProduct({ productName: "Patches", productType: "nongarment", isOutsourced: "Yes" })).toBe("OUT");
+  expect(deptForProduct({ productName: "Business Cards", productType: "nongarment" })).toBe("OUT");
+});
+
+test("E-162: every switch is OFF until David says go (and the filing field + rule exist)", () => {
   const cfg = require("./productionConfig.json");
   expect(graphicFlowOn(cfg)).toBe(false);
   expect(uploadsOn(cfg)).toBe(false);
+  expect(filingOn(cfg)).toBe(false);
+  expect(FILING_FIELD).toBe("Graphics_Filing");
   expect(graphicFlowOn({ graphicFlowOn: true })).toBe(true);
 });
-
-test("E-162 (David 10-30, relayed): too_slow is retried by itself every ~30 s, up to 3 times; nothing else is", () => {
-  expect(RETRIES).toBe(3);
-  expect(RETRY_WAIT_MS).toBe(30000);
-  expect(afterCall({ result: "copied" }, 0)).toBe("done");
-  expect(afterCall({ result: "skipped" }, 2)).toBe("done");
-  expect(afterCall({ result: "too_slow" }, 0)).toBe("retry");
-  expect(afterCall({ result: "too_slow" }, 2)).toBe("retry");
-  expect(afterCall({ result: "too_slow" }, 3)).toBe("slow");
-  expect(afterCall({ result: "name_taken" }, 0)).toBe("problem");
-  expect(afterCall({ result: "no_deal_folder" }, 0)).toBe("problem");
-  expect(afterCall({ status: "unavailable", result: "" }, 0)).toBe("problem");
-});
-

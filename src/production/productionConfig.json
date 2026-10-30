@@ -16,5 +16,7 @@
   "_graphicFlowOn": "E-162 (D-77, David 10-29): the Graphic Design card tab gets its flow -- the upload step (named + filed files) and Close Task for design tasks. OFF until Deluge's widget_upload_graphics is in Zoho (their docs/57).",
   "graphicFlowOn": false,
   "_graphicUploadsOn": "E-162: the upload step really calls widget_upload_graphics (dry run, then one call per file). false = the step shows names but uploads nothing.",
-  "graphicUploadsOn": false
+  "graphicUploadsOn": false,
+  "_graphicFilingOn": "E-162 / E-170 (Deluge docs/58): after each upload the form unticks then ticks the hidden Deal box Graphics_Filing, so the CRM files the GRAPHIC UPLOAD notes into WorkDrive ~5 minutes later. OFF until David makes the field + rule; false = the files stay on their notes.",
+  "graphicFilingOn": false
 }

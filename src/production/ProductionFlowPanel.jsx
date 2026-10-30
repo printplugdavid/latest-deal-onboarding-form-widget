@@ -58,7 +58,7 @@ import {
 } from "./productionFlow";
 import PRODUCTION_CONFIG from "./productionConfig.json";
 import GraphicUpload from "./GraphicUploadPanel";
-import { deptOfDesignTask, uploadsOn } from "./graphicUpload";
+import { deptOfDesignTask, filingOn, uploadsOn } from "./graphicUpload";
 
 const ZOHO = window.ZOHO;
 const ok = (r) => r?.data?.[0]?.code === "SUCCESS";
@@ -370,8 +370,10 @@ const ProductionFlow = ({ dept, ctx, refresh }) => {
           deal={deal}
           data={data}
           who={who}
+          notes={notes}
           defaultDept={myTasks.map((t) => deptOfDesignTask(t.Subject)).find(Boolean) || ""}
           uploadsOn={uploadsOn(PRODUCTION_CONFIG)}
+          startFiling={filingOn(PRODUCTION_CONFIG)}
           refresh={refresh}
         />
       )}

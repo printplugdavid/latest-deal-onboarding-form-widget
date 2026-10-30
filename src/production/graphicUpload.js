@@ -14,6 +14,7 @@
  */
 import { locationsFor, OTHER } from "../placements";
 import { parseSizeText } from "../sizeRows";
+import { cardRouteOf } from "../productionCards";
 
 const str = (v) => (v == null ? "" : String(v));
 
@@ -153,10 +154,10 @@ export function deptOfDesignTask(subject) {
 }
 
 /* ---------- calls ---------- */
-export const dryRunPayload = ({ files, who }) => ({
+export const dryRunPayload = ({ files, who, source }) => ({
   dry_run: "true",
   submitted_by: str(who),
-  source: "cards",
+  source: str(source) || "cards",
   files: files.map((f) => ({ name: f.name, stem: f.stem, ext: f.ext, folder: f.folder })),
 });
 export const realPayload = ({ file, noteId, who }) => ({
@@ -194,36 +195,121 @@ export function versionFrom(answer, stem) {
   };
 }
 
-/*
- * David 10-30 (relayed, Deluge docs/57 §9, "Yes, both"): a file attached a moment ago is slow to download, so the first real call often
- * answers `too_slow` with nothing written. The form waits ~30 s and calls again by itself, up to 3 times; after that it tells the
- * designer to try again in a minute. Only `too_slow` is retried (a repeat of a finished file is `skipped`, never doubled).
- */
-export const RETRY_WAIT_MS = 30000;
-export const RETRIES = 3;
-/* What to do with one real-call answer: "done" (copied / skipped), "retry" (too_slow, tries left), "slow" (too_slow, none left), "problem". */
-export function afterCall(answer, retriesUsed) {
-  const r = str(answer && answer.result);
-  if (r === "copied" || r === "skipped") return "done";
-  if (r === "too_slow") return retriesUsed < RETRIES ? "retry" : "slow";
-  return "problem";
+/* Deluge docs/58 §6 (10-30): the form keeps ONLY the dry run; filing (and its retries) runs in the background ~5 minutes later. */
+export const FILING_FIELD = "Graphics_Filing";
+export const filingOn = (config) => !!config && config.graphicFilingOn === true;
+
+/* ---------- E-170 (D-78): one upload per graphic, linked to that graphic ---------- */
+/* A graphic's permanent id, saved in the order the first time the graphic is shown ("G" + 6 letters / digits). */
+export const newGraphicId = () => "G" + (Date.now().toString(36).slice(-3) + Math.random().toString(36).slice(2, 5)).toUpperCase();
+
+/* The upload department for a product: the card it lands on (same routing as the cards); answered outsourced -> OUT. */
+export function deptForProduct(p) {
+  if (!p) return "";
+  if (p.isOutsourced === true || /^yes$/i.test(str(p.isOutsourced).trim())) return "OUT";
+  const card = (cardRouteOf(p) || {}).card;
+  return { screenprint: "SP", embroidery: "EMB", vinyl: "VIN", outsourced: "OUT" }[card] || "GD";
+}
+
+/* The products / garment / graphic a form path points at: "products.0.primaryBranches.1.secondaryBranches.2" or "products.3.branches.0". */
+export function graphicAt(products, base) {
+  const m = /^products\.(\d+)\.(?:primaryBranches\.(\d+)\.secondaryBranches\.(\d+)|branches\.(\d+))$/.exec(str(base));
+  if (!m) return null;
+  const pi = Number(m[1]);
+  const product = (products || [])[pi];
+  if (!product) return null;
+  if (m[2] != null) {
+    const gi = Number(m[2]);
+    const si = Number(m[3]);
+    const branch = (product.primaryBranches || [])[gi];
+    const graphic = branch && (branch.secondaryBranches || [])[si];
+    return graphic ? { product, branch, graphic, label: `Garment ${gi + 1} - Graphic ${si + 1}`, position: `p${pi}-g${gi}-s${si}` } : null;
+  }
+  const bi = Number(m[4]);
+  const graphic = (product.branches || [])[bi];
+  return graphic ? { product, branch: null, graphic, label: `${str(product.productName) || "Item"} - Graphic ${bi + 1}`, position: `p${pi}-b${bi}` } : null;
+}
+/* The id the uploads of a graphic are filed under: its saved id, else (older orders) its position in the order. */
+export const graphicKey = (at) => (at ? str(at.graphic.graphicId).trim() || at.position : "");
+
+/* What an upload for one graphic is named from: department, garment and placement taken from the graphic, each still changeable. */
+export function graphicDefaults(products, base) {
+  const at = graphicAt(products, base);
+  if (!at) return null;
+  const only = { products: [{ ...at.product, primaryBranches: at.branch ? [at.branch] : [] }] };
+  const garments = at.branch ? garmentOptions(only) : [{ value: "ALL", label: "All (the whole order)" }, ...garmentOptions({ products: [at.product] }).slice(1)];
+  const specific = garments.filter((g) => g.value !== "ALL");
+  const placementsHere = (at.graphic.tartiaryBranches || []).map((t) => str(t && t.placementLocation).trim()).filter(Boolean);
+  /* only this graphic's placements first, then the standard list for this garment's kind */
+  const own = at.branch
+    ? { products: [{ ...at.product, primaryBranches: [{ ...at.branch, secondaryBranches: [at.graphic] }] }] }
+    : { products: [{ primaryBranches: [{ secondaryBranches: [at.graphic] }] }] };
+  const placements = placementOptions(own, specific[0] ? specific[0].value : "");
+  return {
+    key: graphicKey(at),
+    label: at.label,
+    description: str(at.graphic.graphicDescription).trim(),
+    dept: deptForProduct(at.product),
+    garments,
+    garment: specific.length === 1 ? specific[0].value : "ALL",
+    placements,
+    placement: placementsHere.length ? namePart(placementsHere[0]) : "Whole-item",
+  };
+}
+
+/* Every graphic of the order, for the Graphic Design tab: [{ base, key, label, description, placements[], artFiles[] }]. */
+export function graphicsOf(data) {
+  const out = [];
+  ((data && data.products) || []).forEach((p, pi) => {
+    if (!p) return;
+    (p.primaryBranches || []).forEach((b, gi) =>
+      ((b && b.secondaryBranches) || []).forEach((g, si) => out.push(`products.${pi}.primaryBranches.${gi}.secondaryBranches.${si}`))
+    );
+    (p.branches || []).forEach((g, bi) => out.push(`products.${pi}.branches.${bi}`));
+  });
+  return out
+    .map((base) => {
+      const at = graphicAt(data.products, base);
+      return at
+        ? {
+            base,
+            key: graphicKey(at),
+            label: at.label,
+            description: str(at.graphic.graphicDescription).trim(),
+            placements: (at.graphic.tartiaryBranches || []).map((t) => str(t && t.placementLocation).trim()).filter(Boolean),
+            artFiles: Array.isArray(at.graphic.artFiles) ? at.graphic.artFiles : [],
+          }
+        : null;
+    })
+    .filter(Boolean);
 }
 
 /* ---------- the note ---------- */
-/* "GRAPHIC UPLOAD" note: one line per file, with where it went and the name it came in with. */
+/* "GRAPHIC UPLOAD" note: one line per file, with where it goes, which graphic it belongs to, and the name it came in with. */
 export function uploadNote({ who, when, items }) {
   const lines = [`Graphic upload - ${str(when)}${who ? " - " + str(who) : ""}`];
   (items || []).forEach((it) => {
-    lines.push(`${it.name} -> ${FOLDER_LABELS[it.folder] || it.folder}${it.original && it.original !== it.name ? " (was: " + it.original + ")" : ""}`);
+    lines.push(
+      `${it.name} -> ${FOLDER_LABELS[it.folder] || it.folder}${it.graphic ? " (graphic " + it.graphic + (it.graphicLabel ? ": " + it.graphicLabel : "") + ")" : ""}${
+        it.original && it.original !== it.name ? " (was: " + it.original + ")" : ""
+      }`
+    );
     (it.wouldMove || []).forEach((m) => lines.push(`  replaces ${m} (moved to Rejected)`));
   });
+  /* Deluge docs/58 §4: one machine line for the background filing run (people read the lines above; the run reads only this). */
+  lines.push(
+    "FILING JSON: " +
+      JSON.stringify({
+        files: (items || []).map((it) => ({ name: it.name, stem: it.stem || "", ext: it.ext || "", folder: it.folder, graphic_id: it.graphic || "" })),
+      })
+  );
   return lines.join("\n");
 }
 /* The file names on the Deal's GRAPHIC UPLOAD notes. */
 export function uploadedNames(notes) {
   const out = [];
   (notes || [])
-    .filter((n) => n && n.Note_Title === UPLOAD_NOTE_TITLE)
+    .filter((n) => n && /^GRAPHIC UPLOAD/.test(str(n.Note_Title)))
     .forEach((n) =>
       str(n.Note_Content)
         .split(/\n|<br\s*\/?>/i)
@@ -234,6 +320,34 @@ export function uploadedNames(notes) {
     );
   return out;
 }
+/* The uploads of each graphic, from the GRAPHIC UPLOAD notes: { <graphic key>: [{ name, folder, original, filed }] }. */
+export function uploadsByGraphic(notes) {
+  const out = {};
+  (notes || [])
+    .filter((n) => n && /^GRAPHIC UPLOAD/.test(str(n.Note_Title)))
+    .forEach((n) => {
+      const filedNote = /FILED/i.test(str(n.Note_Title));
+      const content = str(n.Note_Content);
+      str(content)
+        .split(/\n|<br\s*\/?>/i)
+        .forEach((l) => {
+          const m = /^([^\s]+_v\d+(?:\.[A-Za-z0-9]+)?) -> (.+?)(?: \(graphic ([A-Za-z0-9-]+)(?::[^)]*)?\))?(?: \(was: (.+)\))?$/.exec(l.trim());
+          if (!m) return;
+          const key = m[3] || "";
+          const esc = m[1].replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+          const notFiled = new RegExp("Not filed[^:]*: " + esc + " - ([^<\\n]*)").exec(content);
+          (out[key] = out[key] || []).push({
+            name: m[1],
+            folder: m[2],
+            original: m[4] || "",
+            filed: filedNote || new RegExp("(^|[\\n>])Filed[^\\n<]*" + esc).test(content),
+            notFiled: notFiled ? notFiled[1].trim() : "",
+          });
+        });
+    });
+  return out;
+}
+
 /* Has anything been uploaded for this department ("" = any department)? Gates the Graphic Design Close Task. */
 export const hasUploadFor = (notes, dept) => uploadedNames(notes).some((n) => !dept || n.split("_")[1] === dept);
 

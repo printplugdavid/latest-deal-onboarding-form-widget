@@ -49,6 +49,8 @@ import { billingOnFor, billingRecord, draftsOn, prepareDraft, sendWithFallback }
 import { BillingOn } from "./invoice/billingContext";
 import { screenPrintShortfall } from "./invoice/minimums";
 import { MAX_UPLOAD_BYTES, artKey, collectArtFiles } from "./graphicArt";
+import { filingOn, uploadsOn } from "./production/graphicUpload"; // E-162 / E-170
+import { uploadGraphicFile } from "./production/graphicUploader";
 import { CLOSING_FIELD, EXTENDED_DATE_LABEL, EXTRA_WEEK_QUESTION, dueDateProblem, extendedRange, turnaroundPlan, turnaroundWriteOn } from "./turnaround";
 import ExtendedClosingDate from "./components/ExtendedClosingDate";
 import { RUSH_FIELD, RUSH_REMINDER, rushBoxPlan } from "./rushOrder";
@@ -161,7 +163,8 @@ function App() {
   } = methods;
 
   // E-95: one 15MB total for everything on the note -- every graphic's art plus the "Other files".
-  const artBytes = () => collectArtFiles(methods.getValues("products")).reduce((n, a) => n + (a.size || 0), 0);
+  // E-162: a file already uploaded through "Art for this graphic" sits on its own GRAPHIC UPLOAD note, not on this one.
+  const artBytes = () => collectArtFiles(methods.getValues("products")).filter((a) => !a.uploaded).reduce((n, a) => n + (a.size || 0), 0);
   const otherBytes = (list) => (list || []).reduce((n, f) => n + f.size, 0);
   const artFiles = useMemo(
     () => ({
@@ -175,8 +178,26 @@ function App() {
         artBytes() + otherBytes(attachments) + addBytes > MAX_UPLOAD_BYTES
           ? `All files together (art + other files) cannot exceed 15MB.`
           : "",
+      // E-162 / E-170 (D-78): each graphic's art is uploaded on its own -- named, attached to a GRAPHIC UPLOAD note, filed by the CRM.
+      uploader:
+        uploadsOn(PRODUCTION_CONFIG) && entity && entityId
+          ? {
+              upload: (file, parts, graphic) =>
+                uploadGraphicFile(ZOHO, {
+                  entity,
+                  recordId: entityId,
+                  deal: recordData,
+                  who: currentUser,
+                  source: "onboarding",
+                  file,
+                  parts,
+                  graphic,
+                  startFiling: filingOn(PRODUCTION_CONFIG),
+                }),
+            }
+          : null,
     }),
-    [attachments] // eslint-disable-line react-hooks/exhaustive-deps
+    [attachments, entity, entityId, recordData, currentUser] // eslint-disable-line react-hooks/exhaustive-deps
   );
 
   const {
@@ -462,7 +483,10 @@ function App() {
       if (noteId !== null || noteId !== undefined) {
         // work on uploading attachments: every graphic's art (E-95) and the "Other files", each file once
         const uploads = [
-          ...collectArtFiles(data?.products).map((a) => artFilesRef.current.get(a.key)).filter(Boolean),
+          ...collectArtFiles(data?.products)
+            .filter((a) => !a.uploaded) // E-162: uploaded files are already on their own note (and filed by the CRM)
+            .map((a) => artFilesRef.current.get(a.key))
+            .filter(Boolean),
           ...attachments,
         ].filter((f, i, all) => all.findIndex((g) => artKey(g) === artKey(f)) === i);
         let filesOnNote = 0;
