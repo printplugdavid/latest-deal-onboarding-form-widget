@@ -25,6 +25,10 @@ import {
   hasStartSteps,
   outsourcedOn,
   needsOutsourcedTab,
+  expectedFor,
+  expectedCountsOn,
+  COUNT_QUESTION_KEYS,
+  START_STEPS,
   BLOCK_TEXT,
   FLOW_NOTE_TITLE,
 } from "./productionFlow";
@@ -305,7 +309,6 @@ test("E-164: the Order step closes the order task with workflow (Zoho makes the 
 });
 
 test("notes wording (David 10-29): the start artwork step mentions the notes", () => {
-  const { START_STEPS } = require("./productionFlow");
   expect(START_STEPS.find((s) => s.key === "artwork").question).toBe(
     "Print-ready artwork and placement verified with the mock-up, the notes and the original art, with a critical eye (no errors, no drift from the original)?"
   );
@@ -317,5 +320,58 @@ test("E-164: an Outsourced tab is needed while outsourced work is open (patches 
   expect(needsOutsourcedTab([T("4", PACKAGE)], on)).toBe(true);
   expect(needsOutsourcedTab([T("1", ORDER, "Completed"), T("3", AM)], on)).toBe(false);
   expect(needsOutsourcedTab([T("1", ORDER)], { outsourcedOn: false })).toBe(false);
+});
+
+/* ---------- E-166: the expected total for each tab's job ---------- */
+const mixedOrder = {
+  products: [
+    {
+      productType: "garment",
+      productName: "Embroidery",
+      primaryBranches: [{ garmentType: "Port Authority K500 Polo\nnavy", countColorSize: "Navy\n4- S\n6- M\nWhite\n2- L", garmentQuantity: "12" }],
+    },
+    { productType: "garment", productName: "Screen Printing", primaryBranches: [{ garmentType: "Gildan 5000", countColorSize: "Black\n10- M", garmentQuantity: "10" }] },
+    { productType: "nongarment", productName: "Business Cards", quantityOrdered: "250" },
+    { productType: "nongarment", productName: "Patches", quantityOrdered: "24", isOutsourced: "Yes" },
+    { productType: "gangsheet", productName: "DTF Gang Sheet", numberOfGangSheets: "3" },
+  ],
+};
+
+test("E-166: each tab expects what its card shows, with colors and sizes; outsourced adds anything answered outsourced", () => {
+  const emb = expectedFor(mixedOrder, "embroidery");
+  expect(emb.total).toBe(12);
+  expect(emb.items).toEqual([
+    {
+      item: "Port Authority K500 Polo",
+      count: 12,
+      colors: [
+        { color: "Navy", count: 10, sizes: [{ size: "S", count: 4 }, { size: "M", count: 6 }] },
+        { color: "White", count: 2, sizes: [{ size: "L", count: 2 }] },
+      ],
+      typed: "",
+      unit: "pieces",
+    },
+  ]);
+  expect(expectedFor(mixedOrder, "screen").total).toBe(10);
+  const vinyl = expectedFor(mixedOrder, "vinyl");
+  expect(vinyl.items.map((i) => [i.item, i.count, i.unit])).toEqual([["Patches", 24, "pieces"], ["DTF Gang Sheet", 3, "sheets"]]);
+  expect(vinyl.total).toBe(24); // gang sheets are listed, not added to the pieces
+  const out = expectedFor(mixedOrder, "outsourced");
+  expect(out.items.map((i) => [i.item, i.count])).toEqual([["Business Cards", 250], ["Patches", 24]]);
+  expect(out.total).toBe(274);
+});
+
+test("E-166: sizes that can't be read are shown as typed; no products -> nothing to show; switch and question keys", () => {
+  const odd = { products: [{ productType: "garment", productName: "Embroidery", primaryBranches: [{ garmentType: "Cap", countColorSize: "see mock-up", garmentQuantity: "6" }] }] };
+  expect(expectedFor(odd, "embroidery").items[0]).toMatchObject({ count: 6, colors: [], typed: "see mock-up" });
+  expect(expectedFor({ products: [] }, "screen")).toEqual({ total: 0, items: [] });
+  expect(expectedFor(null, "screen")).toEqual({ total: 0, items: [] });
+  expect(expectedCountsOn(require("./productionConfig.json"))).toBe(true);
+  expect(expectedCountsOn({})).toBe(false);
+  // every key names a real count question
+  const keys = [...START_STEPS, ...closeQuestionsFor("screen"), ...closeQuestionsFor("outsourced", "order"), ...closeQuestionsFor("outsourced", "package")]
+    .filter((q) => COUNT_QUESTION_KEYS.includes(q.key))
+    .map((q) => q.key);
+  expect(keys).toEqual(["count", "sorted", "ordered", "verified"]);
 });
 
