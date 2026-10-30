@@ -74,10 +74,13 @@ const GraphicArt = ({ base, productName: givenName, productIndex }) => {
   };
   /* The order's other graphics, for "Also used by"; and every file already uploaded on the order, for the art-name warning. */
   const otherGraphics = () => graphicsOf({ products: getValues("products") }).filter((g) => g.base !== base);
-  const uploadedOnOrder = () =>
-    graphicsOf({ products: getValues("products") }).flatMap((g) =>
+  const uploadedOnOrder = () => [
+    ...graphicsOf({ products: getValues("products") }).flatMap((g) =>
       g.artFiles.filter((x) => x && x.uploaded).map((x) => ({ name: x.name, key: g.key, label: g.label }))
-    );
+    ),
+    // small follow-up: files uploaded on an earlier visit (their graphics are not in this blank form)
+    ...((store && store.earlier) || []).map((f) => ({ name: f.name, key: "earlier:" + f.name, label: `a file uploaded earlier (${f.name})` })),
+  ];
   const takenBy = (key) => {
     const p = partsFor(key);
     if (p.format !== "ORIGINAL") return [];

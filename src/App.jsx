@@ -49,7 +49,7 @@ import { billingOnFor, billingRecord, draftsOn, prepareDraft, sendWithFallback }
 import { BillingOn } from "./invoice/billingContext";
 import { screenPrintShortfall } from "./invoice/minimums";
 import { MAX_UPLOAD_BYTES, artKey, collectArtFiles } from "./graphicArt";
-import { filingByName, filingOn, uploadsOn } from "./production/graphicUpload"; // E-162 / E-170
+import { earlierUploads, filingByName, filingOn, uploadsOn } from "./production/graphicUpload"; // E-162 / E-170
 import { refileAfterFolders, uploadGraphicFile, withCap } from "./production/graphicUploader";
 import { CLOSING_FIELD, EXTENDED_DATE_LABEL, EXTRA_WEEK_QUESTION, dueDateProblem, extendedRange, turnaroundPlan, turnaroundWriteOn } from "./turnaround";
 import ExtendedClosingDate from "./components/ExtendedClosingDate";
@@ -81,6 +81,7 @@ function App() {
   const [recordData, setRecordData] = useState(null); // holds record response
   const [accountNotes, setAccountNotes] = useState(""); // E-38: Account's Customer Notes at open
   const [filingStatus, setFilingStatus] = useState(() => new Map()); // small follow-up: uploaded file -> filed / not filed
+  const [earlier, setEarlier] = useState([]); // small follow-up: files uploaded on an earlier visit (the form starts blank)
 
   const [options, setOptions] = useState(null);
 
@@ -134,7 +135,10 @@ function App() {
         if (PRODUCTION_CONFIG.filingStatusOn === true && uploadsOn(PRODUCTION_CONFIG))
           Promise.resolve()
             .then(() => ZOHO.CRM.API.getRelatedRecords({ Entity: entity, RecordID: entityId, RelatedList: "Notes", page: 1, per_page: 200 }))
-            .then((r) => setFilingStatus(filingByName(r?.data || [])))
+            .then((r) => {
+              setFilingStatus(filingByName(r?.data || []));
+              setEarlier(earlierUploads(r?.data || []));
+            })
             .catch(() => {});
 
         loadDealVendors(); // E-126: the Deal's vendor choices, live (not awaited; the built-in list until it answers)
@@ -187,6 +191,7 @@ function App() {
           : "",
       deal: recordData, // E-162: the PO for the names
       status: (name) => filingStatus.get(name) || null, // small follow-up: filed / not filed, read at open
+      earlier, // small follow-up: every file already uploaded on this Deal (for the "art name already used" warning)
       // E-162 / E-170 (D-78): each graphic's art is uploaded on its own -- named, attached to a GRAPHIC UPLOAD note, filed by the CRM.
       uploader:
         uploadsOn(PRODUCTION_CONFIG) && entity && entityId
@@ -208,7 +213,7 @@ function App() {
             }
           : null,
     }),
-    [attachments, entity, entityId, recordData, currentUser, filingStatus] // eslint-disable-line react-hooks/exhaustive-deps
+    [attachments, entity, entityId, recordData, currentUser, filingStatus, earlier] // eslint-disable-line react-hooks/exhaustive-deps
   );
 
   const {
@@ -613,6 +618,30 @@ function App() {
             component="form"
             onSubmit={handleSubmit(onSubmit, onInvalid)}
           >
+            {/* Small follow-up (David 10-30): files uploaded on an earlier visit, so nobody uploads them again */}
+            {earlier.length > 0 && (
+              <Box sx={{ border: "1px solid #c5d5ea", borderRadius: 1, p: 1.25, mb: 2, bgcolor: "#f6f9fd" }}>
+                <Typography sx={{ fontSize: "0.95rem", fontWeight: 700 }}>Already uploaded on this Deal</Typography>
+                <Typography sx={{ fontSize: "0.8rem", color: "#555", mb: 0.5 }}>
+                  These files are already on the Deal. Don't upload them again: a file with the same art name replaces the one here (it moves to Rejected).
+                </Typography>
+                {earlier.map((f) => (
+                  <Typography key={f.name} sx={{ fontSize: "0.85rem" }}>
+                    <b>{f.name}</b>
+                    {f.original ? ` (was ${f.original})` : ""}
+                    {f.labels.length ? ` - for ${f.labels.join("; ")}` : ""}
+                    {" - "}
+                    {f.notFiled ? (
+                      <span style={{ color: "#b00020" }}>NOT filed ({f.notFiled})</span>
+                    ) : f.filed ? (
+                      <span style={{ color: "#2e7d32" }}>filed in {f.folder}</span>
+                    ) : (
+                      <span style={{ color: "#666" }}>being filed into {f.folder}</span>
+                    )}
+                  </Typography>
+                ))}
+              </Box>
+            )}
             <Typography
               sx={{
                 textAlign: "center",

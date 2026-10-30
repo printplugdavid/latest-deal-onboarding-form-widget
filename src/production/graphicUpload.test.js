@@ -303,3 +303,19 @@ describe("Filing status for a reopened onboarding", () => {
     expect(m.has("other_v1.png")).toBe(false);
   });
 });
+
+describe("Earlier uploads on a Deal (onboarding opened again before Submit)", () => {
+  const { earlierUploads, stemTakenBy } = require("./graphicUpload");
+  it("lists each uploaded file once with its graphics and filing state; the warning counts them", () => {
+    const n1 = { Note_Title: "GRAPHIC UPLOAD - FILED", Created_Time: "2026-10-30T10:00:00-06:00", Note_Content: "Graphic upload - w - A<br>4523_ORIGINAL_Company-Logo_v1.ai -> Art Assets (graphic G1: Embroidery: Polo - Graphic 1; graphic G2: Embroidery: Hat - Graphic 1) (was: logo.ai)<br>FILING JSON: {}" };
+    const n2 = { Note_Title: "GRAPHIC UPLOAD", Created_Time: "2026-10-30T11:00:00-06:00", Note_Content: "Graphic upload - w - A\n4523_ORIGINAL_Back-Name_v1.png -> Art Assets (graphic G3: Embroidery: Polo - Graphic 2)\nFILING JSON: {}" };
+    const list = earlierUploads([n2, n1, { Note_Title: "PRODUCTION FLOW", Note_Content: "x_v1.png -> y" }]);
+    expect(list).toEqual([
+      { name: "4523_ORIGINAL_Company-Logo_v1.ai", folder: "Art Assets", original: "logo.ai", filed: true, notFiled: "", labels: ["Embroidery: Polo - Graphic 1", "Embroidery: Hat - Graphic 1"] },
+      { name: "4523_ORIGINAL_Back-Name_v1.png", folder: "Art Assets", original: "", filed: false, notFiled: "", labels: ["Embroidery: Polo - Graphic 2"] },
+    ]);
+    const taken = list.map((f) => ({ name: f.name, key: "earlier:" + f.name, label: "a file uploaded earlier (" + f.name + ")" }));
+    expect(stemTakenBy("4523_ORIGINAL_Company-Logo", taken, ["GNEW1"])).toEqual(["a file uploaded earlier (4523_ORIGINAL_Company-Logo_v1.ai)"]);
+    expect(stemTakenBy("4523_ORIGINAL_Other-Art", taken, ["GNEW1"])).toEqual([]);
+  });
+});
