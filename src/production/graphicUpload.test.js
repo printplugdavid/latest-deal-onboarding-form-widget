@@ -29,6 +29,8 @@ import {
   uploadsByGraphic,
   filingOn,
   FILING_FIELD,
+  artNameFor,
+  stemTakenBy,
   UPLOAD_NOTE_TITLE,
 } from "./graphicUpload";
 
@@ -145,7 +147,7 @@ test("E-162 / E-170: the GRAPHIC UPLOAD note -- people's lines, the graphic it b
   ]);
   expect(lines[3].startsWith("FILING JSON: ")).toBe(true);
   expect(JSON.parse(lines[3].slice("FILING JSON: ".length))).toEqual({
-    files: [{ name: "4523_EMB_K500-Navy_Left-Chest_DST_v2.dst", stem: "4523_EMB_K500-Navy_Left-Chest_DST", ext: "dst", folder: "dept:Embroidery", graphic_id: "GAB12CD" }],
+    files: [{ name: "4523_EMB_K500-Navy_Left-Chest_DST_v2.dst", stem: "4523_EMB_K500-Navy_Left-Chest_DST", ext: "dst", folder: "dept:Embroidery", graphic_id: "GAB12CD", graphic_ids: ["GAB12CD"] }],
   });
   // read back for the cards and the Close check (Zoho turns line breaks into <br>)
   const pending = { Note_Title: UPLOAD_NOTE_TITLE, Note_Content: text.replace(/\n/g, "<br>") };
@@ -196,3 +198,61 @@ test("E-162: the three switches are ON for the go-live (Deluge's field, rule and
   expect(FILING_FIELD).toBe("Graphics_Filing");
   expect(graphicFlowOn({ graphicFlowOn: true })).toBe(true);
 });
+
+/* ---------- D-79 (David 10-30): client files PO_ORIGINAL_ARTNAME_vN; one file, several graphics; the art-name warning ---------- */
+test("D-79: a client file is named PO_ORIGINAL_ARTNAME -- no department, garment or placement; final files keep the full pattern", () => {
+  expect(stemFor({ po: "4523", format: "ORIGINAL", artName: "Company-Logo", dept: "EMB", garment: "K500-Navy", placement: "Left-Chest" })).toBe("4523_ORIGINAL_Company-Logo");
+  expect(fileName(stemFor({ po: "4523", format: "ORIGINAL", artName: "Company-Logo" }), 1, "ai")).toBe("4523_ORIGINAL_Company-Logo_v1.ai");
+  expect(stemFor({ po: "4523", format: "DST", dept: "EMB", garment: "K500-Navy", placement: "Left-Chest" })).toBe("4523_EMB_K500-Navy_Left-Chest_DST");
+  expect(artNameFor("company logo", "Garment 1 - Graphic 1")).toBe("Company-Logo");
+  expect(artNameFor("Back design: mountains & sun, with the year 2026 big", "")).toBe("Back-Design-Mountains-and");
+  expect(artNameFor("", "Garment 2 - Graphic 3")).toBe("Graphic-3");
+  expect(partsReady({ format: "ORIGINAL", artName: "Company-Logo" })).toBe(true); // no department / garment / placement needed
+  expect(partsReady({ format: "DST", artName: "x" })).toBe(false);
+  expect(folderFor("", "ORIGINAL")).toBe("art_assets");
+  // an ORIGINAL never counts as a department's upload for the Graphic Design Close check
+  const n = [{ Note_Title: "GRAPHIC UPLOAD", Note_Content: "4523_ORIGINAL_Company-Logo_v1.ai -> Art Assets (graphic G1)" }];
+  expect(hasUploadFor(n, "EMB")).toBe(false);
+});
+
+test("D-79: one upload linked to several graphics -- one note line, every graphic sees the same file", () => {
+  const text = uploadNote({
+    who: "Korie",
+    when: "w",
+    items: [
+      {
+        name: "4523_ORIGINAL_Company-Logo_v1.ai",
+        stem: "4523_ORIGINAL_Company-Logo",
+        ext: "ai",
+        folder: "art_assets",
+        original: "logo.ai",
+        links: [{ key: "G1", label: "Garment 1 - Graphic 1" }, { key: "G5", label: "Garment 2 - Graphic 1" }],
+      },
+    ],
+  });
+  const lines = text.split("\n");
+  expect(lines[1]).toBe("4523_ORIGINAL_Company-Logo_v1.ai -> Art Assets (graphic G1: Garment 1 - Graphic 1; graphic G5: Garment 2 - Graphic 1) (was: logo.ai)");
+  expect(JSON.parse(lines[2].slice("FILING JSON: ".length)).files[0]).toMatchObject({ graphic_id: "G1", graphic_ids: ["G1", "G5"], folder: "art_assets" });
+  const by = uploadsByGraphic([{ Note_Title: "GRAPHIC UPLOAD", Note_Content: text.replace(/\n/g, "<br>") }]);
+  expect(Object.keys(by).sort()).toEqual(["G1", "G5"]);
+  expect(by.G5[0]).toMatchObject({ name: "4523_ORIGINAL_Company-Logo_v1.ai", original: "logo.ai", filed: false });
+});
+
+test("D-79: the art-name warning names the OTHER graphic that already has this name; not this graphic or the ones ticked", () => {
+  const taken = [
+    { name: "4523_ORIGINAL_Company-Logo_v1.ai", key: "G1", label: "Garment 1 - Graphic 1" },
+    { name: "4523_ORIGINAL_Back-Design_v1.png", key: "G2", label: "Garment 1 - Graphic 2" },
+  ];
+  expect(stemTakenBy("4523_ORIGINAL_Company-Logo", taken, ["G9"])).toEqual(["Garment 1 - Graphic 1"]);
+  expect(stemTakenBy("4523_ORIGINAL_Company-Logo", taken, ["G9", "G1"])).toEqual([]); // ticked "Also used by": a new version on purpose
+  expect(stemTakenBy("4523_ORIGINAL_Company-Logo", taken, ["G1"])).toEqual([]); // its own graphic: a normal new version
+  expect(stemTakenBy("4523_ORIGINAL_Company", taken, ["G9"])).toEqual([]); // a different stem, even if it starts the same
+});
+
+test("D-79: the art name comes from the graphic's description", () => {
+  const withId = JSON.parse(JSON.stringify(order));
+  withId.products[0].primaryBranches[0].secondaryBranches[0].graphicDescription = "company logo";
+  expect(graphicDefaults(withId.products, "products.0.primaryBranches.0.secondaryBranches.0").artName).toBe("Company-Logo");
+  expect(graphicDefaults(order.products, "products.0.primaryBranches.0.secondaryBranches.0").artName).toBe("Graphic-1");
+});
+

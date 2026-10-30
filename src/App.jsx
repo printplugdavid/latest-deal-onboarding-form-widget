@@ -178,11 +178,12 @@ function App() {
         artBytes() + otherBytes(attachments) + addBytes > MAX_UPLOAD_BYTES
           ? `All files together (art + other files) cannot exceed 15MB.`
           : "",
+      deal: recordData, // E-162: the PO for the names
       // E-162 / E-170 (D-78): each graphic's art is uploaded on its own -- named, attached to a GRAPHIC UPLOAD note, filed by the CRM.
       uploader:
         uploadsOn(PRODUCTION_CONFIG) && entity && entityId
           ? {
-              upload: (file, parts, graphic) =>
+              upload: (file, parts, graphic, links) =>
                 uploadGraphicFile(ZOHO, {
                   entity,
                   recordId: entityId,
@@ -192,7 +193,9 @@ function App() {
                   file,
                   parts,
                   graphic,
+                  links,
                   startFiling: filingOn(PRODUCTION_CONFIG),
+                  ensureFolders: true, // E-171: a Deal with no folder yet gets its folders at the first upload
                 }),
             }
           : null,

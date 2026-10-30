@@ -69,3 +69,21 @@ test("E-162 (Deluge docs/59 §2.0): once Submit's folders exist, the filing box 
   expect(await withCap(Promise.resolve(true), 1000)).toBe(true);
 });
 
+test("D-79 / E-171: links go on the note; a Deal with no folder asks for folders once (never blocks the upload)", async () => {
+  const z = fakeZoho({ status: "ok", result: "dry_run", files: [] });
+  const res = await uploadGraphicFile(z, {
+    entity: "Deals",
+    recordId: "D7",
+    deal: { PO_Number: "4523" },
+    file,
+    parts: { format: "ORIGINAL", artName: "Company-Logo" },
+    graphic: { key: "G1", label: "Garment 1 - Graphic 1" },
+    links: [{ key: "G1", label: "Garment 1 - Graphic 1" }, { key: "G5", label: "Garment 2 - Graphic 1" }],
+    startFiling: true,
+    ensureFolders: true,
+  });
+  expect(res).toMatchObject({ name: "4523_ORIGINAL_Company-Logo_v1.dst", folder: "art_assets" });
+  expect(z.calls[1][2]).toMatch(/\(graphic G1: Garment 1 - Graphic 1; graphic G5: Garment 2 - Graphic 1\)/);
+  expect(z.calls.map((c) => c[0])).toEqual(["execute", "addNotes", "attachFile", "updateRecord", "updateRecord"]); // no SDK here: the folder ask is a no-op
+});
+

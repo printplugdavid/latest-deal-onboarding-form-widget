@@ -14,11 +14,21 @@
  * permanent `graphicId` so the Graphic Design card can show its files (client original -> final).
  */
 import React, { createContext, useContext, useEffect, useState } from "react";
-import { Box, Button, MenuItem, TextField, Typography } from "@mui/material";
+import { Box, Button, Checkbox, FormControlLabel, MenuItem, TextField, Typography } from "@mui/material";
 import { useFormContext, useWatch } from "react-hook-form";
 import ImageColorFinder from "./ImageColorFinder";
 import { artKey, finderModeFor, isPicture, writePicks } from "../graphicArt";
-import { FOLDER_LABELS, UPLOAD_DEPARTMENTS, UPLOAD_FORMATS, graphicDefaults, newGraphicId } from "../production/graphicUpload";
+import {
+  FOLDER_LABELS,
+  UPLOAD_DEPARTMENTS,
+  UPLOAD_FORMATS,
+  graphicDefaults,
+  graphicsOf,
+  newGraphicId,
+  poPart,
+  stemFor,
+  stemTakenBy,
+} from "../production/graphicUpload";
 
 /* { get(key) -> File, put(file) -> key, room(addBytes) -> "" | error text, uploader? } -- provided by the onboarding form.
    uploader = { upload(file, parts, graphic) -> Promise<{ name, folder }> } (E-162), only when uploads are switched on. */
@@ -49,7 +59,29 @@ const GraphicArt = ({ base, productName: givenName, productIndex }) => {
   const defaultsFor = () => graphicDefaults(getValues("products"), base);
   const partsFor = (key) => {
     const d = defaultsFor() || {};
-    return { dept: d.dept || "", garment: d.garment || "ALL", placement: d.placement || "Whole-item", format: "ORIGINAL", ...(parts[key] || {}) };
+    return {
+      dept: d.dept || "",
+      garment: d.garment || "ALL",
+      placement: d.placement || "Whole-item",
+      format: "ORIGINAL",
+      also: [], // D-79: the other graphics this file is also used by (keys)
+      confirm: false, // D-79: the art name is another graphic's and the rep confirmed this is a new version of it
+      ...(parts[key] || {}),
+      artName: d.artName || "Graphic-1", // always from this graphic's description (never typed here)
+    };
+  };
+  /* The order's other graphics, for "Also used by"; and every file already uploaded on the order, for the art-name warning. */
+  const otherGraphics = () => graphicsOf({ products: getValues("products") }).filter((g) => g.base !== base);
+  const uploadedOnOrder = () =>
+    graphicsOf({ products: getValues("products") }).flatMap((g) =>
+      g.artFiles.filter((x) => x && x.uploaded).map((x) => ({ name: x.name, key: g.key, label: g.label }))
+    );
+  const takenBy = (key) => {
+    const p = partsFor(key);
+    if (p.format !== "ORIGINAL") return [];
+    const d = defaultsFor() || {};
+    const stem = stemFor({ po: poPart(store.deal), ...p });
+    return stemTakenBy(stem, uploadedOnOrder(), [d.key, ...(p.also || [])]);
   };
   const upload = async (a) => {
     const file = store.get(a.key);
@@ -59,13 +91,24 @@ const GraphicArt = ({ base, productName: givenName, productIndex }) => {
     setSending(a.key);
     setSent({ ...sent, [a.key]: "" });
     try {
-      const res = await uploader.upload(file, p, { key: getValues(`${base}.graphicId`) || d.key, label: d.label });
+      const me = { key: getValues(`${base}.graphicId`) || d.key, label: d.label };
+      const also = p.format === "ORIGINAL" ? otherGraphics().filter((g) => (p.also || []).includes(g.key)) : [];
+      const links = [me, ...also.map((g) => ({ key: g.key, label: g.label }))];
+      const res = await uploader.upload(file, p, me, links);
       const list = Array.isArray(getValues(`${base}.artFiles`)) ? getValues(`${base}.artFiles`) : [];
       setValue(
         `${base}.artFiles`,
         list.map((x) => (x.key === a.key ? { ...x, name: res.name, original: x.original || x.name, uploaded: true, folder: res.folder } : x)),
         { shouldDirty: true }
       );
+      // D-79: the same file is listed (not copied) on every graphic it is also used by
+      also.forEach((g) => {
+        const theirs = Array.isArray(getValues(`${g.base}.artFiles`)) ? getValues(`${g.base}.artFiles`) : [];
+        if (!theirs.some((x) => x.name === res.name))
+          setValue(`${g.base}.artFiles`, [...theirs, { name: res.name, size: 0, key: `${res.name}|linked`, uploaded: true, folder: res.folder, linkedFrom: d.label }], {
+            shouldDirty: true,
+          });
+      });
     } catch (e) {
       setSent({ ...sent, [a.key]: `Not uploaded: ${String(e?.message || e)}. Try Upload again.` });
     }
@@ -120,11 +163,12 @@ const GraphicArt = ({ base, productName: givenName, productIndex }) => {
             <Box component="li" key={a.key} sx={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap", fontSize: "0.85rem", py: "2px" }}>
               <b>{a.name}</b>
               <span style={{ color: "#777" }}>{mb(a.size || 0)} MB</span>
-              {a.uploaded && (
+              {a.uploaded && !a.linkedFrom && (
                 <span style={{ color: "#2e7d32" }}>
                   uploaded{a.original && a.original !== a.name ? ` (was ${a.original})` : ""}: being filed into {FOLDER_LABELS[a.folder] || "WorkDrive"} now
                 </span>
               )}
+              {a.linkedFrom && <span style={{ color: "#2e7d32" }}>the same file, uploaded on {a.linkedFrom}</span>}
               {store && store.get(a.key) && isPicture(a.name) && (
                 <Button size="small" variant="outlined" onClick={() => setFinding(a.key)} sx={{ textTransform: "none", py: 0 }}>
                   Find colors in this file
@@ -133,7 +177,7 @@ const GraphicArt = ({ base, productName: givenName, productIndex }) => {
               {store && store.get(a.key) && !isPicture(a.name) && (
                 <span style={{ color: "#777" }}>design file -- colors are read from a PNG, JPG or SVG</span>
               )}
-              {(!store || !store.get(a.key)) && <span style={{ color: "#777" }}>attached earlier -- on an earlier onboarding note</span>}
+              {!a.uploaded && (!store || !store.get(a.key)) && <span style={{ color: "#777" }}>attached earlier -- on an earlier onboarding note</span>}
               {store && !a.uploaded && (
                 <Button size="small" variant="text" onClick={() => remove(a.key)} sx={{ textTransform: "none", py: 0, minWidth: 0 }}>
                   Remove
@@ -143,6 +187,9 @@ const GraphicArt = ({ base, productName: givenName, productIndex }) => {
                 <UploadRow
                   p={partsFor(a.key)}
                   d={defaultsFor()}
+                  po={poPart(store.deal)}
+                  others={otherGraphics()}
+                  taken={takenBy(a.key)}
                   busy={sending === a.key}
                   disabled={!!sending}
                   onChange={(patch) => setParts({ ...parts, [a.key]: { ...partsFor(a.key), ...patch } })}
@@ -189,22 +236,64 @@ const Sel = ({ label, value, options, onChange, width, disabled }) => (
     ))}
   </TextField>
 );
-const UploadRow = ({ p, d, busy, disabled, onChange, onUpload }) => (
+const UploadRow = ({ p, d, po, others, taken, busy, disabled, onChange, onUpload }) => (
   <Box sx={{ display: "flex", gap: "0.5rem", alignItems: "center", flexWrap: "wrap", width: "100%", pl: 1, mt: 0.5 }}>
     <Sel label="Format" width={190} value={p.format} disabled={disabled} onChange={(v) => onChange({ format: v })} options={UPLOAD_FORMATS.map((f) => ({ value: f.code, label: f.label }))} />
-    {p.open && (
+    {p.format === "ORIGINAL" && (
+      <span style={{ fontSize: "0.85rem" }}>
+        Named <b>{stemFor({ po, ...p })}_vN</b> (from this graphic's description)
+      </span>
+    )}
+    {p.format === "ORIGINAL" && others.length > 0 && (
+      <Box sx={{ width: "100%", display: "flex", flexWrap: "wrap", alignItems: "center", gap: "0.25rem" }}>
+        <span style={{ fontSize: "0.85rem", color: "#555" }}>Also used by:</span>
+        {others.map((g) => (
+          <FormControlLabel
+            key={g.key}
+            sx={{ mr: 1 }}
+            control={
+              <Checkbox
+                size="small"
+                checked={(p.also || []).includes(g.key)}
+                disabled={disabled}
+                onChange={(e) => onChange({ also: e.target.checked ? [...(p.also || []), g.key] : (p.also || []).filter((k) => k !== g.key), confirm: false })}
+              />
+            }
+            label={<span style={{ fontSize: "0.85rem" }}>{g.label}{g.description ? ": " + g.description : ""}</span>}
+          />
+        ))}
+      </Box>
+    )}
+    {taken.length > 0 && (
+      <Box sx={{ width: "100%", color: "#8a4b00", fontSize: "0.85rem" }}>
+        This art name is already used by {taken.join(", ")}. Uploading makes this a new version and moves that file to Rejected. If it is a
+        different logo, give this graphic its own description first.
+        <FormControlLabel
+          sx={{ ml: 1 }}
+          control={<Checkbox size="small" checked={!!p.confirm} disabled={disabled} onChange={(e) => onChange({ confirm: e.target.checked })} />}
+          label={<span style={{ fontSize: "0.85rem" }}>It is a new version of that file</span>}
+        />
+      </Box>
+    )}
+    {p.format !== "ORIGINAL" && p.open && (
       <>
         <Sel label="Department" width={140} value={p.dept} disabled={disabled} onChange={(v) => onChange({ dept: v })} options={UPLOAD_DEPARTMENTS.map((x) => ({ value: x.code, label: x.label }))} />
         <Sel label="Garment" width={200} value={p.garment} disabled={disabled} onChange={(v) => onChange({ garment: v })} options={(d && d.garments) || [{ value: "ALL", label: "All" }]} />
         <Sel label="Placement" width={170} value={p.placement} disabled={disabled} onChange={(v) => onChange({ placement: v })} options={(d && d.placements) || []} />
       </>
     )}
-    {!p.open && (
+    {p.format !== "ORIGINAL" && !p.open && (
       <Button size="small" variant="text" onClick={() => onChange({ open: true })} sx={{ textTransform: "none", py: 0 }}>
         {UPLOAD_DEPARTMENTS.find((x) => x.code === p.dept)?.label || p.dept} / {p.garment} / {p.placement} (change)
       </Button>
     )}
-    <Button size="small" variant="contained" disabled={disabled || !p.dept || !p.garment || !p.placement || !p.format} onClick={onUpload} sx={{ textTransform: "none", py: "2px" }}>
+    <Button
+      size="small"
+      variant="contained"
+      disabled={disabled || !p.format || (p.format !== "ORIGINAL" && (!p.dept || !p.garment || !p.placement)) || (taken.length > 0 && !p.confirm)}
+      onClick={onUpload}
+      sx={{ textTransform: "none", py: "2px" }}
+    >
       {busy ? "Uploading…" : "Upload"}
     </Button>
   </Box>
