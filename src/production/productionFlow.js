@@ -426,6 +426,17 @@ export const appendDated = (prior, line) => (str(prior).trim() ? str(prior).repl
  * A box whose rule fires on each tick (Reorder Needed since 10-29; Call Client once David sets repeat on): already ticked -> untick
  * first (no workflow), then tick with workflow, so the task is made again. Returns the two writes in order.
  */
+/*
+ * E-184 (David 10-30): "Changes made to order" on the flow -- the details go on Modification_Notes (dated, appended) and Order_Modified
+ * is re-ticked; CRM rule "DEAL: Order Modified" (field update = true, repeat OFF) runs Deluge "SALES: Order Modified", which gives the
+ * Sales Person "SALES: Order Modified Follow-Up" unless one is open (Deluge 10-30). Nothing else ever unticks the box, hence reTick.
+ */
+export const ORDER_MODIFIED_FIELD = "Order_Modified";
+export const MODIFICATION_NOTES_FIELD = "Modification_Notes";
+export const ORDER_MODIFIED_TASK = /^SALES: Order Modified Follow-Up/i;
+export const orderChangesOn = (config) => !!config && config.orderChangesOn === true;
+export const openTaskMatching = (tasks, re) => (tasks || []).some((t) => isOpen(t) && re.test(str(t.Subject)));
+
 export const reTick = (field, ticked) => [
   ...(ticked ? [{ fields: { [field]: false }, workflow: false }] : []),
   { fields: { [field]: true }, workflow: true },

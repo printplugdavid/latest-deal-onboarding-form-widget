@@ -42,5 +42,9 @@
   "_filingStatusOn": "Small follow-up (David 10-30, \"Yes, build that\"): onboarding lists the files already uploaded on the Deal (an unsubmitted form opens blank) in an \"Already uploaded on this Deal\" box with filed / not filed, and counts them in the \"art name already used\" warning. It also reads the Deal's GRAPHIC UPLOAD notes once at open and shows, for each file uploaded earlier, \"filed in <folder>\" or \"NOT filed (<reason>)\" instead of the saved \"being filed now\". Read only, never blocks. false = as before.",
   "filingStatusOn": true,
   "_styleSplitOn": "E-179 / D-85 (David 10-30, \"Yes, split by style\"): a garment type holding two or more styles shows a \"Styles\" line on the cards (each style with its own count; viewer only, robot cards unchanged). Expected garments and the missing-garments picker list each style separately (always). false = no Styles line.",
-  "styleSplitOn": true
+  "styleSplitOn": true,
+  "_garmentsProvidedOn": "E-183 / E-114 (David 10-30, \"Agree on both counts\"): onboarding Submit and the Amendment Form set the Deal's Garments Provided from the client-owned garments (PPCO): all client-owned -> Garments Provided from Client (production skips Order Garments), some -> Garments Purchased + Provided From Client. Never cleared; written with workflow so the Sales Person gets the inspect task (no workflow at Order Needs Corrections). false = nothing written.",
+  "garmentsProvidedOn": true,
+  "_orderChangesOn": "E-184 (David 10-30): a \"Changes made to order\" button on the flow beside Call Client. Details box + Submit -> the details appended (dated) to the Deal's Modification Notes, Order Modified unticked then ticked with workflow, so CRM rule DEAL: Order Modified gives the Sales Person SALES: Order Modified Follow-Up (Deluge skips it while one is open; the flow says so). Also kept on the PRODUCTION FLOW note. false = no button.",
+  "orderChangesOn": true
 }

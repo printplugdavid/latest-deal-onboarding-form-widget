@@ -55,6 +55,7 @@ import { CLOSING_FIELD, EXTENDED_DATE_LABEL, EXTRA_WEEK_QUESTION, dueDateProblem
 import ExtendedClosingDate from "./components/ExtendedClosingDate";
 import { RUSH_FIELD, RUSH_REMINDER, rushBoxPlan } from "./rushOrder";
 import { ADDRESSEE_FIELD, addresseePlan } from "./addressee";
+import { GARMENTS_PROVIDED_FIELD, garmentsProvidedOn, garmentsProvidedPlan } from "./products/garmentsProvided";
 import {
   CUSTOMER_NOTES_QUESTION,
   CUSTOMER_NOTES_TOOLTIP,
@@ -419,6 +420,18 @@ function App() {
       if (shipTo.message) turnaroundNotices.push(shipTo.message);
     } catch (err) {
       console.log("Addressee not set - skipping:", err);
+    }
+    // E-183 / E-114 (David 10-30): client-owned garments (PPCO) set the Deal's "Garments Provided", so production skips the Order
+    // Garments task (all client-owned) and the Sales Person gets the inspect task. Own call WITH workflow (the inspect rule), except at
+    // Order Needs Corrections; never cleared. Behind a switch.
+    if (garmentsProvidedOn(PRODUCTION_CONFIG)) {
+      try {
+        const gp = garmentsProvidedPlan(recordData, data);
+        if (gp.change) await ZOHO.CRM.API.updateRecord({ Entity: entity, APIData: { id: entityId, [GARMENTS_PROVIDED_FIELD]: gp.value }, Trigger: gp.workflow ? ["workflow"] : [] });
+        if (gp.message) turnaroundNotices.push(gp.message);
+      } catch (err) {
+        console.log("Garments Provided not set - skipping:", err);
+      }
     }
     // E-159 (David 10-29): the order's screen print Pantone codes onto the Deal's PANTONE 1-8 (code only, never blanked) -- the
     // production flow's ink boxes read them. Own call, no workflow trigger (nothing reacts to them; Deluge 10-29 scan). Behind a switch.
