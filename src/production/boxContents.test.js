@@ -178,10 +178,10 @@ describe("E-172 on the cards (switch boxContentsOn)", () => {
     ].join("\n"),
   };
 
-  test("off (as shipped until Deluge writes contents): the plain box line, exactly as before", () => {
+  test("the cards read the switch from productionConfig.json (ON since 10-30): a Deal's boxes sorted per card", () => {
     const html = buildCardsFromData(ORDER, deal).get("production-card-screenprint.html");
-    expect(html).toContain("Garment shipments (from the Deal):</b> ");
-    expect(html).not.toContain("Also in this box");
+    expect(html).toContain("boxes with this card's garments");
+    expect(html).toContain("Also in this box: 5 pcs that are not for this card");
   });
 
   test("on: each card lists its own boxes, flags the shared one, folds away the rest", () => {
