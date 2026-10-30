@@ -269,6 +269,14 @@ const STRINGS = {
     en: "The deal is already in \"{stage}\", so no new tasks were triggered — tell the production manager.",
     es: "El acuerdo ya está en \"{stage}\", así que no se generaron tareas nuevas — avise al gerente de producción.",
   },
+  "ok.redoRequested": {
+    en: "The deal is already in \"{stage}\"; this pass's redo tasks were requested.",
+    es: "El acuerdo ya está en \"{stage}\"; se solicitaron las tareas de esta revisión.",
+  },
+  "warn.redoRequest": {
+    en: "The deal is already in \"{stage}\" and the redo tasks could NOT be requested — tell the production manager.",
+    es: "El acuerdo ya está en \"{stage}\" y NO se pudieron solicitar las tareas — avise al gerente de producción.",
+  },
   "warn.stageManual": {
     en: "Advertiser deal — please move the deal stage by hand.",
     es: "Acuerdo de anunciante — cambie la etapa del acuerdo manualmente.",
