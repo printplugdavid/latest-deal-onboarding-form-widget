@@ -256,3 +256,20 @@ test("D-79: the art name comes from the graphic's description", () => {
   expect(graphicDefaults(order.products, "products.0.primaryBranches.0.secondaryBranches.0").artName).toBe("Graphic-1");
 });
 
+
+describe("E-177 Other format: typed answer on the note", () => {
+  const { otherTyped, otherReady, uploadNote, uploadsByGraphic } = require("./graphicUpload");
+  it("required only for Other, trimmed and capped", () => {
+    expect(otherReady({ format: "OTHER", otherWhat: " " }, true)).toBe(false);
+    expect(otherReady({ format: "OTHER", otherWhat: "PSD" }, true)).toBe(true);
+    expect(otherReady({ format: "OTHER" }, false)).toBe(true);
+    expect(otherReady({ format: "PNG" }, true)).toBe(true);
+    expect(otherTyped({ otherWhat: "  puff   template " })).toBe("puff template");
+    expect(otherTyped({ otherWhat: "x".repeat(80) }).length).toBe(60);
+  });
+  it("its own note line; the file still lists under its graphic", () => {
+    const content = uploadNote({ who: "A", when: "w", items: [{ name: "4523_VIN_ALL_Front_OTHER_v1.psd", stem: "4523_VIN_ALL_Front_OTHER", ext: "psd", folder: "graphic_design", original: "t.psd", links: [{ key: "G1", label: "Garment 1 - Graphic 1" }], other: "Puff template" }] });
+    expect(content).toMatch(/\n  other file type: Puff template\n/);
+    expect(uploadsByGraphic([{ Note_Title: "GRAPHIC UPLOAD", Note_Content: content }]).G1.map((f) => f.name)).toEqual(["4523_VIN_ALL_Front_OTHER_v1.psd"]);
+  });
+});
