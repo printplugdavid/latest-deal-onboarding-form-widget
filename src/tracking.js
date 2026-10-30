@@ -105,6 +105,12 @@ export function parseTracking(text) {
   for (const raw of str(text).split(/\r?\n/)) {
     const line = raw.trim();
     if (!line) continue;
+    // E-172: "Contents: ..." under a box (written by the supplier run) belongs to the box above it; it never holds a tracking number.
+    if (line.toLowerCase().startsWith(CONTENTS_PREFIX.toLowerCase())) {
+      const last = boxes[boxes.length - 1];
+      if (last) last.contents = (last.contents || []).concat(parseContents(line));
+      continue;
+    }
     if (isUrl(line)) {
       const n = numberInLink(line);
       const last = boxes[boxes.length - 1];
@@ -121,7 +127,11 @@ export function parseTracking(text) {
   }
   // The built link wins for a known carrier (a typed GLS search page or supplier account page never opens the package);
   // a typed link is used only for a carrier we do not know.
-  return boxes.map((b) => ({ number: b.number, link: linkFor(b.number) || b.link, carrier: b.carrier }));
+  return boxes.map((b) => {
+    const box = { number: b.number, link: linkFor(b.number) || b.link, carrier: b.carrier };
+    if (b.contents && b.contents.length) box.contents = b.contents;
+    return box;
+  });
 }
 
 // One box in David's format: the number, the link underneath -- the built one for a known carrier, else the link given (no link line
@@ -135,6 +145,62 @@ export function formatBox(number, link) {
 export function formatTracking(boxes) {
   return (boxes || []).map((b) => formatBox(b.number, b.link)).join("\n\n");
 }
+
+// ---- E-172: the "Contents:" line under a box (format and reader; boxContents.js sorts boxes by department) ----
+export const CONTENTS_PREFIX = "Contents:";
+
+// "pc-78 h" -> "PC78H": the same cleaning as the E-146 run (styles in notes and notices).
+export const cleanStyle = (s) => str(s).toUpperCase().replace(/[\s-]/g, "");
+
+/* items -> the Contents line. items: [{ style, color, sizes: [{ size, count }], count }] (count used when sizes is empty). */
+export function formatContents(items) {
+  const parts = (items || [])
+    .map((it) => {
+      const style = cleanStyle(it.style);
+      if (!style) return "";
+      // ":" "|" "," would break the line: a supplier color like "Black/ Red: Heather" keeps its words, never those marks.
+      const safe = (v) => str(v).replace(/[:|,]/g, " ").replace(/\s+/g, " ").trim();
+      const color = safe(it.color);
+      const head = color ? `${style} ${color}` : style;
+      const sizes = (it.sizes || []).filter((s) => safe(s.size) && Number(s.count) > 0);
+      const tail = sizes.length ? sizes.map((s) => `${safe(s.size)} ${Number(s.count)}`).join(", ") : String(Number(it.count) || 0);
+      return `${head}: ${tail}`;
+    })
+    .filter(Boolean);
+  return parts.length ? `${CONTENTS_PREFIX} ${parts.join(" | ")}` : "";
+}
+
+/* The Contents line -> items (the reverse of formatContents). Anything unreadable is skipped, never guessed. */
+export function parseContents(line) {
+  const t = str(line).trim();
+  if (!t.toLowerCase().startsWith(CONTENTS_PREFIX.toLowerCase())) return [];
+  const items = [];
+  for (const raw of t.slice(CONTENTS_PREFIX.length).split("|")) {
+    const part = raw.trim();
+    const colon = part.lastIndexOf(":");
+    if (colon <= 0) continue;
+    const head = part.slice(0, colon).trim();
+    const tail = part.slice(colon + 1).trim();
+    const sp = head.indexOf(" ");
+    const style = cleanStyle(sp === -1 ? head : head.slice(0, sp));
+    const color = sp === -1 ? "" : head.slice(sp + 1).trim();
+    if (!style) continue;
+    const sizes = [];
+    let count = 0;
+    if (/^\d+$/.test(tail)) count = Number(tail);
+    else {
+      for (const pair of tail.split(",")) {
+        const m = /^(.+?)\s+(\d+)$/.exec(pair.trim());
+        if (!m) continue;
+        sizes.push({ size: m[1].trim(), count: Number(m[2]) });
+        count += Number(m[2]);
+      }
+    }
+    if (count > 0) items.push({ style, color, sizes, count });
+  }
+  return items;
+}
+
 
 /*
  * Add boxes to what the field holds now. What is there is never changed or removed; a number already in it is not added again.

@@ -11,6 +11,7 @@ import { artNames } from "./graphicArt";
 import { buildColorMatches, COLOR_MATCH_CAVEAT } from "./colorMatch";
 import { sizeBlocks, stylesNotMarked } from "./sizeRows";
 import { formatSizeVariants } from "./sizeVariants";
+import { itemText, orderGarments, sortBoxesForCard } from "./production/boxContents";
 
 /*
  * E-65 (David, 2026-10-14): the Graphic Design card says what FILE each graphic needs for its print method, so the
@@ -168,7 +169,32 @@ function buildProductionCards(data, counts, dealInfo) {
   // E-146: revision reorder boxes (the Deal's Revision Tracking Link) get their own line, same look, under it.
   const shipBlock = (list, label, colors) => { const ok = (Array.isArray(list) ? list : []).filter((b) => pcHas(b?.number)); return ok.length ? `<div class="gsummary" style="${colors}"><b>${label}:</b> ${ok.map((b) => { const href = pcLink(b.link); const num = pcEsc(String(b.number)); return (href ? `<a href="${pcAttr(href)}" target="_blank" rel="noopener noreferrer">${num}</a>` : num) + (pcHas(b.carrier) ? ` <span class="omute">${pcEsc(b.carrier)}</span>` : ""); }).join(" &middot; ")}</div>` : ""; };
   const shipments = shipBlock(dealInfo?.shipments, "Garment shipments (from the Deal)", "background:#ebfbee;border-bottom:1px solid #b2f2bb") + shipBlock(dealInfo?.revisionShipments, "Revision shipments (from the Deal)", "background:#fff9db;border-bottom:1px solid #ffe066");
-  const strip = (cm, deptTotal, extra) => `<div class="strip"><div class="stripline">${meta.po ? `<span class="po">PO # <b>${pcEsc(meta.po)}</b></span>` : ""}<span class="acct">${pcEsc(meta.account || "—")}</span><span class="deal">${pcEsc(meta.deal || "")}</span>${meta.rush ? `<span class="rush">RUSH</span>` : ""}</div><div class="stripmeta"><span class="dept">${pcEsc(cm.title)}</span>${deptTotal != null ? `<span class="pc">Print Count: <b>${deptTotal}</b></span>` : ""}<span class="due">Due: <b>${pcHas(meta.due) ? pcEsc(meta.due) : "See Closing Date on Deal"}</b></span>${meta.workDrive ? `<a class="wd" href="${pcAttr(meta.workDrive)}" target="_blank" rel="noopener noreferrer">${pcEsc(meta.workDriveLabel)} &#8599;</a>` : ""}</div></div>${cnotes}${ordered}${shipments}${extra || ""}`;
+  // E-172 (production via David 10-30): when the supplier run listed what is in each box, each department card shows the boxes holding
+  // ITS garments (with colors + sizes), flags a box that also holds another department's garments (click -> which, whose), folds away
+  // boxes for other departments, and lists boxes with no contents as before. Switch boxContentsOn (dealInfo.boxContents); off, or no box
+  // with contents -> the plain line above, exactly as before.
+  const garmentsOnOrder = dealInfo?.boxContents ? orderGarments(data, pcRoute) : [];
+  const deptName = (c) => (PC_META[c] ? PC_META[c].dept : c);
+  const boxLink = (b) => { const href = pcLink(b.link); const num = pcEsc(String(b.number)); return (href ? `<a href="${pcAttr(href)}" target="_blank" rel="noopener noreferrer">${num}</a>` : num) + (pcHas(b.carrier) ? ` <span class="omute">${pcEsc(b.carrier)}</span>` : ""); };
+  const sumPcs = (list) => list.reduce((n, it) => n + (Number(it.count) || 0), 0);
+  const othersList = (others, unmatched) => others.map((o) => `<div style="margin:2px 0 2px 12px">${pcEsc(itemText(o.item))} &rarr; <b>${pcEsc(o.cards.map(deptName).join(" or "))}</b></div>`).join("") + (unmatched || []).map((it) => `<div style="margin:2px 0 2px 12px">${pcEsc(itemText(it))} &rarr; <b>not on this order</b> (another Deal's garments?)</div>`).join("");
+  const boxesFor = (list, label, colors, cardKey) => {
+    const ok = (Array.isArray(list) ? list : []).filter((b) => pcHas(b?.number));
+    if (!dealInfo?.boxContents || !cardKey || !ok.some((b) => (b.contents || []).length)) return shipBlock(list, label, colors);
+    const sorted = sortBoxesForCard(ok, garmentsOnOrder, cardKey);
+    const rows = sorted.mine.map(({ box, items, others, unmatched }) => {
+      const shared = items.filter((it) => it.sharedWith.length).map((it) => ` <span class="omute">(also used by ${pcEsc(it.sharedWith.map(deptName).join(", "))})</span>`);
+      const flagN = sumPcs(others.map((o) => o.item)) + sumPcs(unmatched);
+      const flag = flagN ? `<details style="margin:3px 0 0 12px"><summary style="cursor:pointer;color:#a61e4d;font-weight:600">Also in this box: ${flagN} pcs that are not for this card</summary>${othersList(others, unmatched)}</details>` : "";
+      return `<div style="margin:5px 0">${boxLink(box)}<div style="margin:2px 0 0 12px">${items.map((it) => pcEsc(itemText(it))).join("<br>")}${shared.join("")}</div>${flag}</div>`;
+    }).join("");
+    const elsewhere = sorted.elsewhere.length ? `<details style="margin:5px 0"><summary style="cursor:pointer">${sorted.elsewhere.length} other box${sorted.elsewhere.length === 1 ? " has" : "es have"} none of this card's garments</summary>${sorted.elsewhere.map(({ box, others, unmatched }) => `<div style="margin:4px 0">${boxLink(box)}${othersList(others, unmatched)}</div>`).join("")}</details>` : "";
+    const unknown = sorted.unknown.length ? `<div style="margin:5px 0"><span class="omute">Contents not listed:</span> ${sorted.unknown.map(boxLink).join(" &middot; ")}</div>` : "";
+    const head = sorted.mine.length ? `<b>${label} -- boxes with this card's garments:</b>` : `<b>${label}:</b> <span class="omute">no box lists this card's garments yet</span>`;
+    return `<div class="gsummary" style="${colors}">${head}${rows}${elsewhere}${unknown}</div>`;
+  };
+  const shipmentsFor = (cardKey) => boxesFor(dealInfo?.shipments, "Garment shipments (from the Deal)", "background:#ebfbee;border-bottom:1px solid #b2f2bb", cardKey) + boxesFor(dealInfo?.revisionShipments, "Revision shipments (from the Deal)", "background:#fff9db;border-bottom:1px solid #ffe066", cardKey);
+  const strip = (cm, deptTotal, extra, ship = shipments) => `<div class="strip"><div class="stripline">${meta.po ? `<span class="po">PO # <b>${pcEsc(meta.po)}</b></span>` : ""}<span class="acct">${pcEsc(meta.account || "—")}</span><span class="deal">${pcEsc(meta.deal || "")}</span>${meta.rush ? `<span class="rush">RUSH</span>` : ""}</div><div class="stripmeta"><span class="dept">${pcEsc(cm.title)}</span>${deptTotal != null ? `<span class="pc">Print Count: <b>${deptTotal}</b></span>` : ""}<span class="due">Due: <b>${pcHas(meta.due) ? pcEsc(meta.due) : "See Closing Date on Deal"}</b></span>${meta.workDrive ? `<a class="wd" href="${pcAttr(meta.workDrive)}" target="_blank" rel="noopener noreferrer">${pcEsc(meta.workDriveLabel)} &#8599;</a>` : ""}</div></div>${cnotes}${ordered}${ship}${extra || ""}`;
   const presentDepts = [...new Set(Object.keys(byCard).map((c) => PC_META[c].dept))]; presentDepts.push("Graphics");
   const footer = (dept) => { const o = presentDepts.filter((d) => d !== dept); return o.length ? `<div class="cfooter">Other departments on this deal: <b>${pcEsc(o.join(", "))}</b></div>` : ""; };
   for (const cardKey of Object.keys(byCard)) {
@@ -188,7 +214,7 @@ function buildProductionCards(data, counts, dealInfo) {
         if (sz) gsum += `<div class="gsummary"><b>Placement sizes:</b> ${pcEsc(sz)}</div>`;
       } const jobs = {}; byCard[cardKey].forEach(({ p, r }) => { (jobs[r.job] = jobs[r.job] || { key: r.key, items: [] }).items.push(p); }); body = Object.entries(jobs).map(([job, info]) => { const cnt = info.key && counts && pcHas(counts[info.key]) ? `<span class="jcount">${counts[info.key]} prints</span>` : ""; const entries = info.items.map((p) => { if (p.productType === "gangsheet") return pcGangSheetBlock(p, bi); if (p.productType !== "garment") return pcOverview(p); const pnote = pcHas(pcNote(p)) ? `<div class="garment">${pcRow("Other Information", "Información Adicional", pcNote(p), { crit: true, bi })}</div>` : ""; return pnote + (p.primaryBranches || []).map((g) => pcGarmentBlock(g, bi, p.premiumIronPass, p.productName)).join(""); }).join(""); return `<div class="job"><div class="jhead"><span>${pcEsc(job)}</span>${cnt}</div>${entries}</div>`; }).join(""); }
     const deptTotal = cm.countKey && counts && pcHas(counts[cm.countKey]) ? counts[cm.countKey] : null;
-    files.push({ name: cm.file, html: pcDoc(cm, strip(cm, deptTotal, gsum) + `<div class="cbody">${body}</div>` + footer(cm.dept)) });
+    files.push({ name: cm.file, html: pcDoc(cm, strip(cm, deptTotal, gsum, shipmentsFor(cardKey)) + `<div class="cbody">${body}</div>` + footer(cm.dept)) });
   }
   const gcm = PC_META.graphicdesign; const art = [];
   products.forEach((p) => {
