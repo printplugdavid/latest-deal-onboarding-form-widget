@@ -97,12 +97,24 @@ function pcSizes(g, bi) {
   // The label sits ABOVE the breakdown, not beside it: the bilingual label is wide and the sizes need the room.
   return `<div class="szrow"><div class="lbl">${pcEsc(label)}</div><div class="val">${lines.join("")}${warn}</div></div>`;
 }
+/* E-173 (graphic department via David 10-30): a row whose value keeps its own line breaks (details typed over several lines). */
+function pcRowLines(en, es, v, opts) { opts = opts || {}; if (!pcHas(v)) return ""; const label = opts.bi && es ? `${en} / ${es}` : en; return `<div class="row${opts.crit ? " crit" : ""}"><span class="lbl">${pcEsc(label)}</span><span class="val" style="white-space:pre-line">${pcEsc(String(v).trim())}</span></div>`; }
+/*
+ * E-173 / D-82 (David 10-30: "Yes, add it"): Color Change on the department cards and the Graphic Design card -- which garment color gets
+ * which ink / thread, as typed at onboarding ("Navy garment gets the white/gold and black ink"). Shown only when the answer is Yes (or
+ * details were typed); a plain "No" adds nothing.
+ */
+export function pcColorChange(gr, bi) {
+  const yes = /^yes$/i.test(String(gr?.colorChange ?? "").trim());
+  if (!yes && !pcHas(gr?.detailsOfColorChange)) return "";
+  return pcRowLines("Color Change", "Cambio de Color", pcHas(gr?.detailsOfColorChange) ? gr.detailsOfColorChange : "Yes - no details typed", { crit: true, bi });
+}
 /* E-154: "Is Graphic Print Ready?" is a Yes / No answer now; older orders saved a tick box (true / false). */
 const pcReady = (v) => (v === true || /^yes$/i.test(String(v ?? "").trim()) ? "Yes" : v === false || /^no$/i.test(String(v ?? "").trim()) ? "No" : "");
-function pcGarmentBlock(g, bi, ironPass, productName) {
+function pcGarmentBlock(g, bi, ironPass, productName, artDetails) {
   const graphics = (g?.secondaryBranches || []).map((gr, i) => {
     const pl = (gr?.tartiaryBranches || []).map((p) => { if (!pcHas(p?.placementLocation) && !pcHas(p?.placementSize) && !pcHas(p?.sizeAndDimensions)) return ""; const bits = [pcHas(p?.placementSize) ? pcEsc(p.placementSize) : "", pcHas(p?.sizeAndDimensions) ? pcEsc(p.sizeAndDimensions) : "", formatSizeVariants(p?.sizeVariants) ? "<b>by garment size:</b> " + pcEsc(formatSizeVariants(p.sizeVariants)) : ""].filter(Boolean).join(" · "); return `<div class="prow"><span class="ploc">${pcEsc(p?.placementLocation || "Placement")}</span>${bits ? " · " + bits : ""}</div>`; }).join("");
-    return `<div class="graphic"><div class="grtitle">${bi ? "Graphic / Gráfico" : "Graphic"} ${i + 1}${pcHas(gr?.graphicDescription) ? ": " + pcEsc(gr.graphicDescription) : ""}</div>${pcRow("Art File", "Archivo", artNames(gr), { bi })}${pcRow("Colors", "Colores", gr?.numberOfColorsUsed, { crit: true, bi })}${pcRow("Colors Used", "Colores", gr?.colorsUsed, { bi })}${pcSwatches(productName, gr?.colorsUsed)}${pcRow("Underbase", "Base", gr?.underbase, { bi })}${pcHas(ironPass) ? pcRow("Premium Iron Pass", "Planchado", ironPass, { bi }) : ""}${pl ? `<div class="plc">${pl}</div>` : ""}</div>`;
+    return `<div class="graphic"><div class="grtitle">${bi ? "Graphic / Gráfico" : "Graphic"} ${i + 1}${pcHas(gr?.graphicDescription) ? ": " + pcEsc(gr.graphicDescription) : ""}</div>${pcRow("Art File", "Archivo", artNames(gr), { bi })}${pcRow("Colors", "Colores", gr?.numberOfColorsUsed, { crit: true, bi })}${pcRow("Colors Used", "Colores", gr?.colorsUsed, { bi })}${pcSwatches(productName, gr?.colorsUsed)}${artDetails ? pcColorChange(gr, bi) : ""}${pcRow("Underbase", "Base", gr?.underbase, { bi })}${pcHas(ironPass) ? pcRow("Premium Iron Pass", "Planchado", ironPass, { bi }) : ""}${pl ? `<div class="plc">${pl}</div>` : ""}</div>`;
   }).join("");
   const also = (g?.isUsedInOtherAppTypes === "Yes" && pcHas(g?.chooseApplicationType)) ? `<div class="alsonote">${bi ? "Also used with / También con" : "Also used with"}: <b>${pcEsc(g.chooseApplicationType)}</b></div>` : "";
   return `<div class="garment"><div class="ghead"><span class="gname">${pcEsc(pcType(g) || "Garment")}</span>${pcHas(g?.garmentQuantity) ? `<span class="gqty">${bi ? "Qty / Cant" : "Qty"}: ${pcEsc(g.garmentQuantity)}</span>` : ""}</div>${pcRow("SKU(s)", "SKU(s)", pcSkus(g), { bi })}${pcSizes(g, bi)}${graphics}${also}${pcRow("Vendors", "Proveedores", g?.vendorsUsed, { bi })}${pcRow("Special Instructions", "Instrucciones", g?.specialInstructions, { bi })}</div>`;
@@ -131,6 +143,23 @@ function pcGangSheetBlock(p, bi) {
   return `<div class="garment"><div class="ghead"><span class="gname">Gang Sheet ${pcHas(p?.gangSheetWidth) && pcHas(p?.gangSheetHeight) ? `${pcEsc(p.gangSheetWidth)}" x ${pcEsc(p.gangSheetHeight)}"` : ""}</span><span class="gqty">${bi ? "Sheets / Hojas" : "Sheets"}: ${pcEsc(gang.sheets)}</span></div>${pcRow("Estimated Prints", "Impresiones Est.", `${gang.printsPerSheet} per sheet · ${gang.total} total`, { crit: true, bi })}${pcRow("Goes on garments", "Va en prendas", p?.garmentColors, { crit: true, bi })}${graphics}${warn}${pcRow("Other Information", "Información Adicional", pcNote(p), { bi })}</div>`;
 }
 
+/*
+ * E-173 (graphic department via David 10-30: "all the useful elements from the CRM he uses each day" -- the onboarding note's own
+ * labels): under each artwork on the Graphic Design card, the garment it goes on (Brand / Style, SKU, garment colors -- names only, no
+ * sizes), Color Change, the placements with their sizes, vendors and special instructions. Non-garment products: dimensions, vendors and
+ * the product's instructions. Blank answers show nothing.
+ */
+const pcGarmentColors = (g) => [...new Set(sizeBlocks(g?.countColorSize).blocks.map((b) => String(b.color || "").trim()).filter(Boolean))].join(", ");
+function pcArtOrder(a) {
+  const g = a.garment, p = a.product, gr = a.gr;
+  if (g) {
+    const pl = (gr?.tartiaryBranches || []).map((x) => [x?.placementLocation, x?.sizeAndDimensions, x?.placementSize, formatSizeVariants(x?.sizeVariants) ? "by garment size: " + formatSizeVariants(x.sizeVariants) : ""].filter(pcHas).join(" · ")).filter(Boolean);
+    return `<div class="plc" style="border-top:1px solid #eee;margin-top:6px;padding-top:4px">${pcRow("Brand / Style", "", pcType(g))}${pcRow("SKU(s)", "", pcSkus(g))}${pcRow("Garment Colors", "", pcGarmentColors(g))}${pcColorChange(gr, false)}${pl.map((x, i) => pcRow(pl.length > 1 ? `Placement ${i + 1}` : "Placement", "", x, { crit: true })).join("")}${pcRow("Vendors Used", "", g.vendorsUsed)}${pcRowLines("Special Instructions", "", g.specialInstructions)}</div>`;
+  }
+  if (p) return `<div class="plc" style="border-top:1px solid #eee;margin-top:6px;padding-top:4px">${pcRow("Sizes & Dimensions", "", p.dimensions, { crit: true })}${pcRow("Vendors Used", "", p.vendorsUsed)}${pcRowLines("Special Instructions", "", pcNote(p))}</div>`;
+  return "";
+}
+
 // E-53: the Deal's PO number and WorkDrive folder on every card (David, 2026-10-12). Both live on
 // the DEAL, not in the onboarding answers, and the folder link usually does not exist yet when the
 // form is submitted -- so the caller passes what the Deal says NOW (the viewer and the Quality Check
@@ -156,6 +185,9 @@ export function workDriveTarget(deal) {
 }
 function buildProductionCards(data, counts, dealInfo) {
   const products = data?.products || [];
+  // E-173 (switch cardInfoOn, passed by the viewer as dealInfo.artDetails): Color Change on the department cards + the order details under
+  // each artwork on the Graphic Design card. Off or absent -> the cards are exactly what they were.
+  const artDetails = dealInfo?.artDetails === true;
   const meta = { account: data?.contactInfo?.Account_Name, deal: data?.contactInfo?.Deal_Name, rush: data?.upchargedForRushTurnaround === true, due: data?.hardDueDate === "Yes" ? pcDate(data?.dueDate) : "", po: pcHas(dealInfo?.poNumber) ? String(dealInfo.poNumber).trim() : "", workDrive: pcLink(dealInfo?.workDriveLink), workDriveLabel: pcHas(dealInfo?.workDriveLabel) ? String(dealInfo.workDriveLabel).trim() : "Open WorkDrive folder" };
   const byCard = {}; products.forEach((p) => { const r = pcRoute(p); if (!r) return; (byCard[r.card] = byCard[r.card] || []).push({ p, r }); });
   const files = [];
@@ -215,18 +247,18 @@ function buildProductionCards(data, counts, dealInfo) {
         const sz = [["Small", counts.embroiderySmallPrints], ["Medium", counts.embroideryMediumPrints], ["Large", counts.embroideryLargePrints]]
           .filter(([, v]) => v > 0).map(([k, v]) => `${k}: ${v}`).join("  •  ");
         if (sz) gsum += `<div class="gsummary"><b>Placement sizes:</b> ${pcEsc(sz)}</div>`;
-      } const jobs = {}; byCard[cardKey].forEach(({ p, r }) => { (jobs[r.job] = jobs[r.job] || { key: r.key, items: [] }).items.push(p); }); body = Object.entries(jobs).map(([job, info]) => { const cnt = info.key && counts && pcHas(counts[info.key]) ? `<span class="jcount">${counts[info.key]} prints</span>` : ""; const entries = info.items.map((p) => { if (p.productType === "gangsheet") return pcGangSheetBlock(p, bi); if (p.productType !== "garment") return pcOverview(p); const pnote = pcHas(pcNote(p)) ? `<div class="garment">${pcRow("Other Information", "Información Adicional", pcNote(p), { crit: true, bi })}</div>` : ""; return pnote + (p.primaryBranches || []).map((g) => pcGarmentBlock(g, bi, p.premiumIronPass, p.productName)).join(""); }).join(""); return `<div class="job"><div class="jhead"><span>${pcEsc(job)}</span>${cnt}</div>${entries}</div>`; }).join(""); }
+      } const jobs = {}; byCard[cardKey].forEach(({ p, r }) => { (jobs[r.job] = jobs[r.job] || { key: r.key, items: [] }).items.push(p); }); body = Object.entries(jobs).map(([job, info]) => { const cnt = info.key && counts && pcHas(counts[info.key]) ? `<span class="jcount">${counts[info.key]} prints</span>` : ""; const entries = info.items.map((p) => { if (p.productType === "gangsheet") return pcGangSheetBlock(p, bi); if (p.productType !== "garment") return pcOverview(p); const pnote = pcHas(pcNote(p)) ? `<div class="garment">${pcRow("Other Information", "Información Adicional", pcNote(p), { crit: true, bi })}</div>` : ""; return pnote + (p.primaryBranches || []).map((g) => pcGarmentBlock(g, bi, p.premiumIronPass, p.productName, artDetails)).join(""); }).join(""); return `<div class="job"><div class="jhead"><span>${pcEsc(job)}</span>${cnt}</div>${entries}</div>`; }).join(""); }
     const deptTotal = cm.countKey && counts && pcHas(counts[cm.countKey]) ? counts[cm.countKey] : null;
     files.push({ name: cm.file, html: pcDoc(cm, strip(cm, deptTotal, gsum, shipmentsFor(cardKey)) + `<div class="cbody">${body}</div>` + footer(cm.dept)) });
   }
   const gcm = PC_META.graphicdesign; const art = [];
   products.forEach((p) => {
-    if (p.productType === "garment") (p.primaryBranches || []).forEach((g) => (g.secondaryBranches || []).forEach((gr) => art.push({ src: `${p.productName} — ${g.garmentType || ""}`, gr, need: FILE_NEEDED[p.productName] })));
-    else if (p.productType === "nongarment") (p.branches || []).forEach((gr) => art.push({ src: p.productName, gr, need: FILE_NEEDED[p.productName] }));
+    if (p.productType === "garment") (p.primaryBranches || []).forEach((g) => (g.secondaryBranches || []).forEach((gr) => art.push({ src: `${p.productName} — ${g.garmentType || ""}`, gr, need: FILE_NEEDED[p.productName], garment: g })));
+    else if (p.productType === "nongarment") (p.branches || []).forEach((gr) => art.push({ src: p.productName, gr, need: FILE_NEEDED[p.productName], product: p }));
     else if (p.productType === "gangsheet") (p.gangGraphics || []).forEach((gr) => art.push({ src: `${p.productName} — ${gr?.graphicWidth || "?"}" x ${gr?.graphicHeight || "?"}"`, gr, need: FILE_NEEDED["DTF Gang Sheet"] }));
     else if (p.productType === "graphic") art.push({ src: "Graphic Design", gr: { graphicDescription: p.graphicDescription, currentGraphicFormat: p.desiredGraphicApplication, fontsUsed: p.fontsUsed, _design: p } });
   });
-  const artBody = art.length ? art.map((a, i) => `<div class="job"><div class="jhead"><span>Artwork ${i + 1}</span><span class="omute">${pcEsc(a.src)}</span></div><div class="garment">${pcRow("File needed", "", a.need, { crit: true })}${pcRow("Description", "", a.gr?.graphicDescription, { crit: true })}${pcRow("Art File", "", artNames(a.gr))}${pcRow("Print Ready?", "", a.gr?.isGraphicPrintReady)}${pcRow("Format", "", a.gr?.currentGraphicFormat, { crit: true })}${pcRow("Fine Detail?", "", a.gr?.fineDetail)}${pcRow("Colors", "", a.gr?.numberOfColorsUsed)}${pcRow("Colors Used", "", a.gr?.colorsUsed)}${pcRow("Fonts", "", a.gr?.fontsUsed)}${a.gr?._design ? pcRow("Design Hours", "", a.gr._design.estimatedDesignHours) : ""}${a.gr?._design ? pcRow("Assets Provided", "", a.gr._design.designAssetsProvided) : ""}</div></div>`).join("") : `<div class="job"><div class="garment"><i>No artwork details captured on this deal.</i></div></div>`;
+  const artBody = art.length ? art.map((a, i) => `<div class="job"><div class="jhead"><span>Artwork ${i + 1}</span><span class="omute">${pcEsc(a.src)}</span></div><div class="garment">${pcRow("File needed", "", a.need, { crit: true })}${pcRow("Description", "", a.gr?.graphicDescription, { crit: true })}${pcRow("Art File", "", artNames(a.gr))}${pcRow("Print Ready?", "", a.gr?.isGraphicPrintReady)}${pcRow("Format", "", a.gr?.currentGraphicFormat, { crit: true })}${pcRow("Fine Detail?", "", a.gr?.fineDetail)}${pcRow("Colors", "", a.gr?.numberOfColorsUsed)}${pcRow("Colors Used", "", a.gr?.colorsUsed)}${pcRow("Fonts", "", a.gr?.fontsUsed)}${a.gr?._design ? pcRow("Design Hours", "", a.gr._design.estimatedDesignHours) : ""}${a.gr?._design ? pcRow("Assets Provided", "", a.gr._design.designAssetsProvided) : ""}${artDetails ? pcArtOrder(a) : ""}</div></div>`).join("") : `<div class="job"><div class="garment"><i>No artwork details captured on this deal.</i></div></div>`;
   files.push({ name: gcm.file, html: pcDoc(gcm, strip(gcm, null, "") + `<div class="cbody">${artBody}</div>` + footer("Graphics")) });
   // E-48: the Color Matching card -- each color on the order with its best counterparts in the other
   // departments. Only made when at least one color is recognized, so an order without any gets exactly
