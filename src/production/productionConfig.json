@@ -31,6 +31,6 @@
   "proofStepOn": true,
   "_revisionInFlowOn": "E-175 (David 10-30): on a tab with a production flow, the Order Revision / Correction button sits in the flow under Missing or damaged garments / Call Client instead of the top bar (tabs without a flow keep the top-bar button). Needs revisionInCardsOn. false = the top-bar button as before.",
   "revisionInFlowOn": true,
-  "_gdAlsoUsedByOn": "E-162 follow-up (D-79, David 10-30 \"Yes, start there\"): on the Graphic Design tab, a client's original file (Format Original) can be ticked \"Also used by\" other graphics on the order -- uploaded once, listed under each (one GRAPHIC UPLOAD note line, no copies), like onboarding. false = as before (one graphic per upload).",
-  "gdAlsoUsedByOn": false
+  "_gdAlsoUsedByOn": "E-162 follow-up (D-79, David 10-30 \"Yes, start there\"): on the Graphic Design tab, a client's original file (Format Original) can be ticked \"Also used by\" other graphics on the order -- uploaded once, listed under each (one GRAPHIC UPLOAD note line, no copies), like onboarding. false = as before (one graphic per upload). ON with the push (David's yes).",
+  "gdAlsoUsedByOn": true
 }
