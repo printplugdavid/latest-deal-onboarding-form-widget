@@ -71,3 +71,23 @@ export async function uploadGraphicFile(zoho, { entity, recordId, deal, who, sou
   }
   return { name, folder, wouldMove, noteId, filingStarted };
 }
+
+/*
+ * Deluge docs/59 §2.0 (10-30): a file uploaded at onboarding BEFORE the Deal has its WorkDrive folder is answered `no_deal_folder` by the
+ * instant filing run (its 3 tries happen within seconds). Submit makes the folders (WIDGET_Create_Deal_Folders, ~13 s), so once that
+ * answers ok / skipped, untick -> tick Graphics_Filing once more and the waiting files are filed. Never throws; resolves true when re-ticked.
+ */
+export async function refileAfterFolders(zoho, { entity, recordId, folders }) {
+  try {
+    const ans = await folders;
+    if (!ans || (ans.status !== "ok" && ans.status !== "skipped")) return false;
+    await zoho.CRM.API.updateRecord({ Entity: entity, APIData: { id: recordId, [FILING_FIELD]: false }, Trigger: [] });
+    const r = await zoho.CRM.API.updateRecord({ Entity: entity, APIData: { id: recordId, [FILING_FIELD]: true }, Trigger: ["workflow"] });
+    return ok(r);
+  } catch (e) {
+    return false;
+  }
+}
+/* Wait for a promise, but no longer than ms (resolves "timeout" then). */
+export const withCap = (promise, ms) => Promise.race([promise, new Promise((res) => setTimeout(() => res("timeout"), ms))]);
+

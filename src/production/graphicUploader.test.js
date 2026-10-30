@@ -1,4 +1,4 @@
-import { uploadGraphicFile } from "./graphicUploader";
+import { refileAfterFolders, uploadGraphicFile, withCap } from "./graphicUploader";
 
 /* A stand-in for the Zoho SDK that records every call and answers like Zoho / Deluge docs/58. */
 const fakeZoho = (dryAnswer = { status: "ok", result: "dry_run", files: [{ stem: "4523_EMB_K500-Navy_Left-Chest_DST", next_version: 2, would_move: ["4523_EMB_K500-Navy_Left-Chest_DST_v1.dst"] }] }) => {
@@ -52,3 +52,20 @@ test("E-162: filing switch off -> no box writes; a failed dry run attaches nothi
   await expect(uploadGraphicFile(bad, { entity: "Deals", recordId: "D1", deal: {}, file, parts })).rejects.toThrow("this Deal has no folder");
   expect(bad.calls.map((c) => c[0])).toEqual(["execute"]);
 });
+
+test("E-162 (Deluge docs/59 §2.0): once Submit's folders exist, the filing box is ticked once more; not when the folders failed", async () => {
+  const z = fakeZoho();
+  expect(await refileAfterFolders(z, { entity: "Deals", recordId: "D1", folders: Promise.resolve({ status: "ok" }) })).toBe(true);
+  expect(z.calls).toEqual([
+    ["updateRecord", { id: "D1", Graphics_Filing: false }, []],
+    ["updateRecord", { id: "D1", Graphics_Filing: true }, ["workflow"]],
+  ]);
+  const z2 = fakeZoho();
+  expect(await refileAfterFolders(z2, { entity: "Deals", recordId: "D1", folders: Promise.resolve({ status: "skipped" }) })).toBe(true); // folder already there
+  const z3 = fakeZoho();
+  expect(await refileAfterFolders(z3, { entity: "Deals", recordId: "D1", folders: Promise.resolve({ status: "unavailable" }) })).toBe(false);
+  expect(z3.calls).toEqual([]);
+  expect(await withCap(new Promise(() => {}), 10)).toBe("timeout");
+  expect(await withCap(Promise.resolve(true), 1000)).toBe(true);
+});
+
