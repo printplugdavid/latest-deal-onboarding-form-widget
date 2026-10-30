@@ -8,5 +8,7 @@
   "_outsourcedOn": "E-164 (David 10-29, D-75): an open \"OUTSOURCED: Order Products\" or \"Package Outsourced Products\" task holds the move to Quality Check, and the Outsourced card tab gets its flow (the Production Manager closes the Package task there with David's two questions). false = round 1 as before: outsourced tasks are not counted and the Outsourced tab has no flow.",
   "outsourcedOn": true,
   "_expectedCountsOn": "E-166 (David 10-29): next to each count question (start count, Close \"Garments counted...\", Outsourced Order and Package) the expected total for that tab's job, clickable to show garment / color / sizes. Display only. false = not shown.",
-  "expectedCountsOn": true
+  "expectedCountsOn": true,
+  "_dueFlagsOn": "E-168 (David 10-29): a red \"Past due\" line at the top of a tab's flow (and \"(past due)\" on the tab's name) when one of THAT tab's open tasks is past its due date; a yellow \"Due today\" line for today. Display only. false = not shown.",
+  "dueFlagsOn": true
 }

@@ -36,10 +36,13 @@ import {
   closePlan,
   closeQuestionsFor,
   deptStarted,
+  dueFlagsOn,
+  dueStatus,
   expectedCountsOn,
   expectedFor,
   grams,
   hasStartSteps,
+  lateLine,
   missingLine,
   openDeptTasks,
   openOrderTasks,
@@ -234,6 +237,7 @@ const ProductionFlow = ({ dept, ctx, refresh }) => {
   const rows = useMemo(() => (d.inks ? pantoneSlots(deal, pantonesOf(data)) : []), [d.inks, deal, data]);
   const garments = useMemo(() => orderGarments(data), [data]);
   const expected = useMemo(() => (expectedCountsOn(PRODUCTION_CONFIG) ? expectedFor(data, dept) : null), [data, dept]);
+  const due = useMemo(() => (dueFlagsOn(PRODUCTION_CONFIG) ? dueStatus(tasks, dept, ymd()) : null), [tasks, dept]);
 
   const [start, setStart] = useState({});
   const [inkMixed, setInkMixed] = useState(() => rows.map((r) => (r.mixed != null ? String(r.mixed) : "")));
@@ -308,6 +312,16 @@ const ProductionFlow = ({ dept, ctx, refresh }) => {
       <Typography variant="h6" fontWeight="bold">
         {d.label} production flow
       </Typography>
+      {due && due.late.length > 0 && (
+        <Alert severity="error" sx={{ mt: 1 }}>
+          Past due: {due.late.map(lateLine).join("; ")}
+        </Alert>
+      )}
+      {due && due.today.length > 0 && (
+        <Alert severity="warning" sx={{ mt: 1 }}>
+          Due today: {due.today.map((x) => taskTitle(x.task)).join("; ")}
+        </Alert>
+      )}
       {!myTasks.length && !orderOpen.length && (
         <Alert severity="info" sx={{ mt: 1 }}>
           No open {dept === "outsourced" ? "outsourced (order or packing)" : d.label + " production"} task on this Deal. You can still report
