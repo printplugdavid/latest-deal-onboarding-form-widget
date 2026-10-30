@@ -64,7 +64,6 @@ describe("Added Revision (E-169 / D-80)", () => {
     expect(needsAddedRevision(targetStage("Revision", "Order Needs Revisions"))).toBe(true);
     expect(needsAddedRevision(targetStage("Correction", "Order Needs Corrections"))).toBe(true);
     expect(needsAddedRevision(targetStage("Revision", "SCHOOL: Order Revisions"))).toBe(true);
-    expect(needsAddedRevision(targetStage("Correction", "SCHOOL: Order Corrections"))).toBe(true);
     expect(needsAddedRevision(targetStage("Revision", "ADVERTISER: Issues"))).toBe(true);
   });
 
@@ -76,6 +75,8 @@ describe("Added Revision (E-169 / D-80)", () => {
     expect(needsAddedRevision(targetStage("Revision", "SCHOOL/ ADVERTISER Issues"))).toBe(false);
     expect(needsAddedRevision(targetStage("Other", "Order Needs Revisions"))).toBe(false);
     expect(needsAddedRevision(null)).toBe(false);
+    // Deluge 10-30: their rule does not act at SCHOOL: Order Corrections, so a tick there would make nothing.
+    expect(needsAddedRevision(targetStage("Correction", "SCHOOL: Order Corrections"))).toBe(false);
   });
 
   function fakeZoho(results) {

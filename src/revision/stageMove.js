@@ -44,8 +44,17 @@ export function targetStage(formType, currentStage) {
  */
 export const ADDED_REVISION_FIELD = "Added_Revision";
 
+// Stages Deluge's rule "PRODUCTION: Added Revision" (5249739000129105086) acts on (their docs/60, read back 10-30). SCHOOL: Order
+// Corrections is NOT wired (that stage has its own older rule): the form never ticks there and keeps "tell the production manager".
+export const ADDED_REVISION_STAGES = [
+  "Order Needs Revisions",
+  "SCHOOL: Order Revisions",
+  "ADVERTISER: Issues",
+  "Order Needs Corrections",
+];
+
 export function needsAddedRevision(target) {
-  return !!target && target.move === false && target.reason === "already";
+  return !!target && target.move === false && target.reason === "already" && ADDED_REVISION_STAGES.includes(target.stage);
 }
 
 // Untick with no workflow, then tick with workflow (the form's copy of the Deal can be stale, and ticking a ticked box fires nothing).
