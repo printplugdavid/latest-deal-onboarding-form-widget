@@ -94,7 +94,8 @@ export function garmentOptions(data) {
         if (!b) return;
         const type = str(b.garmentType).split("\n")[0].trim();
         const sku = str(((b.garmentSkus || []).find((r) => r && str(r.sku).trim()) || {}).sku).trim();
-        const style = sku || type || str(p.productName);
+        const style = sku || type; // no garment typed yet -> only ALL (never the product name: "Embroidery" is not a garment)
+        if (!style) return;
         const colors = [...new Set(parseSizeText(b.countColorSize).rows.map((r) => str(r.color).trim()).filter(Boolean))];
         if (!colors.length) add(style, type || style, b.garmentKind);
         colors.forEach((c) => add(`${style}-${c}`, `${type || style} - ${c}`, b.garmentKind));

@@ -82,6 +82,8 @@ test("E-162: the Garment picker lists ALL, each style + color, then non-garment 
   expect(garmentOptions(order).map((o) => o.value)).toEqual(["ALL", "K500-Navy", "K500-White", "Business-Cards"]);
   expect(garmentOptions(order)[1].label).toBe("Port Authority K500 Polo - Navy");
   expect(garmentOptions({ products: [] }).map((o) => o.value)).toEqual(["ALL"]);
+  // a garment with nothing typed yet (onboarding, early): only ALL -- never the product name as a garment
+  expect(garmentOptions({ products: [{ productType: "garment", productName: "Embroidery", primaryBranches: [{ garmentType: "" }] }] }).map((o) => o.value)).toEqual(["ALL"]);
 });
 
 test("E-162: the Placement picker -- the order's placements first, then the standard list for that kind, then Whole item", () => {
